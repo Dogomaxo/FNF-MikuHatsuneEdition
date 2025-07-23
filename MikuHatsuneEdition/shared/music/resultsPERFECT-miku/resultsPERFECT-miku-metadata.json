@@ -1,0 +1,9 @@
+{
+  "timeFormat": "ms",
+  "artist": "SEGA",
+  "songName": "Tracks of the shine (Perfect)",
+  "timeChanges": [{ "d": 4, "n": 4, "t": 0, "bt": [4, 4, 4, 4], "bpm": 156 }],
+  "generatedBy": "Manual (by Dogomaxo)",
+  "looped": true,
+  "version": "2.0.0"
+}
