@@ -31,7 +31,7 @@ I’d really appreciate it! I’ll make sure to credit you in the mod as a thank
 Unfortunately, as I mentioned earlier, this is just a hobby for me, and I don’t have the money to pay people.  
 So if you’re willing to contribute purely for the love of it, you’re more than welcome!
 
-Also, in the [Work Progress Section](github.com/users/Dogomaxo/projects/2), you’ll find the tasks I’m currently working on for the mod.  
+Also, in the [Work Progress Section](https://github.com/users/Dogomaxo/projects/2), you’ll find the tasks I’m currently working on for the mod.  
 If you’d like to contribute, you can use that as a reference to help with something in progress or to build upon an existing idea.
 
 **If you're interested in contributing**, feel free to contact me at:  
