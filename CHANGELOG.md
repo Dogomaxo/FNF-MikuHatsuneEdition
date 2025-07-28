@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial structure of game project based on [Funkin engine](https://github.com/FunkinCrew)
 - New character playable on Freeplay's Character Selector (Obviously)
-- 3 playable charts (almost)
+- Added 3 playable charts (almost)
   - **Satisfaction** by kz(livetune)
   - **Far Away** by kz(livetune)
   - **Far Away (Project DIVA ver 2009)** by kz(livetune)
