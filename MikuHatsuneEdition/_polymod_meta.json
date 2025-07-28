@@ -1,5 +1,5 @@
 {
-  "title": "Hastune Miku megamix edition (v0)",
+  "title": "FNF: Hatsune Miku edition pack",
   "description": "A compilation of songs from many Vocaloid artists adapted to be enjoyed on Friday Night Funkin'",
   "contributors": [
     {
@@ -9,6 +9,6 @@
     }
   ],
   "api_version": "0.7.0",
-  "mod_version": "0.0.1",
+  "mod_version": "0.0.1-pre.alpha",
   "license": "Custom codes and assets are licensed under the MIT License. This mod includes music and character content owned by Crypton Future Media and other third parties. All rights to those properties remain with their respective owners. This mod is a non-commercial fan project and is not intended to infringe on any copyrights."
 }
