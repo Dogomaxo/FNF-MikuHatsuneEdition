@@ -3,7 +3,6 @@
 My personal project: a Friday Night Funkin' mod based on a bunch of Hatsune Miku songs.  
 **(This mod requires the [V-Slice Engine](https://github.com/FunkinCrew/Funkin) to work)**
 
-
 ## About
 
 Here you can see my progress on the mod.  
@@ -15,10 +14,10 @@ I’m approaching it in a relaxed and chill way, as something fun to do and a wa
 **If you see this, download the mod, improve it, or make a better one using its resources — I won’t be mad or bothered by it.  
 All I ask is that you at least give me credit for it — I’d really appreciate that.**
 
-
 ## Contributing & Contact
 
 If you’d like to help out by contributing any kind of:
+
 - 🎨 Art or sprites  
 - 🗺️ Backgrounds or stages  
 - 💡 Ideas or concepts  
