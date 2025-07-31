@@ -1,11 +1,12 @@
-name: Bug Report
-description: Report a bug or an issue in the mod.
-labels: ["type: minor bug", "status: pending triage"]
-title: "Bug Report: "
+name: Crash Report
+description: Report a crash that occurred while playing the game.
+labels: ["type: major bug", "status: pending triage"]
+title: "Crash Report: "
 body:
   - type: markdown
     attributes:
       value: "# PLEASE READ THE [CONTRIBUTING GUIDE](https://github.com/Dogomaxo/FNF-MikuHatsuneEdition/blob/main/docs/CONTRIBUTING.md) BEFORE OPENING ISSUES!"
+
   - type: checkboxes
     attributes:
       label: Issue Checklist
@@ -59,9 +60,10 @@ body:
     validations:
       required: true
 
+
   - type: markdown
     attributes:
-      value: "## Describe your bug."
+      value: "## Describe the crash."
 
   - type: markdown
     attributes:
@@ -69,14 +71,24 @@ body:
 
   - type: textarea
     attributes:
-      label: Description (include any images, videos, errors, or crash logs)
-      description: Provide as much detail as you can. The better others understand your issue, the more they can help you!
-      placeholder: Describe your issue here...
+      label: Description
+      description: Include screenshots or videos of the crash happening. Provide as much detail as you can.
+      placeholder: Describe the crash here...
     validations:
       required: true
 
   - type: textarea
     attributes:
       label: Steps to Reproduce
-      description: What steps can other people take to reliably encounter this issue?
-      placeholder: 1. Play X song...
+      description: What steps can other people take to reliably trigger this crash?
+      placeholder: 1. Open the game...
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Crash logs
+      description: These can be found in the logs folder where Funkin.exe is, or in your mobile device's file explorer.
+      placeholder: Upload your logs here...
+    validations:
+      required: true
