@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: "# PLEASE READ THE [CONTRIBUTING GUIDE](https://github.com/Dogomaxo/FNF-MikuHatsuneEdition/blob/main/docs/CONTRIBUTING.md) BEFORE OPENING ISSUES!"
-      
+
   - type: checkboxes
     attributes:
       label: Issue Checklist
@@ -41,7 +41,7 @@ body:
       description: (Mobile users only) What version is your Operating System?
       placeholder: ex. iOS 18.5, Android 15, iPadOS 18.5
 
-  - type: input
+  - type: dropdown
     attributes:
       label: Mod version
       description: Which version are you playing on?.
