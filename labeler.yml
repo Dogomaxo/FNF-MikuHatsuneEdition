@@ -1,0 +1,25 @@
+# Add Documentation tag to PR's changing markdown files, or anything in the docs folder
+'pr: documentation':
+- changed-files:
+  - any-glob-to-any-file:
+      - docs/*
+      - '**/*.md'
+
+# Add Hscript tag to PR's changing .hxc code files
+'pr: hscript':
+- changed-files:
+  - any-glob-to-any-file: '**/*.hxc'
+
+# Add GitHub tag to PR's changing yml files, or anything in the .github folder 
+'pr: github':
+- changed-files:
+  - any-glob-to-any-file:
+      - github/*
+      - '**/*.yml'
+      
+# Add Assets tag to PR's changing assets files, or anything in the assets folder except .hxc files
+'pr: assets':
+- changed-files:
+  - any-glob-to-any-file:
+    - MikuHatsuneEdition/**
+    - '!**/*.hxc'
