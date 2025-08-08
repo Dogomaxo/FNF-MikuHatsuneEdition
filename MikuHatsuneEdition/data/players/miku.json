@@ -94,17 +94,11 @@
       "GOOD": "resultsGREAT-miku",
       "SHIT": "resultsLOSS-miku"
     },
-    "perfectGold": [
-    ],
-    "perfect": [
-    ],
-    "excellent": [
-    ],
-    "great": [
-    ],
-    "good": [
-    ],
-    "loss": [
-    ]
+    "perfectGold": [],
+    "perfect": [],
+    "excellent": [],
+    "great": [],
+    "good": [],
+    "loss": []
   }
 }
