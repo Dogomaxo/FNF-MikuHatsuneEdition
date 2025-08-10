@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<TextureAtlas imagePath="circle_gauge.png">
+<SubTexture name="circle_gauge circle_fill_0p0000" x="0" y="0" width="124" height="123" frameX="-2" frameY="-2" frameWidth="128" frameHeight="128" />
+<SubTexture name="circle_gauge circle_fill_10p0000" x="124" y="0" width="124" height="123" frameX="-2" frameY="-2" frameWidth="128" frameHeight="128" />
+<SubTexture name="circle_gauge circle_fill_20p0000" x="0" y="123" width="124" height="123" frameX="-2" frameY="-2" frameWidth="128" frameHeight="128" />
+<SubTexture name="circle_gauge circle_fill_30p0000" x="124" y="123" width="124" height="123" frameX="-2" frameY="-2" frameWidth="128" frameHeight="128" />
+<SubTexture name="circle_gauge circle_fill_40p0000" x="248" y="0" width="124" height="123" frameX="-2" frameY="-2" frameWidth="128" frameHeight="128" />
+<SubTexture name="circle_gauge circle_fill_50p0000" x="248" y="123" width="124" height="123" frameX="-2" frameY="-2" frameWidth="128" frameHeight="128" />
+<SubTexture name="circle_gauge circle_fill_60p0000" x="0" y="246" width="124" height="123" frameX="-2" frameY="-2" frameWidth="128" frameHeight="128" />
+<SubTexture name="circle_gauge circle_fill_70p0000" x="124" y="246" width="124" height="123" frameX="-2" frameY="-2" frameWidth="128" frameHeight="128" />
+<SubTexture name="circle_gauge circle_fill_80p0000" x="248" y="246" width="124" height="123" frameX="-2" frameY="-2" frameWidth="128" frameHeight="128" />
+<SubTexture name="circle_gauge circle_fill_90p0000" x="372" y="0" width="124" height="123" frameX="-2" frameY="-2" frameWidth="128" frameHeight="128" />
+<SubTexture name="circle_gauge circle_fill_100p0000" x="372" y="123" width="124" height="123" frameX="-2" frameY="-2" frameWidth="128" frameHeight="128" />
+</TextureAtlas>
