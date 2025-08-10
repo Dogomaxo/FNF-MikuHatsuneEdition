@@ -14,7 +14,7 @@ import funkin.util.ReflectUtil;
 class HatsunePauseMenuTheme extends Module {
 	var swappedOnce:Bool = false;
 	// Slightly lower than the default PauseSubState volume (0.75)
-	var mikuPauseVolume:Float = 0.639;
+	var mikuPauseVolume:Float = 0.6539;
 
 	public function new() {
 		super('miku-pause-menu-theme', 1000);
