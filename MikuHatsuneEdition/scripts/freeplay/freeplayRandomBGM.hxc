@@ -1,3 +1,5 @@
+//changes freeplayRandom default theme with another theme for Miku
+
 package MikuHatsuneEdition;
 
 import funkin.modding.module.Module;
@@ -55,7 +57,7 @@ class MikuFreeplayRandomBGM extends Module
                 // Wait until the DJ intro has finished and Freeplay is interactable
                 if (fp.controls.active && fp.curSelected == 0)
                 {
-                    // If our custom preview is not already playing, start it.
+                    // If custom preview is not already playing, start it.
                     var isCustomPlaying = false;
                     if (FlxG.sound.music != null)
                     {
@@ -74,7 +76,7 @@ class MikuFreeplayRandomBGM extends Module
                                 loop: true,
                                 onLoad: function() {
                                     if (FlxG.sound.music != null) {
-                                        FlxG.sound.music.fadeIn(1.5, 0, 0.8);
+                                        FlxG.sound.music.fadeIn(1.5, 0, 0.6);
                                     }
                                 }
                             });
@@ -99,7 +101,7 @@ class MikuFreeplayRandomBGM extends Module
                                     loop: true,
                                     onLoad: function() {
                                         if (FlxG.sound.music != null) {
-                                            FlxG.sound.music.fadeIn(1.5, 0, 0.8);
+                                            FlxG.sound.music.fadeIn(1.5, 0, 0.6);
                                         }
                                     }
                                 });
