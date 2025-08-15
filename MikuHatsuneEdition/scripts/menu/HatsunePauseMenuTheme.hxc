@@ -1,7 +1,6 @@
 // Switch pause menu music to a custom Miku track when playing as Miku.
 // Expects: shared/music/breakfast-miku/breakfast-miku.ogg
-// SCRIPT BASED ON SPOOKY MIX MOD
-package MikuHatsuneEdition;
+// SCRIPT BASED ON SPOOKY MIX MOD PAUSE MENU SCRIPT (https://gamebanana.com/mods/551727)
 
 import StringTools;
 import flixel.FlxG;

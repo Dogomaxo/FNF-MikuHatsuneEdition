@@ -1,5 +1,3 @@
-package MikuHatsuneEdition;
-
 import funkin.modding.module.Module;
 import funkin.play.PlayState;
 import funkin.Conductor;
@@ -10,13 +8,21 @@ import flixel.tweens.FlxTween;
 import flixel.util.FlxColor;
 
 /**
- * Custom HUD health bar styled like the reference image.
+ * Custom HUD health bar ported from my miku's prototype mod from p-slice (psych engine 1.0.4)
  * - Black border box, slightly lighter inner background, and a single player bar.
  * - Bar color sampled dynamically from the player's icon.
  * - Subtle flash on every beat; becomes reddish when at low health.
  *
  * This module hides the vanilla health bar and the opponent icon.
+ * 
+ * Original lua script by [skellix] (https://gamebanana.com/mods/534209) (Script made for Psych Engine)
+ * Ported to v-slice .hxc language and modified by [Dogomaxo] thats me lol.
+ * 
+ * Credits to [JugieNoob] for the script 'Health Bar PLUS' where i grabbed part of the color sample code for icons (https://gamebanana.com/mods/612284)
+ *
+ * Feel free to use this code for your own projects or mods. Just give the credits to the authors [skellix, JugieNoob] and if you want, to me as well :) .
  */
+
 class HatsuneInGameHud extends Module {
 	// Sprites for the custom HP UI
 	var hpBox:FlxSprite;        // black border box

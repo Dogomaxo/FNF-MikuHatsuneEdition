@@ -1,7 +1,5 @@
 //changes freeplayRandom default theme with another theme for Miku
 
-package MikuHatsuneEdition;
-
 import funkin.modding.module.Module;
 import funkin.util.ReflectUtil;
 import funkin.audio.FunkinSound;
@@ -23,7 +21,7 @@ class MikuFreeplayRandomBGM extends Module
     public function new()
     {
         // Use a unique identifier to avoid clashes with other mods
-        super('MikuHatsuneEdition.MikuFreeplayRandomBGM');
+        super('HatsuneFreeplayRandomBGM');
         // Paths.music("key/key") -> final resolved label used by the engine
         MUSIC_LABEL = Paths.music(MUSIC_KEY + '/' + MUSIC_KEY);
     }
