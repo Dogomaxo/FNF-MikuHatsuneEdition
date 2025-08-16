@@ -28,6 +28,15 @@ class HatsuneInGameHud extends Module {
 	var hpBox:FlxSprite;        // black border box
 	var meterBack:FlxSprite;    // inner background
 	var meter:FlxSprite;        // actual health fill
+	var hudBuilt:Bool = false;
+	var builtState = null; // reference to PlayState instance when HUD was built
+	var originalIconFlipX:Null<Bool> = null;
+	var prevActive:Bool = false; // para detectar transición activo->inactivo
+	var hadBeenActive:Bool = false; // se activó alguna vez en la sesión (para restauraciones post-song)
+	var passiveFlipFixed:Bool = false; // aplicamos corrección una sola vez por PlayState mientras está inactivo
+	var lastStateRef = null; // referencia para detectar cambio de PlayState mientras está inactivo
+
+	// NOTA: No usamos characterId aquí para mantener este módulo genérico. ModuleRouter decide activación.
 
 	// Config (matches the LUA script proportions/colors)
 	var meterW = 360;
@@ -85,153 +94,121 @@ class HatsuneInGameHud extends Module {
 	public function new() {
 		// Run early so we can force flipX before any one-frame flicker on restart.
 		super("Hatsune In-Game HUD", 1);
+		// Start inactive; central ModuleRouter will enable when corresponde.
+		this.active = false;
 	}
 
-	override function onSongRetry(event) {
-		super.onSongRetry(event);
+	// Build HUD only once when module becomes active (supports activation after countdown)
+	function ensureBuilt() {
+		if (hudBuilt) return;
+		if (PlayState.instance == null || PlayState.instance.healthBar == null) return; // wait until ready
+		cleanupSprites();
+		builtState = null; // reset before rebuilding
+		iconBaseWidth = -1; iconBaseHeight = -1; originCentered = false; iconFixedCenterX = -1.0;
+		// Hide vanilla
+		if (PlayState.instance.healthBar != null) PlayState.instance.healthBar.visible = false;
+		if (PlayState.instance.healthBarBG != null) PlayState.instance.healthBarBG.visible = false;
+		if (PlayState.instance.iconP2 != null) { PlayState.instance.iconP2.visible = false; PlayState.instance.iconP2.autoUpdate = false; }
+		if (PlayState.instance.iconP1 != null) {
+			// Capturar flip nativo SOLO una vez; si resulta false, asumimos vanilla estándar (true) como fallback.
+			if (originalIconFlipX == null) {
+				var nativeFlip = PlayState.instance.iconP1.flipX;
+				if (nativeFlip == false) nativeFlip = true; // fallback por defecto (BF/Pico normalmente true)
+				originalIconFlipX = nativeFlip;
+			}
+			var ic = PlayState.instance.iconP1; ic.visible = true; ic.autoUpdate = true; ic.flipX = false; if (ic.snapToTargetSize != null) ic.snapToTargetSize();
+			if (ic.width > 0) iconBaseWidth = Std.int(ic.width); if (ic.height > 0) iconBaseHeight = Std.int(ic.height);
+		}
+		// Create sprites
+		hpBox = new FlxSprite(); hpBox.makeGraphic(boxW, boxH, FlxColor.TRANSPARENT); hpBox.scrollFactor.set(); hpBox.cameras=[PlayState.instance.camHUD]; hpBox.visible=false; hpBox.zIndex=800;
+		meterBack = new FlxSprite(); meterBack.makeGraphic(meterW, meterH, FlxColor.WHITE); meterBack.scrollFactor.set(); meterBack.cameras=[PlayState.instance.camHUD]; meterBack.zIndex=801; meterBack.origin.set(0,0); meterBack.color = meterEmptyBack;
+		meter = new FlxSprite(); meter.makeGraphic(1, meterH, FlxColor.WHITE); meter.scrollFactor.set(); meter.cameras=[PlayState.instance.camHUD]; meter.zIndex=802; meter.origin.set(0,0);
+		borderTop = new FlxSprite(); borderTop.makeGraphic(boxW,5,FlxColor.BLACK); borderTop.scrollFactor.set(); borderTop.cameras=[PlayState.instance.camHUD]; borderTop.zIndex=803; borderTop.origin.set(0,0);
+		borderBottom = new FlxSprite(); borderBottom.makeGraphic(boxW,5,FlxColor.BLACK); borderBottom.scrollFactor.set(); borderBottom.cameras=[PlayState.instance.camHUD]; borderBottom.zIndex=803; borderBottom.origin.set(0,0);
+		borderLeft = new FlxSprite(); borderLeft.makeGraphic(5,meterH,FlxColor.BLACK); borderLeft.scrollFactor.set(); borderLeft.cameras=[PlayState.instance.camHUD]; borderLeft.zIndex=803; borderLeft.origin.set(0,0);
+		borderRight = new FlxSprite(); borderRight.makeGraphic(5,meterH,FlxColor.BLACK); borderRight.scrollFactor.set(); borderRight.cameras=[PlayState.instance.camHUD]; borderRight.zIndex=803; borderRight.origin.set(0,0);
+		PlayState.instance.add(hpBox); PlayState.instance.add(meterBack); PlayState.instance.add(meter); PlayState.instance.add(borderTop); PlayState.instance.add(borderBottom); PlayState.instance.add(borderLeft); PlayState.instance.add(borderRight);
+		recalcColorsFromIcon(); layoutAndSize(); PlayState.instance.refresh(); hudBuilt = true; builtState = PlayState.instance;
+	}
+
+	function restoreVanilla() {
+		if (PlayState.instance != null) {
+			if (PlayState.instance.healthBar != null) PlayState.instance.healthBar.visible = true;
+			if (PlayState.instance.healthBarBG != null) PlayState.instance.healthBarBG.visible = true;
+			if (PlayState.instance.iconP1 != null) {
+				if (originalIconFlipX != null) PlayState.instance.iconP1.flipX = originalIconFlipX; else if (PlayState.instance.iconP1.flipX == false) PlayState.instance.iconP1.flipX = true;
+				PlayState.instance.iconP1.autoUpdate = true; PlayState.instance.iconP1.visible = true;
+			}
+			if (PlayState.instance.iconP2 != null) { PlayState.instance.iconP2.visible = true; PlayState.instance.iconP2.autoUpdate = true; }
+		}
+		cleanupSprites(); hudBuilt = false; originalIconFlipX = null; builtState = null;
+	}
+
+	// Hook de desactivación inmediata: algunos cambios de canción hacen que el update tarde 1 frame.
+	public override function onDeactivate() {
+		// Restaurar flip original apenas se desactiva el módulo.
 		if (PlayState.instance != null && PlayState.instance.iconP1 != null) {
+			if (originalIconFlipX != null) PlayState.instance.iconP1.flipX = originalIconFlipX; else if (PlayState.instance.iconP1.flipX == false) PlayState.instance.iconP1.flipX = true;
+		}
+	}
+
+		override function onSongRetry(event) {
+		super.onSongRetry(event);
+		// Si está activo en el retry, garantizar flip deseado; si no, no tocar (deja orientación del engine).
+		if (this.active && PlayState.instance != null && PlayState.instance.iconP1 != null) {
 			var icon = PlayState.instance.iconP1;
-			icon.flipX = false; // enforce immediately on restart
-			icon.autoUpdate = true; // keep vanilla bop intact
-			icon.visible = true; // do not hide
-			// Snap size immediately so our anchor uses the final dimensions (prevents left shift)
+			icon.flipX = false;
+			icon.autoUpdate = true; icon.visible = true;
 			if (icon.snapToTargetSize != null) icon.snapToTargetSize();
 		}
 	}
 
-	override function onSongLoaded(event) {
+		override function onSongLoaded(event) {
 		super.onSongLoaded(event);
-		if (PlayState.instance != null && PlayState.instance.iconP1 != null) {
+		// Sólo forzar si estamos activos; si no, no modificar el flip que asigna el engine al nuevo personaje.
+		if (this.active && PlayState.instance != null && PlayState.instance.iconP1 != null) {
 			var icon = PlayState.instance.iconP1;
-			icon.flipX = false; // enforce again once icons are rebuilt
-			icon.autoUpdate = true;
-			icon.visible = true;
-			// Ensure the icon is at its target size before layout on load
+			icon.flipX = false;
+			icon.autoUpdate = true; icon.visible = true;
 			if (icon.snapToTargetSize != null) icon.snapToTargetSize();
 		}
 	}
 
 	override function onCountdownStart(event) {
 		super.onCountdownStart(event);
-
-		if (PlayState.instance == null) return;
-
-		// Ensure we don't accumulate duplicate bars when restarting a song.
-		cleanupSprites();
-
-		// Reset anchor so restarts/retries re-init correctly.
-			iconBaseWidth = -1;
-			iconBaseHeight = -1;
-			originCentered = false;
-			iconFixedCenterX = -1.0;
-
-		// Hide default health bar visuals.
-		if (PlayState.instance.healthBar != null) PlayState.instance.healthBar.visible = false;
-		if (PlayState.instance.healthBarBG != null) PlayState.instance.healthBarBG.visible = false;
-
-		// Turn off opponent icon and manually manage player icon position/flip.
-		if (PlayState.instance.iconP2 != null) {
-			PlayState.instance.iconP2.visible = false;
-			PlayState.instance.iconP2.autoUpdate = false;
-		}
-
-			if (PlayState.instance.iconP1 != null) {
-			// Keep it visible; we force flipX below to avoid any flipped flash.
-			PlayState.instance.iconP1.visible = true;
-			PlayState.instance.iconP1.autoUpdate = true; // allow vanilla bop
-			PlayState.instance.iconP1.flipX = false;     // face the bar like in the reference
-				// Ensure clean scale/origin on fresh countdown to avoid drift from previous run
-				PlayState.instance.iconP1.scale.set(1, 1);
-				// Snap to final size so baseline is correct and no left shift occurs
-				if (PlayState.instance.iconP1.snapToTargetSize != null) PlayState.instance.iconP1.snapToTargetSize();
-				if (PlayState.instance.iconP1.width > 0 && PlayState.instance.iconP1.height > 0) {
-					PlayState.instance.iconP1.centerOrigin();
-					originCentered = true;
-				}
-			// Initialize anchor width if available now
-			if (PlayState.instance.iconP1.width > 0) {
-				iconBaseWidth = Std.int(PlayState.instance.iconP1.width);
-			}
-			if (PlayState.instance.iconP1.height > 0) {
-				iconBaseHeight = Std.int(PlayState.instance.iconP1.height);
-			}
-		}
-
-		// Create sprites
-		hpBox = new FlxSprite();
-		hpBox.makeGraphic(boxW, boxH, FlxColor.TRANSPARENT);
-		hpBox.scrollFactor.set();
-		hpBox.cameras = [PlayState.instance.camHUD];
-		hpBox.visible = false;
-		hpBox.zIndex = 800;
-
-		meterBack = new FlxSprite();
-		// Create as white, then tint via `color` to avoid double-multiplying colors on beat.
-		meterBack.makeGraphic(meterW, meterH, FlxColor.WHITE);
-		meterBack.scrollFactor.set();
-		meterBack.cameras = [PlayState.instance.camHUD];
-		meterBack.zIndex = 801;
-		meterBack.origin.set(0, 0);
-		// Apply initial tint so it shows the intended background color immediately.
-		meterBack.color = meterEmptyBack;
-
-		meter = new FlxSprite();
-		// 1px width graphic; we scale X to desired fill width for crisp edges
-		meter.makeGraphic(1, meterH, FlxColor.WHITE);
-		meter.scrollFactor.set();
-		meter.cameras = [PlayState.instance.camHUD];
-		meter.zIndex = 802;
-		meter.origin.set(0, 0);
-
-		// Create border pieces (5px thick) so they never cover the inner background
-		borderTop = new FlxSprite();
-		borderTop.makeGraphic(boxW, 5, FlxColor.BLACK);
-		borderTop.scrollFactor.set();
-		borderTop.cameras = [PlayState.instance.camHUD];
-		borderTop.zIndex = 803;
-		borderTop.origin.set(0, 0);
-
-		borderBottom = new FlxSprite();
-		borderBottom.makeGraphic(boxW, 5, FlxColor.BLACK);
-		borderBottom.scrollFactor.set();
-		borderBottom.cameras = [PlayState.instance.camHUD];
-		borderBottom.zIndex = 803;
-		borderBottom.origin.set(0, 0);
-
-		borderLeft = new FlxSprite();
-		borderLeft.makeGraphic(5, meterH, FlxColor.BLACK);
-		borderLeft.scrollFactor.set();
-		borderLeft.cameras = [PlayState.instance.camHUD];
-		borderLeft.zIndex = 803;
-		borderLeft.origin.set(0, 0);
-
-		borderRight = new FlxSprite();
-		borderRight.makeGraphic(5, meterH, FlxColor.BLACK);
-		borderRight.scrollFactor.set();
-		borderRight.cameras = [PlayState.instance.camHUD];
-		borderRight.zIndex = 803;
-		borderRight.origin.set(0, 0);
-
-		// Add to state
-		PlayState.instance.add(hpBox);
-		PlayState.instance.add(meterBack);
-		PlayState.instance.add(meter);
-		PlayState.instance.add(borderTop);
-		PlayState.instance.add(borderBottom);
-		PlayState.instance.add(borderLeft);
-		PlayState.instance.add(borderRight);
-
-		// Sample colors from the icon and precalc flash variants
-		recalcColorsFromIcon();
-
-	// Initial layout pass
-	layoutAndSize();
-	PlayState.instance.refresh();
+		// Construcción diferida gestionada en onUpdate
 	}
 
 	override function onUpdate(event) {
 		super.onUpdate(event);
 		if (PlayState.instance == null) return;
+
+		// Detectar cambio de PlayState siempre (activos o no) para reiniciar banderas pasivas.
+		if (lastStateRef != PlayState.instance) {
+			lastStateRef = PlayState.instance;
+			passiveFlipFixed = false;
+		}
+		// Detect PlayState change (e.g., exited song and entered another without deactivating module)
+		if (hudBuilt && builtState != PlayState.instance) {
+			// Intento de restaurar flip en el estado viejo (si aún existe) y limpiar.
+			if (builtState != null && builtState.iconP1 != null && originalIconFlipX != null) builtState.iconP1.flipX = originalIconFlipX;
+			hudBuilt = false; builtState = null; originalIconFlipX = null;
+		}
+		if (this.active) {
+			hadBeenActive = true; // marcar que estuvo activo al menos una vez
+			ensureBuilt();
+		} else {
+			// Si antes estaba activo y ahora no, restaurar inmediatamente.
+			if (prevActive) restoreVanilla();
+			// Corrección pasiva: si venimos de HUD y el nuevo icono aparece todavía mirando a la derecha (flipX=false),
+			// forzar flip estándar (true) UNA sola vez para este PlayState, dejando luego al engine en control.
+			if (!passiveFlipFixed && PlayState.instance.iconP1 != null && PlayState.instance.iconP1.flipX == false) {
+				PlayState.instance.iconP1.flipX = true;
+				passiveFlipFixed = true;
+			}
+			prevActive = this.active;
+			return;
+		}
 
 		// Enforce manual control and correct facing every frame (covers retries/late init)
 		if (PlayState.instance.iconP1 != null) {
@@ -246,8 +223,9 @@ class HatsuneInGameHud extends Module {
 				if (icon.height > 0) iconBaseHeight = Std.int(icon.height);
 		}
 
-		// Keep position, size and fill in sync each frame.
-	if (hpBox != null && meterBack != null && meter != null) layoutAndSize();
+		// Keep position, size and fill in sync each frame (only if current build is valid).
+		if (hudBuilt && hpBox != null && meterBack != null && meter != null) layoutAndSize();
+		prevActive = this.active;
 
 		// Handle scheduled danger background fade (imitates Lua timing: quarter-beat delay then half-beat fade).
 		if (dangerFadeCountdown > 0) {
@@ -263,6 +241,7 @@ class HatsuneInGameHud extends Module {
 	override function onBeatHit(event) {
 		super.onBeatHit(event);
 		if (PlayState.instance == null) return;
+	if (!this.active || !hudBuilt) return;
 
 	// Re-sample if icons changed mid-song (character swap).
 	if (meter != null) recalcColorsFromIcon();

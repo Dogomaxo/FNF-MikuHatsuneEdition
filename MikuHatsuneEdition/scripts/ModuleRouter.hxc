@@ -1,0 +1,226 @@
+import funkin.modding.module.Module;
+import funkin.modding.module.ModuleHandler;
+import funkin.play.PlayState;
+
+// Añade entradas en charRules para activar módulos según characterId.
+class ModuleRouter extends Module {
+  // ================= RULE MODEL (Escalable) =================
+  // Cada regla puede incluir varias condiciones opcionales (todas las listas actúan con OR interno y AND entre grupos):
+  //  {
+  //     ids: ["miku","rin"],          // characterIds aceptados (o id: "miku")
+  //     stages: ["concert"],            // stageIds aceptados (si stage coincide)
+  //     songs: ["blue-star","far-away"], // songIds aceptados
+  //     enable: ["Hatsune In-Game HUD"],
+  //     disable: ["Some Other Module"]
+  //  }
+  // Omite un grupo para ignorar esa dimensión. Si un grupo existe, al menos uno debe coincidir.
+  // Internamente seguimos usando arrays y bucles (hscript limitado) pero con early exits y caches.
+  var charRules = [
+    { ids: ["miku"], enable: ["Hatsune In-Game HUD"], disable: [] }
+  ];
+  // ==========================================================
+
+  // Módulos cuyo HUD altera el flip y requieren restauración al salir.
+  var hudFlipModules = ["Hatsune In-Game HUD"]; // añade más si creas otros HUDs personalizados
+  // Personajes que usan alguno de los hudFlipModules (se autogenera desde charRules).
+  var customHudChars = [];
+  // Frames restantes para intentar restaurar flip estándar tras salir de un customHudChar.
+  // Reducimos la ventana para minimizar parpadeo visual.
+  var flipRestoreFrames:Int = 0;
+  // Flag para haber aplicado un fix inmediato en el frame del cambio.
+  var immediateFlipApplied:Bool = false;
+  // Último id para comparación ya existe (lastCharId), pero guardamos si el previo era custom.
+  var lastCharWasCustom:Bool = false;
+
+  // Lista plana de todos los módulos gestionados (para desactivar antes de aplicar la regla).
+  var managed = [];
+  var lastCharId:String = null;
+  var lastStageId:String = null;
+  var lastSongId:String = null;
+
+  // Cache de último set aplicado (para activación diferencial)
+  var lastEnabledModules = [];
+  var lastDisabledModules = [];
+
+  public function new() {
+    super("ModuleRouter", 0); // prioridad alta
+    // Construir lista 'managed'.
+    for (r in charRules) {
+      if (r.enable != null) for (m in r.enable) if (!managed.contains(m)) managed.push(m);
+      if (r.disable != null) for (m in r.disable) if (!managed.contains(m)) managed.push(m);
+    }
+    rebuildCustomHudChars();
+  }
+
+  function getPlayerCharacterId() {
+    if (PlayState.instance == null) return null;
+    if (PlayState.instance.currentStage != null) {
+      var bf = PlayState.instance.currentStage.getBoyfriend();
+      if (bf != null) return bf.characterId;
+    }
+    if (PlayState.instance.iconP1 != null) return PlayState.instance.iconP1.characterId;
+    return null;
+  }
+
+  override function onUpdate(e) {
+    var charId = getPlayerCharacterId();
+    var stageId = getStageIdSafe();
+    var songId = getSongIdSafe();
+
+    if (charId == null) return; // sin jugador aún
+    // Intentos pasivos de restaurar flip (sólo pocos frames) tras cambiar desde un custom.
+    if (flipRestoreFrames > 0 && PlayState.instance != null && PlayState.instance.iconP1 != null) {
+      var ic = PlayState.instance.iconP1;
+      if (ic.flipX == false) ic.flipX = true; // forzar inmediatamente
+      flipRestoreFrames--;
+      if (flipRestoreFrames <= 0) immediateFlipApplied = false; // reset ciclo
+    }
+
+    // Determinar si algo cambió (char/stage/song)
+    var dirty = (charId != lastCharId) || (stageId != lastStageId) || (songId != lastSongId);
+    if (!dirty) return; // sin cambios relevantes
+
+    // Detectar transición de un customHudChar -> no custom para programar restauración (solo si cambió char)
+    var newIsCustom = isCustomHudChar(charId);
+    if (lastCharId != null && lastCharWasCustom && !newIsCustom) {
+      // Intento inmediato: si ya existe iconP1, corrige ahora para evitar parpadeo.
+      if (PlayState.instance != null && PlayState.instance.iconP1 != null) {
+        var icNow = PlayState.instance.iconP1;
+        if (icNow.flipX == false) {
+          icNow.flipX = true;
+          immediateFlipApplied = true;
+        }
+      }
+      // Ventana corta por si el icono se reconstruye unos frames después.
+      flipRestoreFrames = 5; // ~0.08s; suficiente para capturar recreación tardía
+    }
+
+    // Recalcular conjunto objetivo de módulos activos / inactivos usando reglas que matchean.
+    var targetEnable = [];
+    var targetDisable = [];
+    for (r in charRules) if (ruleMatches(r, charId, stageId, songId)) {
+      if (r.enable != null) for (m in r.enable) if (!targetEnable.contains(m)) targetEnable.push(m);
+      if (r.disable != null) for (m2 in r.disable) if (!targetDisable.contains(m2)) targetDisable.push(m2);
+    }
+
+    // Cualquier managed no presente en targetEnable ni targetDisable debe quedar desactivado (default)
+    // Activación diferencial: solo tocar lo que cambió para ahorrar overhead (micro-optimización)
+    // Desactivar módulos que estaban activos y ya no deben estarlo o que están explícitamente en disable
+    for (mPrev in lastEnabledModules) {
+      var stillEnabled = targetEnable.contains(mPrev);
+      if (!stillEnabled || targetDisable.contains(mPrev)) {
+        var mm = ModuleHandler.getModule(mPrev);
+        if (mm != null && mm.active) mm.active = false;
+      }
+    }
+    // Activar nuevos
+    for (mNow in targetEnable) {
+      if (!lastEnabledModules.contains(mNow)) {
+        var ma = ModuleHandler.getModule(mNow);
+        if (ma != null && !ma.active) ma.active = true;
+      }
+    }
+    // Asegurar desactivación explícita
+    for (mDis in targetDisable) {
+      var md = ModuleHandler.getModule(mDis);
+      if (md != null && md.active) md.active = false;
+    }
+
+    lastEnabledModules = targetEnable;
+    lastDisabledModules = targetDisable;
+
+    lastCharId = charId;
+    lastStageId = stageId;
+    lastSongId = songId;
+    lastCharWasCustom = newIsCustom;
+  }
+
+  function isCustomHudChar(id:String):Bool {
+    if (id == null) return false;
+    for (c in customHudChars) if (c == id) return true;
+    return false;
+  }
+
+  // Reconstruye la lista de personajes que usan HUDs que requieren flip manual.
+  function rebuildCustomHudChars() {
+    customHudChars = [];
+    for (r in charRules) {
+      var affectsFlip = false;
+      if (r.enable != null) for (m in r.enable) if (!affectsFlip && hudFlipModules.contains(m)) affectsFlip = true;
+      if (!affectsFlip) continue;
+      if (r.id != null) {
+        if (!customHudChars.contains(r.id)) customHudChars.push(r.id);
+      } else if (r.ids != null) {
+        for (cid in r.ids) if (!customHudChars.contains(cid)) customHudChars.push(cid);
+      }
+    }
+  }
+
+  function ruleMatches(r, charId:String, stageId:String, songId:String):Bool {
+    if (r == null) return false;
+    // Character dimension
+    var charOk = true;
+    if (r.id != null || r.ids != null) {
+      charOk = false;
+      if (r.id != null && r.id == charId) charOk = true;
+      else if (r.ids != null) for (c in r.ids) if (c == charId) { charOk = true; break; }
+    }
+    if (!charOk) return false;
+    // Stage dimension
+    var stageOk = true;
+    if (r.stages != null) {
+      stageOk = false;
+      for (st in r.stages) if (st == stageId) { stageOk = true; break; }
+      if (!stageOk) return false;
+    }
+    // Song dimension
+    var songOk = true;
+    if (r.songs != null) {
+      songOk = false;
+      for (sg in r.songs) if (sg == songId) { songOk = true; break; }
+      if (!songOk) return false;
+    }
+    return true;
+  }
+
+  // ===== Helpers para obtener stage / song con tolerancia a nulos =====
+  function getStageIdSafe():String {
+    if (PlayState.instance == null) return null;
+    var st = PlayState.instance.currentStage;
+    if (st != null) {
+      // Intentamos propiedades comunes sin romper si no existen
+      if (st.stageId != null) return st.stageId; // probable
+      if (st.id != null) return st.id;
+    }
+    return null;
+  }
+
+  function getSongIdSafe():String {
+    if (PlayState.instance == null) return null;
+    // Intentar property directa
+    if (PlayState.instance.songId != null) return PlayState.instance.songId;
+    if (PlayState.instance.currentSong != null) {
+      var cs = PlayState.instance.currentSong;
+      if (cs.id != null) return cs.id;
+      if (cs.songId != null) return cs.songId;
+      if (cs.name != null) return cs.name; // fallback
+    }
+    return null;
+  }
+
+  // ===== API pública sencilla para añadir reglas dinámicamente (por scripts futuros) =====
+  public function addRule(r) {
+    if (r == null) return;
+    charRules.push(r);
+    // Actualizar managed
+    if (r.enable != null) for (m in r.enable) if (!managed.contains(m)) managed.push(m);
+    if (r.disable != null) for (m2 in r.disable) if (!managed.contains(m2)) managed.push(m2);
+    rebuildCustomHudChars();
+  }
+
+  public function clearRules() {
+    charRules = [];
+    managed = [];
+    rebuildCustomHudChars();
+  }
+}
