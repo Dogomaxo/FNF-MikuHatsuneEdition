@@ -2,49 +2,45 @@ import funkin.modding.module.Module;
 import funkin.modding.module.ModuleHandler;
 import funkin.play.PlayState;
 
-// Añade entradas en charRules para activar módulos según characterId.
+// Central router: toggles modules based on the current player's characterId.
 class ModuleRouter extends Module {
-  // ================= RULE MODEL (Escalable) =================
-  // Cada regla puede incluir varias condiciones opcionales (todas las listas actúan con OR interno y AND entre grupos):
+  // ================= RULE MODEL (Scalable) =================
+  // Each rule supports either "id" (single character) or "ids" (array of characters).
+  // Example structure:
   //  {
-  //     ids: ["miku","rin"],          // characterIds aceptados (o id: "miku")
-  //     stages: ["concert"],            // stageIds aceptados (si stage coincide)
-  //     songs: ["blue-star","far-away"], // songIds aceptados
+  //     ids: ["miku","rin"],          // characterIds (or id: "miku")
   //     enable: ["Hatsune In-Game HUD"],
   //     disable: ["Some Other Module"]
   //  }
-  // Omite un grupo para ignorar esa dimensión. Si un grupo existe, al menos uno debe coincidir.
-  // Internamente seguimos usando arrays y bucles (hscript limitado) pero con early exits y caches.
+  // Stage / song filters removed for compatibility (hscript reflection shit issues). Re‑add later via safe API.
   var charRules = [
-    { ids: ["miku"], enable: ["Hatsune In-Game HUD"], disable: [] }
+    { ids: ["miku", "bf-hme", "rin", "len"], enable: ["Hatsune In-Game HUD"], disable: [] }
   ];
   // ==========================================================
 
-  // Módulos cuyo HUD altera el flip y requieren restauración al salir.
-  var hudFlipModules = ["Hatsune In-Game HUD"]; // añade más si creas otros HUDs personalizados
-  // Personajes que usan alguno de los hudFlipModules (se autogenera desde charRules).
+  // HUD modules that change icon flip and need restoration when leaving.
+  var hudFlipModules = ["Hatsune In-Game HUD"]; // add more custom HUD modules here
+  // Characters that use any hudFlipModules (auto-built from rules).
   var customHudChars = [];
-  // Frames restantes para intentar restaurar flip estándar tras salir de un customHudChar.
-  // Reducimos la ventana para minimizar parpadeo visual.
+  // Remaining frames to attempt passive flip restore after leaving a custom HUD character.
   var flipRestoreFrames:Int = 0;
-  // Flag para haber aplicado un fix inmediato en el frame del cambio.
+  // Flag: we applied an immediate fix the frame the change happened.
   var immediateFlipApplied:Bool = false;
-  // Último id para comparación ya existe (lastCharId), pero guardamos si el previo era custom.
+  // Whether the previous character used a custom HUD.
   var lastCharWasCustom:Bool = false;
 
-  // Lista plana de todos los módulos gestionados (para desactivar antes de aplicar la regla).
+  // Flat list of all managed modules (used to compute differential activation).
   var managed = [];
   var lastCharId:String = null;
-  var lastStageId:String = null;
-  var lastSongId:String = null;
+  // Stage/song tracking removed for compatibility (dynamic access threw exceptions).
 
-  // Cache de último set aplicado (para activación diferencial)
+  // Cache of last enabled/disabled sets for differential activation.
   var lastEnabledModules = [];
   var lastDisabledModules = [];
 
   public function new() {
-    super("ModuleRouter", 0); // prioridad alta
-    // Construir lista 'managed'.
+  super("ModuleRouter", 0); // high priority
+  // Build 'managed' list.
     for (r in charRules) {
       if (r.enable != null) for (m in r.enable) if (!managed.contains(m)) managed.push(m);
       if (r.disable != null) for (m in r.disable) if (!managed.contains(m)) managed.push(m);
@@ -63,27 +59,25 @@ class ModuleRouter extends Module {
   }
 
   override function onUpdate(e) {
-    var charId = getPlayerCharacterId();
-    var stageId = getStageIdSafe();
-    var songId = getSongIdSafe();
+  var charId = getPlayerCharacterId();
 
-    if (charId == null) return; // sin jugador aún
-    // Intentos pasivos de restaurar flip (sólo pocos frames) tras cambiar desde un custom.
+  if (charId == null) return; // no player yet
+  // Passive flip restore attempts (few frames) after leaving custom HUD.
     if (flipRestoreFrames > 0 && PlayState.instance != null && PlayState.instance.iconP1 != null) {
       var ic = PlayState.instance.iconP1;
-      if (ic.flipX == false) ic.flipX = true; // forzar inmediatamente
+  if (ic.flipX == false) ic.flipX = true; // force immediately
       flipRestoreFrames--;
-      if (flipRestoreFrames <= 0) immediateFlipApplied = false; // reset ciclo
+      if (flipRestoreFrames <= 0) immediateFlipApplied = false; // reset
     }
 
-    // Determinar si algo cambió (char/stage/song)
-    var dirty = (charId != lastCharId) || (stageId != lastStageId) || (songId != lastSongId);
-    if (!dirty) return; // sin cambios relevantes
+    // Check if character changed.
+    var dirty = (charId != lastCharId);
+    if (!dirty) return; // nothing to do
 
-    // Detectar transición de un customHudChar -> no custom para programar restauración (solo si cambió char)
+    // Transition customHUD -> non-custom: schedule restoration.
     var newIsCustom = isCustomHudChar(charId);
     if (lastCharId != null && lastCharWasCustom && !newIsCustom) {
-      // Intento inmediato: si ya existe iconP1, corrige ahora para evitar parpadeo.
+      // Immediate attempt: if icon exists, fix now to avoid flicker.
       if (PlayState.instance != null && PlayState.instance.iconP1 != null) {
         var icNow = PlayState.instance.iconP1;
         if (icNow.flipX == false) {
@@ -91,21 +85,19 @@ class ModuleRouter extends Module {
           immediateFlipApplied = true;
         }
       }
-      // Ventana corta por si el icono se reconstruye unos frames después.
-      flipRestoreFrames = 5; // ~0.08s; suficiente para capturar recreación tardía
+      // Short window in case icon is rebuilt a few frames later.
+      flipRestoreFrames = 5; // ~0.08s
     }
 
-    // Recalcular conjunto objetivo de módulos activos / inactivos usando reglas que matchean.
+    // Recompute target enabled/disabled sets based on matching rules.
     var targetEnable = [];
     var targetDisable = [];
-    for (r in charRules) if (ruleMatches(r, charId, stageId, songId)) {
+  for (r in charRules) if (ruleMatches(r, charId)) {
       if (r.enable != null) for (m in r.enable) if (!targetEnable.contains(m)) targetEnable.push(m);
       if (r.disable != null) for (m2 in r.disable) if (!targetDisable.contains(m2)) targetDisable.push(m2);
     }
 
-    // Cualquier managed no presente en targetEnable ni targetDisable debe quedar desactivado (default)
-    // Activación diferencial: solo tocar lo que cambió para ahorrar overhead (micro-optimización)
-    // Desactivar módulos que estaban activos y ya no deben estarlo o que están explícitamente en disable
+  // Differential activation: touch only what changed.
     for (mPrev in lastEnabledModules) {
       var stillEnabled = targetEnable.contains(mPrev);
       if (!stillEnabled || targetDisable.contains(mPrev)) {
@@ -113,14 +105,14 @@ class ModuleRouter extends Module {
         if (mm != null && mm.active) mm.active = false;
       }
     }
-    // Activar nuevos
+  // Activate new ones
     for (mNow in targetEnable) {
       if (!lastEnabledModules.contains(mNow)) {
         var ma = ModuleHandler.getModule(mNow);
         if (ma != null && !ma.active) ma.active = true;
       }
     }
-    // Asegurar desactivación explícita
+  // Ensure explicit disables
     for (mDis in targetDisable) {
       var md = ModuleHandler.getModule(mDis);
       if (md != null && md.active) md.active = false;
@@ -130,8 +122,7 @@ class ModuleRouter extends Module {
     lastDisabledModules = targetDisable;
 
     lastCharId = charId;
-    lastStageId = stageId;
-    lastSongId = songId;
+  // Stage/song omitted intentionally.
     lastCharWasCustom = newIsCustom;
   }
 
@@ -141,7 +132,7 @@ class ModuleRouter extends Module {
     return false;
   }
 
-  // Reconstruye la lista de personajes que usan HUDs que requieren flip manual.
+  // Rebuild list of characters that use a HUD requiring flip restoration.
   function rebuildCustomHudChars() {
     customHudChars = [];
     for (r in charRules) {
@@ -156,7 +147,7 @@ class ModuleRouter extends Module {
     }
   }
 
-  function ruleMatches(r, charId:String, stageId:String, songId:String):Bool {
+  function ruleMatches(r, charId:String):Bool {
     if (r == null) return false;
     // Character dimension
     var charOk = true;
@@ -166,53 +157,14 @@ class ModuleRouter extends Module {
       else if (r.ids != null) for (c in r.ids) if (c == charId) { charOk = true; break; }
     }
     if (!charOk) return false;
-    // Stage dimension
-    var stageOk = true;
-    if (r.stages != null) {
-      stageOk = false;
-      for (st in r.stages) if (st == stageId) { stageOk = true; break; }
-      if (!stageOk) return false;
-    }
-    // Song dimension
-    var songOk = true;
-    if (r.songs != null) {
-      songOk = false;
-      for (sg in r.songs) if (sg == songId) { songOk = true; break; }
-      if (!songOk) return false;
-    }
     return true;
   }
 
-  // ===== Helpers para obtener stage / song con tolerancia a nulos =====
-  function getStageIdSafe():String {
-    if (PlayState.instance == null) return null;
-    var st = PlayState.instance.currentStage;
-    if (st != null) {
-      // Intentamos propiedades comunes sin romper si no existen
-      if (st.stageId != null) return st.stageId; // probable
-      if (st.id != null) return st.id;
-    }
-    return null;
-  }
-
-  function getSongIdSafe():String {
-    if (PlayState.instance == null) return null;
-    // Intentar property directa
-    if (PlayState.instance.songId != null) return PlayState.instance.songId;
-    if (PlayState.instance.currentSong != null) {
-      var cs = PlayState.instance.currentSong;
-      if (cs.id != null) return cs.id;
-      if (cs.songId != null) return cs.songId;
-      if (cs.name != null) return cs.name; // fallback
-    }
-    return null;
-  }
-
-  // ===== API pública sencilla para añadir reglas dinámicamente (por scripts futuros) =====
+  // ===== Simple public API to add/clear rules dynamically =====
   public function addRule(r) {
     if (r == null) return;
     charRules.push(r);
-    // Actualizar managed
+    // Update 'managed'
     if (r.enable != null) for (m in r.enable) if (!managed.contains(m)) managed.push(m);
     if (r.disable != null) for (m2 in r.disable) if (!managed.contains(m2)) managed.push(m2);
     rebuildCustomHudChars();
@@ -220,7 +172,7 @@ class ModuleRouter extends Module {
 
   public function clearRules() {
     charRules = [];
-    managed = [];
+  managed = [];
     rebuildCustomHudChars();
   }
 }
