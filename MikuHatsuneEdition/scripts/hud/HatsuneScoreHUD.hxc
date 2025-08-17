@@ -1,0 +1,158 @@
+import funkin.modding.module.Module;
+import funkin.play.PlayState;
+import flixel.FlxG;
+import flixel.text.FlxText;
+import funkin.Preferences;
+
+/**
+ * Hatsune Score HUD Module
+ * Repositions the vanilla score text (PlayState.scoreText) to the top-right corner while active.
+ * Compatible with ModuleRouter (activation controlled externally).
+ * Non-destructive: does not create a new text object; only stores and restores original layout.
+ */
+class HatsuneScoreHud extends Module {
+	// Store original layout values so we can restore them when deactivated.
+	var originalX:Float = Math.NaN;
+	var originalY:Float = Math.NaN;
+		var originalAlignment; // stored alignment (string/enum) if available
+	var originalSize:Float = Math.NaN; // original font size
+	var grabbedState = null; // PlayState reference when we captured original position.
+	var applied:Bool = false; // whether custom positioning applied this frame
+
+	// Cache for vertical positioning micro-optimization (downScroll / screen or text size changes)
+	var lastDownState:Null<Bool> = null;
+	var lastAppliedScreenH:Int = -1;
+	var lastAppliedTextHeight:Float = Math.NaN;
+
+	// === CONFIGURATION ===
+	// Horizontal anchor mode: "LEFT" or "RIGHT" (default RIGHT for top-right score).
+	var anchorHorizontal:String = "RIGHT";
+	// Margins from screen edges.
+	var marginLeft:Float = 40;  // only used if LEFT anchor
+	var marginRight:Float = 16; // distance from right edge
+	// Vertical margins (TOP / BOTTOM). TOP is used unless downScroll is enabled.
+	var marginTop:Float = 12;
+	var marginBottom:Float = 12;
+	// Desired font size while active.
+	var enlargedSize:Float = 27; // vanilla ≈ 16
+
+	// When true (and anchor == LEFT) keeps x fixed & enforces LEFT alignment so digits grow rightwards.
+	var fixedLeftEdge:Bool = true;
+
+	public function new() {
+		super("Hatsune Score HUD", 1); // run after router but before most others
+		this.active = false; // Router decides activation
+	}
+
+	override function onUpdate(e) {
+		super.onUpdate(e);
+		if (PlayState.instance == null) return;
+		var ps = PlayState.instance;
+		var txt:FlxText = ps.scoreText;
+		if (txt == null) return;
+
+		if (this.active) {
+			// Capture original only once per PlayState.
+			if (grabbedState != ps) {
+				storeOriginal(txt);
+			}
+			// Apply custom layout each frame (covers size/scale camera changes)
+			applyLayout(txt);
+			applied = true;
+		} else {
+			// If we were applied and now inactive, restore.
+			if (applied) restore(txt);
+			applied = false;
+		}
+	}
+
+	override function onDeactivate() {
+		if (PlayState.instance != null && PlayState.instance.scoreText != null) restore(PlayState.instance.scoreText);
+		applied = false;
+	}
+
+	function storeOriginal(txt:FlxText) {
+		originalX = txt.x;
+		originalY = txt.y;
+		originalAlignment = txt.alignment; // store alignment though we currently keep RIGHT
+		originalSize = txt.size;
+		grabbedState = PlayState.instance;
+	}
+
+		function applyLayout(txt:FlxText) {
+			// Resize first if needed (ensures width is correct before positioning).
+			var sizeChanged = false;
+			if (!Math.isNaN(enlargedSize) && txt.size != enlargedSize) {
+				txt.size = enlargedSize;
+				if (txt.updateHitbox != null) txt.updateHitbox();
+				sizeChanged = true;
+			}
+			var w = FlxG.width;
+			var h = FlxG.height;
+			// Horizontal positioning.
+			if (anchorHorizontal == "LEFT") {
+				if (txt.x != marginLeft) txt.x = marginLeft; // fixed left edge
+				if (fixedLeftEdge && txt.alignment != "left") txt.alignment = "left"; // string for HScript compatibility
+			} else { // RIGHT
+				var newX = w - txt.width - marginRight;
+				if (newX < marginLeft) newX = marginLeft; // safety if window shrinks
+				if (txt.x != newX) txt.x = newX;
+				// Force RIGHT alignment so digits grow leftwards here.
+				if (txt.alignment != "right") txt.alignment = "right";
+			}
+			// Vertical positioning only if downScroll, screen height, or text height changed.
+			var down = Preferences.downScroll;
+			if (down != lastDownState || h != lastAppliedScreenH || sizeChanged || txt.height != lastAppliedTextHeight) {
+				var newY = down ? (h - txt.height - marginBottom) : marginTop;
+				if (txt.y != newY) txt.y = newY;
+				lastDownState = down;
+				lastAppliedScreenH = h;
+				lastAppliedTextHeight = txt.height;
+			}
+		}
+
+	function restore(txt:FlxText) {
+		if (Math.isNaN(originalX) || Math.isNaN(originalY)) return; // nothing stored
+		txt.x = originalX;
+		txt.y = originalY;
+		if (originalAlignment != null && txt.alignment != null) txt.alignment = originalAlignment;
+		if (!Math.isNaN(originalSize)) txt.size = originalSize;
+		if (txt.updateHitbox != null) txt.updateHitbox();
+	}
+}
+
+/*
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⠿⠟⠛⣛⣛⣛⠻⠿⠿⢿⣿⠟⠁⠀⠀⠉⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠟⣋⣥⣶⣾⣿⡋⣪⣴⣿⣿⣿⣿⣿⣿⣿⠆⠀⠀⠂⢈⢻⡄⠄⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠑⠀⠀⠉⣁⡀⠿⢻⣿⣟⣛⢏⡼⣿⣿⣿⣿⣿⣿⣛⣽⠃⠰⢰⢃⡄⠨⢠⡙⢆⢀⠀⢻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⢠⣴⡿⣻⣿⣿⣿⣿⣿⣷⣶⣶⣽⣿⣿⣿⣾⣿⡍⢿⣆⠀⠀⠙⠳⡄⢎⢿⣎⣣⣧⡀⠹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡟⢀⣴⡟⠁⣴⢛⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡄⢻⡇⢀⠀⠀⠀⠸⡎⢿⣿⣿⣷⣆⠹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡟⣠⣿⡿⢋⣾⡿⠘⣤⣌⣿⣮⣻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⠀⠻⠟⣡⣄⡀⠀⢫⠘⣿⣿⣿⣿⣆⠹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⣰⠟⡝⣱⣿⣿⡇⣦⢹⣿⣿⢈⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡀⠀⠹⣿⣋⠿⠶⠀⣇⡘⣿⣿⣿⣿⣆⠹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⢡⢃⠌⣼⣿⣿⣿⣷⡿⠇⢻⣿⣇⢿⣮⡙⢿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀⠈⠑⠈⢰⠰⢸⣿⡜⣿⣿⣿⣿⣆⠙⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢃⢃⠂⠄⣿⣿⣿⣿⢸⢇⣧⠢⠹⡝⡌⢏⠱⣶⣙⢿⣿⣿⣿⣿⣿⣿⡇⠀⠀⠀⠄⠀⢸⠀⠀⣿⣷⣿⣿⣿⣿⣿⣦⠹⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡟⢀⡞⣼⢰⣿⣿⣿⣿⠰⢸⣝⣷⣄⠙⢬⡸⣷⡌⠉⡀⠙⢿⢿⣿⣿⣿⡷⠀⠀⠄⠀⡆⢸⢰⠀⠸⣿⣿⣿⣿⣿⣿⣿⣆⠙⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠁⡼⢠⣿⡌⡟⣿⡇⣿⠀⠛⠛⠿⣿⣿⣦⡳⡹⣧⣼⣴⠰⣌⠣⡁⢿⢹⡇⢠⣶⢀⠀⠇⠀⠘⢰⡀⢿⣿⣿⣿⣿⣿⣿⣷⡀⠹⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢃⢃⠃⣾⣿⣇⣷⠹⣇⢻⠀⢏⠀⠀⠸⣿⣿⣿⣦⣘⣿⣧⣂⣀⡀⠐⣾⢸⠁⠈⠉⠈⠀⢀⡄⣠⣿⣇⢸⣿⣿⣿⣿⣿⣿⣿⣷⡀⠹⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⡏⣾⡌⢸⣿⣿⡟⡸⣇⢻⡜⣏⡈⠄⢀⣀⣿⡿⣿⣿⣿⣿⣿⣿⣿⣿⡆⠈⢿⠀⠀⠀⡀⠰⠟⣴⣿⣿⣿⡌⣿⣿⣿⣿⣿⣿⣿⣿⣷⣄⠸⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⣿⢱⣿⡇⢸⣿⣿⢱⣇⠹⡎⢿⣿⣧⠘⣿⣿⣿⣇⢿⣿⣿⣿⣿⣿⣿⣿⡷⡇⡀⢰⠁⠈⠔⣠⣾⣿⣿⣿⣿⣧⢹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣇⠹⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⣿⠇⣾⣿⣿⣼⣿⡏⣼⢹⣧⡹⣌⠻⣿⡀⠻⢿⣿⣿⣚⢛⡫⢴⣿⣿⣿⣿⢇⢇⠃⡀⢿⡐⣾⣿⣿⣿⣿⣿⣿⣿⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⠹⣿⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⡟⣸⣿⣿⣿⣿⣿⣿⡟⢺⣿⢧⡈⠆⡙⡇⠐⣄⠩⢿⣿⣶⣶⣿⣿⠿⡫⣵⠂⢈⣾⡇⡎⠳⡌⢿⣿⣿⣿⣿⣿⣿⡇⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⠙⣿⣿
+⣿⣿⣿⣿⣿⣿⣿⢱⣿⣿⣿⣿⣿⣿⣿⣷⣼⣿⢸⣿⣆⠳⡄⣆⠈⠙⢶⣮⣝⣛⣉⢰⠞⣴⠏⣠⠿⣛⡅⣤⢲⣌⡀⠻⣿⣿⣿⣿⣿⣿⠘⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⡘⣿
+⣿⣿⣿⣿⣿⣿⠇⣾⣿⣿⣿⣿⣿⣿⣿⣿⣽⡏⢸⣿⣿⣷⡀⣿⣧⣤⣤⣿⡟⠛⢋⣀⠘⢉⣤⣶⣿⡿⣼⠏⠀⠙⠿⢶⣾⣿⣿⣿⣿⣿⡇⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡹
+⣿⣿⣿⣿⣿⡟⣸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⣿⣿⣿⣿⣿⣿⣿⣿⠿⠋⠀⠀⠸⣧⣾⣿⣿⣿⣿⣼⠏⢀⣤⣴⣶⣷⣦⠙⣿⣿⣿⣿⣿⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷
+⣿⣿⣿⣿⣿⢣⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠁⣿⣿⣿⡿⠿⢿⠛⠁⠖⢀⣤⣤⠀⢿⣿⣿⣿⣿⣿⠏⢠⣿⣿⣿⣿⣿⣿⣷⡘⣿⣿⣿⣿⡀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⡏⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⢸⠟⣩⣴⣶⣿⠃⠌⠀⠀⠈⠉⠁⠂⠸⡟⣩⡦⠻⠁⢠⣿⣿⣿⣿⣿⣿⣿⣿⡇⢿⣿⣿⣿⣇⢹⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⡿⢰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⡼⢸⣿⣿⡟⡽⡀⢠⡆⣰⡆⠀⠊⣠⡀⠹⡬⠊⠀⣰⠛⣿⣿⣿⣿⣿⣿⣿⣿⠇⣼⣿⣿⣿⣿⡈⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⢇⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⡇⣿⣿⡿⣨⣾⣿⡆⣴⠋⠀⣶⣿⣌⠳⣄⠀⠀⢰⣿⡄⣿⣿⢉⠙⠋⢹⣿⡏⢄⣿⣿⣿⣿⣿⣇⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⡟⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢣⢠⡿⣫⣾⣿⣿⢏⣼⣿⠃⣸⣿⣿⣿⣷⣶⣾⡀⢸⡿⣰⢸⣿⣈⣀⣃⣸⡟⡜⢸⣿⣿⣿⣿⣿⣿⠸⣿⢻⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⢡⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠀⢸⢹⣿⣿⣿⢏⣾⣿⠇⠀⣩⣭⣿⣿⡟⣿⣿⡇⢸⣧⢿⢸⣿⣿⣿⣿⣿⣿⠁⣿⣿⣿⣿⣿⣿⣿⡇⢻⠈⣿⣿⣿⣿⣿⣿⣿⣿⣿
+⣿⢇⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢛⢰⡄⣿⣿⣿⢃⣾⣿⡟⠀⣆⣀⣈⡉⠉⢁⣿⣿⡇⠈⢟⣽⢸⣿⣿⣿⣿⣿⣏⢸⣿⣿⣿⣿⣿⣿⣿⣿⡘⡤⠸⣿⣿⣿⣿⣿⣿⣿⣿
+⡿⣾⣿⣿⣿⣿⢱⣿⣿⣿⣿⣿⣿⣿⠇⣤⣄⡁⡙⠿⢣⣿⣿⡟⠀⢼⣿⣿⣿⣿⣿⣿⣿⡿⣡⡆⠘⠋⡄⠏⣿⣿⢿⠿⠟⠰⢸⣿⣿⣿⣿⣿⣿⣿⣇⢃⠂⢿⣿⣿⣿⣿⣿⣿⣿
+⢱⣿⣿⣿⣿⡇⣿⣿⣿⣿⣿⣿⣿⡟⣼⣿⠿⠁⡇⣠⣿⣿⡿⢠⡄⠘⣿⣿⣿⣿⣿⣟⣥⠾⠋⢠⣤⠀⣶⣤⣤⣤⣄⠀⠀⠀⢸⣿⣿⣿⣿⣿⣿⣿⣿⢸⡌⣼⣷⢹⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⢸⣿⣿⣿⣿⣿⣿⠏⣰⠟⠋⠠⠃⣰⣿⣿⣿⠃⢹⣿⣦⡈⣿⣿⣿⡿⣫⣶⣿⡆⣸⡅⡀⢿⣿⣿⣿⣿⠀⠀⠀⢸⣿⣿⣿⣿⣿⣿⣿⣿⡇⡡⣇⢻⡎⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⢃⣿⣿⣿⣿⣿⣿⠏⣼⠃⠀⠀⢀⣾⣿⣿⣿⠇⠀⢨⡻⣿⣿⣼⣿⣿⣾⣿⣿⢋⣴⢏⢈⡄⠈⠙⢻⣿⣿⣶⣶⣶⢸⣿⣿⣿⣿⣿⣿⣿⣿⣧⢠⢻⡜⣷⣸⣿⣿⣿⣿
+⣿⣿⣿⣏⣼⣿⣿⣿⣿⣿⠏⣼⣿⠀⠀⢁⣾⣿⣿⣿⡏⠀⢀⣿⣷⢹⣿⣿⣿⣿⣿⣿⣧⣿⡷⢡⣾⡇⠀⠀⠀⢹⣿⣿⣿⣿⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⡄⠼⣷⣹⣿⣿⣿⣿⣿  A wild Miku has appeared! (haxe code is killing me AGHH)
+*/
+
