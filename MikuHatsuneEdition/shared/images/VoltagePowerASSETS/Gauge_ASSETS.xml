@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TextureAtlas imagePath="Gauge_ASSETS.png">
+	<!-- Created with Adobe Animate version 22.0.5.191 -->
+	<!-- http://www.adobe.com/products/animate.html -->
+	<SubTexture name="Símbolo 10000" x="0" y="0" width="154" height="154"/>
+	<SubTexture name="Símbolo 10001" x="0" y="154" width="154" height="154"/>
+	<SubTexture name="Símbolo 10002" x="0" y="308" width="154" height="154"/>
+	<SubTexture name="Símbolo 10003" x="154" y="0" width="154" height="154"/>
+	<SubTexture name="Símbolo 10004" x="154" y="154" width="154" height="154"/>
+	<SubTexture name="Símbolo 10005" x="154" y="308" width="154" height="154"/>
+	<SubTexture name="Símbolo 10006" x="308" y="0" width="154" height="154"/>
+	<SubTexture name="Símbolo 10007" x="462" y="0" width="154" height="154"/>
+	<SubTexture name="Símbolo 10008" x="308" y="154" width="154" height="154"/>
+	<SubTexture name="Símbolo 10009" x="308" y="308" width="154" height="154"/>
+	<SubTexture name="Símbolo 10010" x="462" y="154" width="154" height="154"/>
+</TextureAtlas>
