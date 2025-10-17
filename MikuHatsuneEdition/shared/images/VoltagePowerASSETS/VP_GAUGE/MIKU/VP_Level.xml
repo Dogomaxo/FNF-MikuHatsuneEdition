@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Created with Funkin Packer v0.1.3 https://neeeoo.github.io/funkin-packer/
+-->
+<TextureAtlas imagePath="VP_Level.png" width="1885" height="752">
+	<SubTexture name="vp charge down0001" x="1078" y="308" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0002" x="1223" y="308" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0003" x="1368" y="308" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0004" x="1513" y="308" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0005" x="1658" y="308" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0006" x="1078" y="453" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0007" x="1223" y="453" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0008" x="1368" y="453" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0009" x="1513" y="453" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0010" x="1658" y="453" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0011" x="0" y="462" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0012" x="145" y="462" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0013" x="290" y="462" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0014" x="435" y="462" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0015" x="580" y="462" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0016" x="725" y="462" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0017" x="870" y="462" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0018" x="1015" y="598" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0019" x="1160" y="598" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0020" x="1305" y="598" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0021" x="1450" y="598" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0022" x="1595" y="598" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0023" x="1740" y="598" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0024" x="0" y="607" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0025" x="145" y="607" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0026" x="290" y="607" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0027" x="435" y="607" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0028" x="580" y="607" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0029" x="725" y="607" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0030" x="870" y="607" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0031" x="1078" y="308" width="145" height="145" frameX="-0" frameY="-0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge up0001" x="0" y="0" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0002" x="154" y="0" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0003" x="308" y="0" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0004" x="462" y="0" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0005" x="616" y="0" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0006" x="770" y="0" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0007" x="924" y="0" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0008" x="1078" y="0" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0009" x="1232" y="0" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0010" x="1386" y="0" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0011" x="1540" y="0" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0012" x="1694" y="0" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0013" x="0" y="154" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0014" x="154" y="154" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0015" x="308" y="154" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0016" x="462" y="154" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0017" x="616" y="154" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0018" x="770" y="154" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0019" x="924" y="154" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0020" x="1078" y="154" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0021" x="1232" y="154" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0022" x="1386" y="154" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0023" x="1540" y="154" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0024" x="1694" y="154" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0025" x="0" y="308" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0026" x="154" y="308" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0027" x="308" y="308" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0028" x="462" y="308" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0029" x="616" y="308" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0030" x="770" y="308" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0031" x="924" y="308" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0032" x="0" y="0" width="154" height="154" frameX="-0" frameY="-0" frameWidth="154" frameHeight="154"/>
+</TextureAtlas>

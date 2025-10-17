@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Created with Funkin Packer v0.1.3 https://neeeoo.github.io/funkin-packer/
+-->
+<TextureAtlas imagePath="VP_Sparks.png" width="1650" height="1650">
+	<SubTexture name="vp sparking A0001" x="0" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0002" x="150" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0003" x="0" y="150" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0004" x="150" y="150" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0005" x="300" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0006" x="300" y="150" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0007" x="0" y="300" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0008" x="150" y="300" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0009" x="300" y="300" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0010" x="450" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0011" x="450" y="150" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0012" x="450" y="300" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0013" x="0" y="450" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0014" x="150" y="450" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0015" x="300" y="450" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0016" x="450" y="450" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0017" x="600" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0018" x="600" y="150" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0019" x="600" y="300" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0020" x="600" y="450" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0021" x="0" y="600" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0022" x="0" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0001" x="0" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0002" x="150" y="600" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0003" x="300" y="600" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0004" x="450" y="600" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0005" x="600" y="600" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0006" x="750" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0007" x="750" y="150" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0008" x="750" y="300" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0009" x="750" y="450" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0010" x="750" y="600" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0011" x="0" y="750" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0012" x="150" y="750" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0013" x="300" y="750" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0014" x="450" y="750" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0015" x="600" y="750" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0016" x="750" y="750" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0017" x="900" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0018" x="900" y="150" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0019" x="900" y="300" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0020" x="900" y="450" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0021" x="900" y="600" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0022" x="0" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0001" x="0" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0002" x="900" y="750" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0003" x="0" y="900" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0004" x="150" y="900" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0005" x="300" y="900" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0006" x="450" y="900" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0007" x="600" y="900" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0008" x="750" y="900" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0009" x="900" y="900" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0010" x="1050" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0011" x="1050" y="150" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0012" x="1050" y="300" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0013" x="1050" y="450" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0014" x="1050" y="600" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0015" x="1050" y="750" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0016" x="1050" y="900" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0017" x="0" y="1050" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0018" x="150" y="1050" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0019" x="300" y="1050" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0020" x="450" y="1050" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0021" x="600" y="1050" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0022" x="0" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0001" x="0" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0002" x="750" y="1050" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0003" x="900" y="1050" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0004" x="1050" y="1050" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0005" x="1200" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0006" x="1200" y="150" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0007" x="1200" y="300" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0008" x="1200" y="450" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0009" x="1200" y="600" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0010" x="1200" y="750" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0011" x="1200" y="900" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0012" x="1200" y="1050" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0013" x="0" y="1200" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0014" x="150" y="1200" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0015" x="300" y="1200" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0016" x="450" y="1200" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0017" x="600" y="1200" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0018" x="750" y="1200" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0019" x="900" y="1200" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0020" x="1050" y="1200" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0021" x="1200" y="1200" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0022" x="0" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0001" x="0" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0002" x="1350" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0003" x="1350" y="150" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0004" x="1350" y="300" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0005" x="1350" y="450" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0006" x="1350" y="600" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0007" x="1350" y="750" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0008" x="1350" y="900" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0009" x="1350" y="1050" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0010" x="1350" y="1200" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0011" x="0" y="1350" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0012" x="150" y="1350" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0013" x="300" y="1350" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0014" x="450" y="1350" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0015" x="600" y="1350" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0016" x="750" y="1350" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0017" x="900" y="1350" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0018" x="1050" y="1350" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0019" x="1200" y="1350" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0020" x="1350" y="1350" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0021" x="1500" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0022" x="0" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0001" x="0" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0002" x="1500" y="150" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0003" x="1500" y="300" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0004" x="1500" y="450" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0005" x="1500" y="600" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0006" x="1500" y="750" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0007" x="1500" y="900" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0008" x="1500" y="1050" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0009" x="1500" y="1200" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0010" x="1500" y="1350" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0011" x="0" y="1500" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0012" x="150" y="1500" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0013" x="300" y="1500" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0014" x="450" y="1500" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0015" x="600" y="1500" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0016" x="750" y="1500" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0017" x="900" y="1500" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0018" x="1050" y="1500" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0019" x="1200" y="1500" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0020" x="1350" y="1500" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0021" x="1500" y="1500" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0022" x="0" y="0" width="150" height="150" frameX="-0" frameY="-0" frameWidth="150" frameHeight="150"/>
+</TextureAtlas>
