@@ -1,0 +1,312 @@
+import funkin.modding.module.Module;
+import funkin.modding.module.ScriptedModule;
+import funkin.play.PlayState;
+import funkin.Preferences;
+import flixel.FlxG;
+import flixel.FlxSprite;
+import flixel.util.FlxColor;
+
+/**
+ * Miku Voltage Panel
+ * Draws a configurable azure square on the HUD, anchored to the lower-left.
+ * - Scales with screen aspect ratio (uses screen height as reference so size looks consistent on 4:3/16:9/21:9)
+ * - Repositions for upscroll (bottom-left) vs downscroll (top-left)
+ * - Safe to enable/disable per character via ModuleRouter
+ *
+ * File: scripts/gameplay/voltage_powerMIKU.hxc
+ */
+class MikuVoltagePanel extends ScriptedModule {
+	// Config
+	// Size config
+		var baseSize:Int = 128;                 // Square side at 720p reference
+		var scaleSizeWithHeight:Bool = true;    // Scale the square size with screen height
+
+	// Friendlier positioning (mirrors HatsuneHealthBar style)
+		var baseX:Int = 28;                     // Fixed left margin from screen edge (720p reference)
+	var topMargin:Int = 28;                 // Distance from TOP edge when downscroll (720p reference)
+	var bottomMargin:Int = 28;              // Distance from BOTTOM edge when upscroll (720p reference)
+		var barOffsetX:Int = 20;                 // Extra horizontal offset (positive moves right)
+		var barOffsetY:Int = -100;                // Extra vertical offset (positive moves down)
+		var scaleOffsetsWithHeight:Bool = true; // Whether offsets/margins scale with height (recommended for aspect adaptation)
+	var panelColor:FlxColor = FlxColor.fromRGB(20, 40, 160); // Base background of the square (darker)
+	var panelAlpha:Float = 1.0;       // Opacity of the square
+		var borderThickness:Int = 5;      // Black border thickness at 720p reference
+
+	// Fill config
+	var numSegments:Int = 10;           // Number of uniform pieces inside the square
+	var notesPerFull:Int = 20;          // Notes needed to fill the whole square
+	var segmentGap:Int = 2;             // Small gap between segments (scaled)
+	var scaleSegmentsWithHeight:Bool = true; // Scale gaps and segment padding with height (recommended)
+
+	// Runtime
+	var panel:FlxSprite = null;
+		var panelBorder:FlxSprite = null;
+	var segmentSprites:Array<FlxSprite> = null; // 10 uniform bars filling the square
+	var notesHitCounter:Int = 0; // counts good notes hit by the player this song
+	var segmentColor:FlxColor = FlxColor.CYAN; // sampled from the player's icon (like HatsuneHealthBar)
+	var lastW:Int = -1;
+	var lastH:Int = -1;
+	var lastDownscroll:Null<Bool> = null;
+		var builtState:Dynamic = null; // Track the PlayState we attached to
+
+		public function new() {
+			// Priority: fairly early so it appears under score popups but above background HUD bits.
+			super("Hatsune Voltage Panel", 5);
+				// Start inactive; ModuleRouter will enable it for the desired characters.
+				this.active = false;
+		}
+
+	override function onActivate() {
+		ensureBuilt();
+	}
+
+	override function onDeactivate() {
+		cleanup();
+	}
+
+		override function onCreate(e) {
+				// Build only if enabled by the router.
+				if (this.active) ensureBuilt();
+		}
+
+	override function onSongLoaded(e) {
+			// reset progression each song
+			notesHitCounter = 0;
+			// resample the color from the icon if possible
+			recalcSegmentColorFromIcon();
+			if (this.active) ensureBuilt();
+	}
+
+	override function onSongRetry(e) {
+		// Also reset on quick restarts
+		notesHitCounter = 0;
+		updateSegmentsFill();
+	}
+
+		override function onUpdate(e) {
+			if (!this.active) return;
+			if (PlayState.instance == null) return;
+				// If the PlayState changed (reload/reset), reattach the panel to the new state.
+				if (panel != null && builtState != PlayState.instance) {
+					cleanup();
+				}
+				ensureBuilt();
+			if (panel != null) {
+				var w = FlxG.width;
+				var h = FlxG.height;
+				var ds = Preferences.downscroll;
+				if (w != lastW || h != lastH || ds != lastDownscroll) {
+						layout();
+						layoutSegments();
+					lastW = w; lastH = h; lastDownscroll = ds;
+				}
+			}
+		}
+
+		// Count only player's judged note hits (PlayState dispatches NOTE_HIT for player).
+		override function onNoteHit(event:HitNoteScriptEvent) {
+			if (!this.active) return;
+			// increment and clamp at notesPerFull
+			notesHitCounter += 1;
+			if (notesHitCounter < 0) notesHitCounter = 0;
+			if (notesPerFull <= 0) notesPerFull = 1;
+			updateSegmentsFill();
+		}
+
+	function ensureBuilt() {
+		if (panel != null) return;
+		if (PlayState.instance == null) return;
+
+		// Create sprites (border first so it renders below the panel)
+		panelBorder = new FlxSprite();
+		panel = new FlxSprite();
+		panelBorder.makeGraphic(4, 4, FlxColor.BLACK);
+		panel.makeGraphic(4, 4, panelColor);
+		panel.alpha = panelAlpha;
+		panel.scrollFactor.set();
+		var hudCam = (PlayState.instance.camHUD != null) ? PlayState.instance.camHUD : FlxG.camera;
+		panelBorder.scrollFactor.set();
+		panel.cameras = [hudCam];
+		panelBorder.cameras = [hudCam];
+		panel.antialiasing = true;
+		panelBorder.antialiasing = true;
+		panelBorder.zIndex = 739; // Just under the panel
+		panel.zIndex = 740; // Under HatsuneHealthBar pieces (800+) but above stage elements
+		PlayState.instance.add(panelBorder);
+		PlayState.instance.add(panel);
+
+		// Create segments, above the panel but below other HUD (keep tight order)
+		segmentSprites = [];
+		for (i in 0...numSegments) {
+			var seg = new FlxSprite();
+			seg.makeGraphic(2, 2, segmentColor);
+			seg.scrollFactor.set();
+			seg.cameras = [hudCam];
+			seg.antialiasing = true;
+			seg.alpha = panelAlpha; // match background opacity
+			seg.zIndex = 741; // above panel
+			PlayState.instance.add(seg);
+			segmentSprites.push(seg);
+		}
+		layout();
+		layoutSegments();
+		updateSegmentsFill();
+		PlayState.instance.refresh();
+		lastW = FlxG.width; lastH = FlxG.height; lastDownscroll = Preferences.downscroll;
+			builtState = PlayState.instance;
+	}
+
+	/**
+	 * Computes size and position based on screen height and downscroll state.
+	 */
+	function layout() {
+		if (panel == null) return;
+		// Scale with screen height to preserve perceived size across aspect ratios.
+		var h = FlxG.height;
+			var scale = h / 720.0; // 720p reference
+			var side = scaleSizeWithHeight ? Std.int(baseSize * scale) : baseSize;
+		if (side < 8) side = 8; // safety cap
+
+		// Rebuild the graphic only if size changed to avoid GPU churn.
+		if (panel.width != side || panel.height != side) panel.makeGraphic(side, side, panelColor);
+		// Border size (scaled thickness)
+		var t = Std.int(borderThickness * (scaleOffsetsWithHeight ? scale : 1.0));
+		if (t < 1) t = 1;
+		var bw = side + (t * 2);
+		var bh = side + (t * 2);
+		if (panelBorder.width != bw || panelBorder.height != bh) panelBorder.makeGraphic(bw, bh, FlxColor.BLACK);
+
+			// Position: bottom-left for normal (upscroll), top-left for downscroll.
+			var sOff = scaleOffsetsWithHeight ? scale : 1.0;
+			var x = Std.int((baseX * (scaleOffsetsWithHeight ? scale : 1.0)) + (barOffsetX * sOff));
+			var top = Std.int(topMargin * sOff);
+			var bottom = Std.int(bottomMargin * sOff);
+			var yAnchor = Preferences.downscroll ? top : (h - side - bottom);
+			var y = Std.int(yAnchor + (barOffsetY * sOff)); // Positive offset moves down regardless of scroll, like HatsuneHealthBar
+
+				panel.x = x;
+				panel.y = y;
+				panelBorder.x = x - t;
+				panelBorder.y = y - t;
+			panel.visible = true;
+				panelBorder.visible = true;
+			// Make sure render order updates if the engine rebuilds or re-sorts.
+			if (PlayState.instance != null) PlayState.instance.refresh();
+	}
+
+	/**
+	 * Size and position the 10 segment bars inside the square.
+	 */
+	function layoutSegments() {
+		if (segmentSprites == null || panel == null) return;
+		var h = FlxG.height;
+		var scale = h / 720.0;
+		var side = Std.int((scaleSizeWithHeight ? baseSize * scale : baseSize));
+		if (side < 8) side = 8;
+		var sGap = Std.int(segmentGap * (scaleSegmentsWithHeight ? scale : 1.0));
+		var innerW = side; // segments sit directly atop the panel area
+		var innerH = side;
+		var totalGaps = (numSegments - 1) * sGap;
+		var segW = Std.int((innerW - totalGaps) / numSegments);
+		if (segW < 1) segW = 1;
+		// Recompute color (in case icons changed) and apply to all segments
+		recalcSegmentColorFromIcon();
+		for (i in 0...segmentSprites.length) {
+			var seg = segmentSprites[i];
+			if (seg == null) continue;
+			// rebuild if size changed
+			if (seg.width != segW || seg.height != innerH) seg.makeGraphic(segW, innerH, segmentColor);
+			seg.color = segmentColor;
+			// position
+			var x = Std.int(panel.x + i * (segW + sGap));
+			var y = Std.int(panel.y);
+			seg.x = x; seg.y = y;
+		}
+		updateSegmentsFill();
+	}
+
+	/**
+	 * Visually toggle which segments are filled based on notesHitCounter.
+	 */
+	function updateSegmentsFill() {
+		if (segmentSprites == null) return;
+		if (notesPerFull <= 0) notesPerFull = 1;
+		var progress:Float = notesHitCounter / notesPerFull;
+		if (progress < 0) progress = 0; if (progress > 1) progress = 1;
+		var filled:Int = Std.int(Math.floor(progress * numSegments + 1e-6));
+		for (i in 0...segmentSprites.length) {
+			var seg = segmentSprites[i]; if (seg == null) continue;
+			seg.visible = (i < filled);
+		}
+		if (PlayState.instance != null) PlayState.instance.refresh();
+	}
+
+	/**
+	 * Sample the player's icon to emulate HatsuneHealthBar base color.
+	 */
+	function recalcSegmentColorFromIcon() {
+		var icon = (PlayState.instance != null) ? PlayState.instance.iconP1 : null;
+		if (icon == null || icon.pixels == null) return;
+		var picked = findIconColour(icon);
+		// Very light cyan-ish tone is fine, but use icon's base.
+		segmentColor = picked;
+		// Apply to existing segments
+		if (segmentSprites != null) {
+			for (s in segmentSprites) if (s != null) s.color = segmentColor;
+		}
+	}
+
+	// Simplified color sampler from HatsuneHealthBar
+	function findIconColour(icon) {
+		if (icon == null || icon.pixels == null) return FlxColor.WHITE;
+		var iconColour = 0xFFFFFFFF;
+		var colorArray = [];
+		var lightest = 0;
+		var ypos = 0;
+		var xpos = 0;
+		var iw = Std.int(icon.width);
+		var ih = Std.int(icon.height);
+		if (iw <= 0 || ih <= 0) return FlxColor.WHITE;
+		for (i in 0...30) {
+			var sx = xpos;
+			var sy = ypos;
+			if (sx >= iw) sx = iw - 1;
+			if (sy >= ih) sy = ih - 1;
+			if (sx < 0) sx = 0;
+			if (sy < 0) sy = 0;
+			iconColour = icon.pixels.getPixel(sx, sy);
+			if (iconColour != 0 && iconColour != 0xFFFFFF && !colorArray.contains(iconColour)) {
+				colorArray.push(iconColour);
+			}
+			if (ypos < 50) ypos += 5;
+			xpos += 5;
+		}
+		if (colorArray.length > 0) {
+			for (c in colorArray) {
+				if (c > lightest) { iconColour = c; lightest = c; }
+			}
+			return FlxColor.fromString(FlxColor.toHexString(iconColour, false));
+		}
+		return FlxColor.WHITE;
+	}
+
+	function cleanup() {
+			if (panel != null && PlayState.instance != null) {
+				PlayState.instance.remove(panel, true);
+			}
+			if (panelBorder != null && PlayState.instance != null) {
+				PlayState.instance.remove(panelBorder, true);
+			}
+			if (segmentSprites != null && PlayState.instance != null) {
+				for (s in segmentSprites) if (s != null) PlayState.instance.remove(s, true);
+			}
+			if (panel != null) panel.destroy();
+			if (panelBorder != null) panelBorder.destroy();
+			if (segmentSprites != null) { for (s in segmentSprites) if (s != null && s.destroy != null) s.destroy(); }
+			panel = null;
+			panelBorder = null;
+			segmentSprites = null;
+	}
+
+}
+

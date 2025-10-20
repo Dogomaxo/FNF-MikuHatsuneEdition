@@ -15,7 +15,7 @@ class ModuleRouter extends Module {
   // Stage / song filters removed for compatibility (hscript reflection shit issues). Re‑add later via safe API.
   var charRules = [
     // Enable both custom health bar HUD and the score HUD for these characters.
-    { ids: ["miku", "bf-hme", "rin", "len"], enable: ["Hatsune In-Game HUD", "Hatsune Score HUD"], disable: [] }
+  { ids: ["miku", "bf-hme", "rin", "len"], enable: ["Hatsune In-Game HUD", "Hatsune Score HUD", "Hatsune Voltage Panel"], disable: [] }
   ];
   // ==========================================================
 
