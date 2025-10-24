@@ -15,6 +15,9 @@ import funkin.play.notes.NoteSprite;
 import funkin.play.notes.SustainTrail;
 import funkin.mobile.ui.FunkinButton;
 import funkin.mobile.input.ControlsHandler;
+import funkin.util.GRhythmUtil;
+import funkin.util.HapticUtil;
+import funkin.util.HapticUtil.HapticsMode;
 
 /**
  * Miku Voltage Panel
@@ -62,7 +65,7 @@ class MikuVoltagePanel extends ScriptedModule {
 	// Initial fill at song start (as a fraction of the full meter)
 	// 0.0 = empty (default), 1.0 = fully charged
     // THIS IS JUST FOR DEBUG
-	var initialChargePercent:Float = 0.5;
+	var initialChargePercent:Float = 1.0;
 
 	// Runtime
 	var panel:FlxSprite = null;
@@ -114,6 +117,15 @@ class MikuVoltagePanel extends ScriptedModule {
 		var builtState:Dynamic = null; // Track the PlayState we attached to
   // Mobile/touch: engine-managed button overlay for panel taps
   var tapButton:FunkinButton = null;
+
+	// Haptics (mobile vibration) config
+	// These values are multiplied by the engine preference intensity.
+	var hapticsEnabled:Bool = true;           // Additional toggle (engine prefs still apply)
+	var hapticsStartDuration:Float = 0.02;    // Seconds for the start tap
+	var hapticsStartAmplitude:Float = 0.18;   // 0..1 intensity for the start tap
+	var hapticsEndDuration:Float = 0.02;      // Seconds for the end tap
+	var hapticsEndAmplitude:Float = 0.18;     // 0..1 intensity for the end tap
+	var hapticsSharpness:Float = 0.9;         // 0..1, controls feel
 
 		public function new() {
 			// Priority: fairly early so it appears under score popups but above background HUD bits.
@@ -189,6 +201,8 @@ class MikuVoltagePanel extends ScriptedModule {
 							draining = true;
 							// set drain flag for other HUD modules (e.g., show "protected")
 							MHE_SharedState.drainActive = true;
+							// Mobile haptic: small tap on activation (respects engine haptics prefs)
+							triggerHapticStart();
 							// Start health floor lock to prevent health loss
 							if (healthImmunityDuringDrain && PlayState.instance != null) {
 								healthDrainLockActive = true;
@@ -221,6 +235,8 @@ class MikuVoltagePanel extends ScriptedModule {
 							this.endDrainVisualStyleSwap();
 							// clear drain flag when ending
 							MHE_SharedState.drainActive = false;
+							// Mobile haptic: small tap on end
+							triggerHapticEnd();
 						}
 					}
 
@@ -336,6 +352,21 @@ class MikuVoltagePanel extends ScriptedModule {
 		}
 	}
 
+	// Haptics helpers
+	function triggerHapticStart():Void {
+		if (!hapticsEnabled) return;
+		if (HapticUtil != null && HapticUtil.hapticsAvailable) {
+			HapticUtil.vibrate(0, hapticsStartDuration, hapticsStartAmplitude, hapticsSharpness, [HapticsMode.ALL]);
+		}
+	}
+
+	function triggerHapticEnd():Void {
+		if (!hapticsEnabled) return;
+		if (HapticUtil != null && HapticUtil.hapticsAvailable) {
+			HapticUtil.vibrate(0, hapticsEndDuration, hapticsEndAmplitude, hapticsSharpness, [HapticsMode.ALL]);
+		}
+	}
+
 	// Compute initial meter points from the configured percentage
 	function computeInitialChargePoints():Float {
 		var per = initialChargePercent;
@@ -408,6 +439,41 @@ class MikuVoltagePanel extends ScriptedModule {
 		return sty;
 	}
 
+	// Re-apply proper orientation, clipping and Y placement for a sustain trail using Strumline formulas.
+	function realignSustain(hold:Dynamic, str:Dynamic):Void {
+		if (hold == null || str == null) return;
+		// Downscroll state
+		var ds:Bool = Preferences.downscroll;
+		if (ReflectUtil.hasField(str, "isDownscroll")) {
+			var v = ReflectUtil.getField(str, "isDownscroll");
+			if (v != null) ds = (v == true);
+		}
+		// Match flip to scroll mode
+		hold.flipY = ds;
+		// Ensure hitbox/clipping are up to date
+		if (hold.updateHitbox != null) hold.updateHitbox();
+		var songT:Float = 0;
+		if (PlayState.instance != null && PlayState.instance.conductor != null) songT = PlayState.instance.conductor.songPosition;
+		if (hold.updateClipping != null) hold.updateClipping(songT);
+		// Compute Y like Strumline
+		var baseY:Float = str.y;
+		var scroll:Float = str.scrollSpeed;
+		var conductorInUse:Dynamic = str.conductorInUse;
+		var noteY:Float = GRhythmUtil.getNoteY(hold.strumTime, scroll, ds, conductorInUse);
+		var INITIAL_OFFSET_LOCAL:Float = -0.275 * Strumline.STRUMLINE_SIZE;
+		var topY:Float;
+		if (hold.hitNote == true && hold.missedNote != true && songT > hold.strumTime) {
+			// Being held
+			topY = ds ? (baseY - INITIAL_OFFSET_LOCAL - hold.height + Strumline.STRUMLINE_SIZE / 2)
+						: (baseY - INITIAL_OFFSET_LOCAL + Strumline.STRUMLINE_SIZE / 2);
+		} else {
+			// New (or fallback)
+			topY = ds ? (baseY - INITIAL_OFFSET_LOCAL + noteY - hold.height + Strumline.STRUMLINE_SIZE / 2 + hold.yOffset)
+						: (baseY - INITIAL_OFFSET_LOCAL + noteY + Strumline.STRUMLINE_SIZE / 2 + hold.yOffset);
+		}
+		hold.y = topY;
+	}
+
 	// Apply the given NoteStyle object to the player's current receptors and existing notes, without rebuilding the strumline.
 	function applyNoteStyleToPlayer(styleObj:Dynamic) {
 		var ps = PlayState.instance; if (ps == null) return;
@@ -448,6 +514,8 @@ class MikuVoltagePanel extends ScriptedModule {
 			for (hn in str.holdNotes.members) {
 				if (hn == null) continue;
 				hn.setupHoldNoteGraphic(styleObj);
+				// Immediately fix orientation, clipping and Y placement to avoid downscroll shifts
+				realignSustain(hn, str);
 				// If there's a live cover attached, rebuild it too
 				if (hn.cover != null) {
 					styleObj.buildHoldCoverSprite(hn.cover);
@@ -500,6 +568,8 @@ class MikuVoltagePanel extends ScriptedModule {
 			note.direction = note.direction;
 			if (note.holdNoteSprite != null) {
 				note.holdNoteSprite.setupHoldNoteGraphic(st);
+				// Ensure the sustain uses proper placement right away
+				realignSustain(note.holdNoteSprite, str);
 					// Re-ensure the active cover enters its loop (in case it's mid-sustain)
 				if (note.holdNoteSprite.cover != null) {
 					ensureHoldCoverLoop(note.holdNoteSprite.cover);
