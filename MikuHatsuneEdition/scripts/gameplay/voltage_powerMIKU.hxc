@@ -17,7 +17,6 @@ import funkin.mobile.ui.FunkinButton;
 import funkin.mobile.input.ControlsHandler;
 import funkin.util.GRhythmUtil;
 import funkin.util.HapticUtil;
-import funkin.util.HapticUtil.HapticsMode;
 
 /**
  * Miku Voltage Panel
@@ -356,14 +355,16 @@ class MikuVoltagePanel extends ScriptedModule {
 	function triggerHapticStart():Void {
 		if (!hapticsEnabled) return;
 		if (HapticUtil != null && HapticUtil.hapticsAvailable) {
-			HapticUtil.vibrate(0, hapticsStartDuration, hapticsStartAmplitude, hapticsSharpness, [HapticsMode.ALL]);
+			// No target modes passed from script; engine defaults will apply (usually ALL)
+			HapticUtil.vibrate(0, hapticsStartDuration, hapticsStartAmplitude, hapticsSharpness);
 		}
 	}
 
 	function triggerHapticEnd():Void {
 		if (!hapticsEnabled) return;
 		if (HapticUtil != null && HapticUtil.hapticsAvailable) {
-			HapticUtil.vibrate(0, hapticsEndDuration, hapticsEndAmplitude, hapticsSharpness, [HapticsMode.ALL]);
+			// No target modes passed from script; engine defaults will apply (usually ALL)
+			HapticUtil.vibrate(0, hapticsEndDuration, hapticsEndAmplitude, hapticsSharpness);
 		}
 	}
 
