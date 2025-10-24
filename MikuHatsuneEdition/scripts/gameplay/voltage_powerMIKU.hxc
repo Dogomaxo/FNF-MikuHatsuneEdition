@@ -13,6 +13,8 @@ import funkin.play.notes.Strumline;
 import funkin.play.notes.StrumlineNote;
 import funkin.play.notes.NoteSprite;
 import funkin.play.notes.SustainTrail;
+import funkin.mobile.ui.FunkinButton;
+import funkin.mobile.input.ControlsHandler;
 
 /**
  * Miku Voltage Panel
@@ -110,6 +112,8 @@ class MikuVoltagePanel extends ScriptedModule {
 	var lastH:Int = -1;
 	var lastDownscroll:Null<Bool> = null;
 		var builtState:Dynamic = null; // Track the PlayState we attached to
+  // Mobile/touch: engine-managed button overlay for panel taps
+  var tapButton:FunkinButton = null;
 
 		public function new() {
 			// Priority: fairly early so it appears under score popups but above background HUD bits.
@@ -176,11 +180,12 @@ class MikuVoltagePanel extends ScriptedModule {
 					lastW = w; lastH = h; lastDownscroll = ds;
 				}
 			}
-					// Activate drain on SHIFT if the gauge is full
+					// Activate drain on SHIFT (desktop) or via engine touch button (mobile) if the gauge is full
 					if (!draining) {
 						if (notesPerFull <= 0) notesPerFull = 1;
 						var isFull = (notesHitCounter >= notesPerFull - 1e-6);
-						if (isFull && FlxG.keys != null && FlxG.keys.justPressed != null && FlxG.keys.justPressed.SHIFT) {
+						var tapPressed:Bool = (tapButton != null && !ControlsHandler.usingExternalInputDevice && tapButton.justPressed);
+						if (isFull && ((FlxG.keys != null && FlxG.keys.justPressed != null && FlxG.keys.justPressed.SHIFT) || tapPressed)) {
 							draining = true;
 							// set drain flag for other HUD modules (e.g., show "protected")
 							MHE_SharedState.drainActive = true;
@@ -870,6 +875,20 @@ class MikuVoltagePanel extends ScriptedModule {
 			PlayState.instance.add(tick);
 			tickSprites.push(tick);
 		}
+
+		// Create an invisible engine-managed touch button over the panel for mobile/touch
+		if (tapButton == null) {
+			var hudCam2 = (PlayState.instance.camHUD != null) ? PlayState.instance.camHUD : FlxG.camera;
+			tapButton = new FunkinButton();
+			// Start with tiny size; layout() will size/position it to the panel
+			tapButton.makeSolidColor(4, 4, 0x00000000);
+			tapButton.scrollFactor.set();
+			tapButton.cameras = [hudCam2];
+			tapButton.alpha = 0; // invisible, but visible flag will remain true for input
+			tapButton.limitToBounds = true;
+			tapButton.zIndex = 744;
+			PlayState.instance.add(tapButton);
+		}
 		layout();
 		layoutSegments();
 		updateSegmentsFill();
@@ -915,6 +934,14 @@ class MikuVoltagePanel extends ScriptedModule {
 				if (panelGlow != null) { panelGlow.x = x; panelGlow.y = y; }
 			panel.visible = true;
 				panelBorder.visible = true;
+			// Keep the touch button aligned/sized with the panel and respect external inputs
+			if (tapButton != null) {
+				if (Std.int(tapButton.width) != side || Std.int(tapButton.height) != side) tapButton.makeSolidColor(side, side, 0x00000000);
+				tapButton.x = panel.x;
+				tapButton.y = panel.y;
+				// Hide when using external input device to avoid conflicts
+				tapButton.visible = !ControlsHandler.usingExternalInputDevice;
+			}
 			// Make sure render order updates if the engine rebuilds or re-sorts.
 			if (PlayState.instance != null) PlayState.instance.refresh();
 	}
@@ -1048,18 +1075,23 @@ class MikuVoltagePanel extends ScriptedModule {
 			if (tickSprites != null && PlayState.instance != null) {
 				for (t in tickSprites) if (t != null) PlayState.instance.remove(t, true);
 			}
+			if (tapButton != null && PlayState.instance != null) {
+				PlayState.instance.remove(tapButton, true);
+			}
 			if (panel != null) panel.destroy();
 			if (panelBorder != null) panelBorder.destroy();
 			if (panelGlow != null) panelGlow.destroy();
 			if (segmentSprites != null) { for (s in segmentSprites) if (s != null && s.destroy != null) s.destroy(); }
 			if (segGlow != null && segGlow.destroy != null) segGlow.destroy();
 			if (tickSprites != null) { for (t in tickSprites) if (t != null && t.destroy != null) t.destroy(); }
+			if (tapButton != null && tapButton.destroy != null) tapButton.destroy();
 			panel = null;
 			panelBorder = null;
 			panelGlow = null;
 			segmentSprites = null;
 			segGlow = null;
 			tickSprites = null;
+			tapButton = null;
 	}
 
 }
