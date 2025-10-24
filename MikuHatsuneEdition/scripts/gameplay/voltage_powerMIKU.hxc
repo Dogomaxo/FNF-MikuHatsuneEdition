@@ -38,11 +38,11 @@ class MikuVoltagePanel extends ScriptedModule {
 		var scaleOffsetsWithHeight:Bool = true; // Whether offsets/margins scale with height (recommended for aspect adaptation)
 	var panelColor:FlxColor = FlxColor.fromRGB(1, 23, 55); // Base background of the square (darker)
 	var panelAlpha:Float = 1.0;       // Opacity of the square
-		var borderThickness:Int = 5;      // Black border thickness at 720p reference
+		var borderThickness:Int = 6;      // Black border thickness at 720p reference
 
 	// Fill config
 	var numSegments:Int = 10;           // Number of uniform pieces inside the gauge
-	var notesPerFull:Int = 10;         // Total POINTS needed to fill the whole gauge (10 segments => 10p each by default)
+	var notesPerFull:Int = 150;         // Total POINTS needed to fill the whole gauge (10 segments => 10p each by default)
 	var segmentGap:Int = 2;             // Small gap between segments (scaled)
 	var scaleSegmentsWithHeight:Bool = true; // Scale gaps and segment padding with height (recommended)
 
@@ -52,17 +52,15 @@ class MikuVoltagePanel extends ScriptedModule {
 	var goodIncrementPoints:Float = 1.0;
 	var sickIncrementPoints:Float = 1.0;
 	// Penalties in POINTS (negative values applied):
-	// - Bad:  -0.5p
-	// - Shit/Miss/GhostMiss: -1.0p
-	var badPenaltySegments:Float = 0.5;     // interpreted as POINTS to subtract on 'bad'
-	var shitPenaltySegments:Float = 1.0;    // interpreted as POINTS to subtract on 'shit'
+	var badPenaltySegments:Float = 0.35;     // interpreted as POINTS to subtract on 'bad'
+	var shitPenaltySegments:Float = 0.5;    // interpreted as POINTS to subtract on 'shit'
 	var missPenaltySegments:Float = 1.0;    // interpreted as POINTS to subtract on true miss
 	var ghostMissPenaltySegments:Float = 1.0; // interpreted as POINTS to subtract on ghost miss (no tocado)
 
 	// Initial fill at song start (as a fraction of the full meter)
 	// 0.0 = empty (default), 1.0 = fully charged
     // THIS IS JUST FOR DEBUG
-	var initialChargePercent:Float = 1.0;
+	var initialChargePercent:Float = 0.5;
 
 	// Runtime
 	var panel:FlxSprite = null;
