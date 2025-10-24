@@ -6,6 +6,9 @@ import flixel.FlxG;
 import flixel.FlxSprite;
 import flixel.tweens.FlxTween;
 import flixel.util.FlxColor;
+import flixel.text.FlxText;
+import flixel.text.FlxTextBorderStyle;
+import MHE_SharedState;
 
 /**
  * Custom HUD health bar ported from my miku's prototype mod from p-slice (psych engine 1.0.4)
@@ -28,6 +31,7 @@ class HatsuneInGameHud extends Module {
 	var hpBox:FlxSprite;        // black border box
 	var meterBack:FlxSprite;    // inner background
 	var meter:FlxSprite;        // actual health fill
+	var protectedText:FlxText;  // centered "protected" label while drain active
 	var hudBuilt:Bool = false;
 	var builtState = null; // reference to PlayState instance when HUD was built
 	var originalIconFlipX:Null<Bool> = null;
@@ -123,11 +127,22 @@ class HatsuneInGameHud extends Module {
 		hpBox = new FlxSprite(); hpBox.makeGraphic(boxW, boxH, FlxColor.TRANSPARENT); hpBox.scrollFactor.set(); hpBox.cameras=[PlayState.instance.camHUD]; hpBox.visible=false; hpBox.zIndex=800;
 		meterBack = new FlxSprite(); meterBack.makeGraphic(meterW, meterH, FlxColor.WHITE); meterBack.scrollFactor.set(); meterBack.cameras=[PlayState.instance.camHUD]; meterBack.zIndex=801; meterBack.origin.set(0,0); meterBack.color = meterEmptyBack;
 		meter = new FlxSprite(); meter.makeGraphic(1, meterH, FlxColor.WHITE); meter.scrollFactor.set(); meter.cameras=[PlayState.instance.camHUD]; meter.zIndex=802; meter.origin.set(0,0);
+		protectedText = new FlxText(0, 0, meterW, "protected", 14);
+		protectedText.scrollFactor.set();
+		protectedText.cameras = [PlayState.instance.camHUD];
+		protectedText.alignment = "center";
+		protectedText.color = FlxColor.WHITE;
+		protectedText.borderStyle = FlxTextBorderStyle.OUTLINE;
+		protectedText.borderSize = 2;
+		protectedText.borderColor = FlxColor.BLACK;
+		protectedText.alpha = 0.95;
+		protectedText.zIndex = 804; // above borders
+		protectedText.visible = false;
 		borderTop = new FlxSprite(); borderTop.makeGraphic(boxW,5,FlxColor.BLACK); borderTop.scrollFactor.set(); borderTop.cameras=[PlayState.instance.camHUD]; borderTop.zIndex=803; borderTop.origin.set(0,0);
 		borderBottom = new FlxSprite(); borderBottom.makeGraphic(boxW,5,FlxColor.BLACK); borderBottom.scrollFactor.set(); borderBottom.cameras=[PlayState.instance.camHUD]; borderBottom.zIndex=803; borderBottom.origin.set(0,0);
 		borderLeft = new FlxSprite(); borderLeft.makeGraphic(5,meterH,FlxColor.BLACK); borderLeft.scrollFactor.set(); borderLeft.cameras=[PlayState.instance.camHUD]; borderLeft.zIndex=803; borderLeft.origin.set(0,0);
 		borderRight = new FlxSprite(); borderRight.makeGraphic(5,meterH,FlxColor.BLACK); borderRight.scrollFactor.set(); borderRight.cameras=[PlayState.instance.camHUD]; borderRight.zIndex=803; borderRight.origin.set(0,0);
-		PlayState.instance.add(hpBox); PlayState.instance.add(meterBack); PlayState.instance.add(meter); PlayState.instance.add(borderTop); PlayState.instance.add(borderBottom); PlayState.instance.add(borderLeft); PlayState.instance.add(borderRight);
+		PlayState.instance.add(hpBox); PlayState.instance.add(meterBack); PlayState.instance.add(meter); PlayState.instance.add(borderTop); PlayState.instance.add(borderBottom); PlayState.instance.add(borderLeft); PlayState.instance.add(borderRight); PlayState.instance.add(protectedText);
 		recalcColorsFromIcon(); layoutAndSize(); PlayState.instance.refresh(); hudBuilt = true; builtState = PlayState.instance;
 	}
 
@@ -321,6 +336,21 @@ class HatsuneInGameHud extends Module {
 		if (borderLeft != null) { borderLeft.x = baseX + barOffsetX - 5; borderLeft.y = yPos; }
 		if (borderRight != null) { borderRight.x = baseX + barOffsetX + meterW; borderRight.y = yPos; }
 
+		// Center and toggle the "protected" label when drain is active (flag from Voltage Panel)
+		if (protectedText != null) {
+			// Read shared flag set by MikuVoltagePanel via MHE_SharedState
+			var drainActive:Bool = MHE_SharedState.drainActive;
+			protectedText.visible = drainActive;
+			if (drainActive) {
+				protectedText.width = meterW; // ensure text centers in the bar width
+				protectedText.text = "PROTECTED";
+				protectedText.updateHitbox();
+				protectedText.x = baseX + barOffsetX;
+				// Nudge slightly down for visual centering
+				protectedText.y = Std.int(yPos + (meterH - protectedText.height) * 0.5 + 1.5);
+			}
+		}
+
 	// If needed later, the score text can be repositioned via PlayState code.
 
 		// Place and layer player's icon next to the bar.
@@ -429,6 +459,7 @@ class HatsuneInGameHud extends Module {
 		removeAndDestroy(hpBox);
 		removeAndDestroy(meterBack);
 		removeAndDestroy(meter);
+		removeAndDestroy(protectedText);
 		removeAndDestroy(borderTop);
 		removeAndDestroy(borderBottom);
 		removeAndDestroy(borderLeft);
@@ -436,6 +467,7 @@ class HatsuneInGameHud extends Module {
 		hpBox = null;
 		meterBack = null;
 		meter = null;
+		protectedText = null;
 		borderTop = null;
 		borderBottom = null;
 		borderLeft = null;

@@ -5,6 +5,14 @@ import funkin.Preferences;
 import flixel.FlxG;
 import flixel.FlxSprite;
 import flixel.util.FlxColor;
+import funkin.util.ReflectUtil;
+import MHE_SharedState;
+import funkin.data.notestyle.NoteStyleRegistry;
+import funkin.play.notes.notestyle.NoteStyle;
+import funkin.play.notes.Strumline;
+import funkin.play.notes.StrumlineNote;
+import funkin.play.notes.NoteSprite;
+import funkin.play.notes.SustainTrail;
 
 /**
  * Miku Voltage Panel
@@ -28,22 +36,78 @@ class MikuVoltagePanel extends ScriptedModule {
 		var barOffsetX:Int = 20;                 // Extra horizontal offset (positive moves right)
 		var barOffsetY:Int = -100;                // Extra vertical offset (positive moves down)
 		var scaleOffsetsWithHeight:Bool = true; // Whether offsets/margins scale with height (recommended for aspect adaptation)
-	var panelColor:FlxColor = FlxColor.fromRGB(20, 40, 160); // Base background of the square (darker)
+	var panelColor:FlxColor = FlxColor.fromRGB(1, 23, 55); // Base background of the square (darker)
 	var panelAlpha:Float = 1.0;       // Opacity of the square
 		var borderThickness:Int = 5;      // Black border thickness at 720p reference
 
 	// Fill config
-	var numSegments:Int = 10;           // Number of uniform pieces inside the square
-	var notesPerFull:Int = 20;          // Notes needed to fill the whole square
+	var numSegments:Int = 10;           // Number of uniform pieces inside the gauge
+	var notesPerFull:Int = 10;         // Total POINTS needed to fill the whole gauge (10 segments => 10p each by default)
 	var segmentGap:Int = 2;             // Small gap between segments (scaled)
 	var scaleSegmentsWithHeight:Bool = true; // Scale gaps and segment padding with height (recommended)
+
+	// Progress rules (points-based)
+	// Increments (in POINTS). With defaults below and notesPerFull=100:
+	// - Sick/Good add +1p, so 100 aciertos llenan al 100% (si no hay penalizaciones)
+	var goodIncrementPoints:Float = 1.0;
+	var sickIncrementPoints:Float = 1.0;
+	// Penalties in POINTS (negative values applied):
+	// - Bad:  -0.5p
+	// - Shit/Miss/GhostMiss: -1.0p
+	var badPenaltySegments:Float = 0.5;     // interpreted as POINTS to subtract on 'bad'
+	var shitPenaltySegments:Float = 1.0;    // interpreted as POINTS to subtract on 'shit'
+	var missPenaltySegments:Float = 1.0;    // interpreted as POINTS to subtract on true miss
+	var ghostMissPenaltySegments:Float = 1.0; // interpreted as POINTS to subtract on ghost miss (no tocado)
+
+	// Initial fill at song start (as a fraction of the full meter)
+	// 0.0 = empty (default), 1.0 = fully charged
+    // THIS IS JUST FOR DEBUG
+	var initialChargePercent:Float = 1.0;
 
 	// Runtime
 	var panel:FlxSprite = null;
 		var panelBorder:FlxSprite = null;
 	var segmentSprites:Array<FlxSprite> = null; // 10 uniform bars filling the square
-	var notesHitCounter:Int = 0; // counts good notes hit by the player this song
+	var notesHitCounter:Float = 0.0; // song progression units (0..notesPerFull)
 	var segmentColor:FlxColor = FlxColor.CYAN; // sampled from the player's icon (like HatsuneHealthBar)
+	// Tick overlays: success (white) and failure (pink)
+	var tickSprites:Array<FlxSprite> = null;
+	var tickFadeSpeed:Float = 9.0; // alpha units per second; slightly slower to last a bit longer
+	var tickMaxAlpha:Float = 1.0;
+	var tickColor:FlxColor = FlxColor.WHITE; // success tick
+	var failTickColor:FlxColor = FlxColor.fromRGB(212, 97, 188); // failure tick color
+	// Drain mode (SHIFT to activate when full)
+	var drainDurationSec:Float = 10.0; // seconds to drain from full -> empty
+	var draining:Bool = false;
+	// Score multiplier while draining (applies to positive score gains on player's hits)
+	var scoreGainMultiplierDuringDrain:Float = 2.0; // e.g., 2.0 = x2, 1.0 = no change
+	// Health immunity while draining (misses won't reduce health)
+	var healthImmunityDuringDrain:Bool = true;
+	var healthDrainLockActive:Bool = false;
+	var healthFloorDuringDrain:Float = 0.0;
+	// NoteStyle swap while draining
+	var styleDuringDrain:String = "hatsunevp"; // apply while draining
+	var normalStyleFallback:String = "hatsunenormal"; // in case we can't detect the current one
+	var savedPlayerNoteStyle:Dynamic = null; // previously detected style id
+	var styleSwapActive:Bool = false;
+	// Cached style objects and hook for incoming notes to ensure live reskinning
+	var _drainStyleObj:Dynamic = null; // NoteStyle during drain
+	var _normalStyleObj:Dynamic = null; // NoteStyle to revert to
+	var _incomingHookActive:Bool = false;
+	var _incomingHookFunc:Dynamic = null; // (note:NoteSprite) -> Void
+	// Short watchdog window to resync hold cover animations right after a style swap
+	var _coverResyncTime:Float = 0.0;
+	// Drain glow overlays
+	var panelGlow:FlxSprite = null; // overlay on top of panel, below segments
+	var segGlow:FlxSprite = null;   // overlay on the currently draining segment
+	var drainGlowPhase:Float = 0.0; // phase accumulator for breathing wave
+	var panelGlowSpeedBase:Float = 1.6; // Hz
+	var panelGlowSpeedFast:Float = 3.2; // Hz when near empty
+	var panelGlowNearThreshold:Float = 0.15; // <= 15% left -> fast mode
+	var panelGlowMinAlpha:Float = 0.12;
+	var panelGlowMaxAlpha:Float = 0.38;
+	var segmentGlowMinAlpha:Float = 0.20;
+	var segmentGlowMaxAlpha:Float = 0.55;
 	var lastW:Int = -1;
 	var lastH:Int = -1;
 	var lastDownscroll:Null<Bool> = null;
@@ -61,7 +125,9 @@ class MikuVoltagePanel extends ScriptedModule {
 	}
 
 	override function onDeactivate() {
-		cleanup();
+			// ensure we revert any style swap on deactivate
+			this.endDrainVisualStyleSwap();
+			cleanup();
 	}
 
 		override function onCreate(e) {
@@ -70,8 +136,14 @@ class MikuVoltagePanel extends ScriptedModule {
 		}
 
 	override function onSongLoaded(e) {
-			// reset progression each song
-			notesHitCounter = 0;
+			// reset progression each song (apply configured initial charge)
+			notesHitCounter = computeInitialChargePoints();
+		  draining = false;
+				// expose drain flag to other HUD modules (shared singleton)
+				MHE_SharedState.drainActive = false;
+			drainGlowPhase = 0.0;
+			// ensure visual style is normal at song start
+			this.endDrainVisualStyleSwap();
 			// resample the color from the icon if possible
 			recalcSegmentColorFromIcon();
 			if (this.active) ensureBuilt();
@@ -79,7 +151,12 @@ class MikuVoltagePanel extends ScriptedModule {
 
 	override function onSongRetry(e) {
 		// Also reset on quick restarts
-		notesHitCounter = 0;
+		notesHitCounter = computeInitialChargePoints();
+			draining = false;
+				// expose drain flag to other HUD modules (shared singleton)
+				MHE_SharedState.drainActive = false;
+			drainGlowPhase = 0.0;
+			this.endDrainVisualStyleSwap();
 		updateSegmentsFill();
 	}
 
@@ -101,16 +178,629 @@ class MikuVoltagePanel extends ScriptedModule {
 					lastW = w; lastH = h; lastDownscroll = ds;
 				}
 			}
+					// Activate drain on SHIFT if the gauge is full
+					if (!draining) {
+						if (notesPerFull <= 0) notesPerFull = 1;
+						var isFull = (notesHitCounter >= notesPerFull - 1e-6);
+						if (isFull && FlxG.keys != null && FlxG.keys.justPressed != null && FlxG.keys.justPressed.SHIFT) {
+							draining = true;
+							// set drain flag for other HUD modules (e.g., show "protected")
+							MHE_SharedState.drainActive = true;
+							// Start health floor lock to prevent health loss
+							if (healthImmunityDuringDrain && PlayState.instance != null) {
+								healthDrainLockActive = true;
+								healthFloorDuringDrain = PlayState.instance.health;
+							}
+							// Swap player's note style for drain visuals
+							this.startDrainVisualStyleSwap();
+						}
+					}
+					// Drain logic: linearly reduce over configured duration
+					if (draining) {
+						var dur = (drainDurationSec <= 0) ? 10.0 : drainDurationSec;
+						var rate = notesPerFull / dur; // points per second
+						var dec = rate * FlxG.elapsed;
+						notesHitCounter -= dec;
+						if (notesHitCounter <= 0) { notesHitCounter = 0; draining = false; }
+						updateSegmentsFill();
+					}
+					// Enforce health immunity floor while draining
+					if (healthDrainLockActive) {
+						var ps = PlayState.instance;
+						if (ps != null) {
+							// If health increased, raise the floor; if decreased, clamp up to floor
+							if (ps.health > healthFloorDuringDrain) healthFloorDuringDrain = ps.health;
+							if (ps.health < healthFloorDuringDrain) ps.health = healthFloorDuringDrain;
+						}
+						// Turn off lock and revert style when draining ends
+						if (!draining) {
+							healthDrainLockActive = false;
+							this.endDrainVisualStyleSwap();
+							// clear drain flag when ending
+							MHE_SharedState.drainActive = false;
+						}
+					}
+
+					// Drain glow effect: breathing on panel and current segment
+					if (panelGlow != null) {
+						if (draining) {
+							// Speed up breathing when meter nearly empty
+							var nearEmpty = false;
+							if (notesPerFull > 0) nearEmpty = (notesHitCounter <= notesPerFull * panelGlowNearThreshold + 1e-6);
+							var spd = nearEmpty ? panelGlowSpeedFast : panelGlowSpeedBase;
+							drainGlowPhase += (6.2831853 * spd) * FlxG.elapsed; // 2π * Hz * dt
+							var wave = (Math.sin(drainGlowPhase) * 0.5) + 0.5; // 0..1
+							var pAlpha = panelGlowMinAlpha + wave * (panelGlowMaxAlpha - panelGlowMinAlpha);
+							panelGlow.visible = true;
+							panelGlow.alpha = pAlpha;
+						} else {
+							panelGlow.visible = false;
+							panelGlow.alpha = 0.0;
+						}
+					}
+					// Segment breathing glow follows the currently draining (last filled) segment
+					if (segGlow != null) {
+						if (draining && notesPerFull > 0 && segmentSprites != null && segmentSprites.length > 0) {
+							var progress:Float = notesHitCounter / notesPerFull;
+							if (progress < 0) progress = 0; if (progress > 1) progress = 1;
+							var filled:Int = Std.int(Math.floor(progress * numSegments + 1e-6));
+							var idx = filled - 1; // last filled
+							if (idx >= 0 && idx < segmentSprites.length) {
+								var ref = segmentSprites[idx];
+								segGlow.visible = true;
+								segGlow.x = ref.x;
+								segGlow.y = ref.y;
+								var wave2 = (Math.sin(drainGlowPhase) * 0.5) + 0.5; // reuse phase
+								segGlow.alpha = segmentGlowMinAlpha + wave2 * (segmentGlowMaxAlpha - segmentGlowMinAlpha);
+								segGlow.color = segmentColor; // theme-colored glow
+							} else {
+								segGlow.visible = false; segGlow.alpha = 0.0;
+							}
+						} else {
+							segGlow.visible = false; segGlow.alpha = 0.0;
+						}
+					}
+			// Update tick fade-out
+			updateTickFX();
+
+			// Shortly after the swap, if any cover stayed on "start" or without an animation,
+			// force a looping animation to avoid frozen frame 0
+			if (_coverResyncTime > 0) {
+				_coverResyncTime -= FlxG.elapsed;
+				var ps = PlayState.instance;
+				if (ps != null && ps.playerStrumline != null) {
+					var str:Dynamic = ps.playerStrumline;
+					if (str.noteHoldCovers != null && str.noteHoldCovers.members != null) {
+						for (cov in str.noteHoldCovers.members) {
+							if (cov == null) continue;
+							if (cov.animation != null) {
+								var a = cov.animation;
+								var cur = null;
+								if (ReflectUtil.hasField(a, "curAnim")) cur = ReflectUtil.getField(a, "curAnim");
+								if (cur == null && ReflectUtil.hasField(a, "get_curAnim")) {
+									var getter = ReflectUtil.getField(a, "get_curAnim");
+									if (getter != null) cur = getter();
+								}
+								var curName:String = (cur != null && Reflect.hasField(cur, "name")) ? Std.string(Reflect.field(cur, "name")) : null;
+								var needsLoop:Bool = (curName == null);
+								if (!needsLoop && curName != null) {
+									var lower = curName.toLowerCase();
+									if (lower.indexOf("start") >= 0) needsLoop = true;
+								}
+								if (needsLoop) {
+									var names = [
+										"HoldCoverLoop", "holdCoverLoop", "holdLoop", "coverLoop",
+										"sustainLoop", "loop", "scroll", "cover", "idle", "default"
+									];
+									playLoopAnim(cov.animation, names, 24);
+								}
+							}
+							if (cov.glow != null && cov.glow.animation != null) {
+								var ga = cov.glow.animation;
+								var gcur = null;
+								if (ReflectUtil.hasField(ga, "curAnim")) gcur = ReflectUtil.getField(ga, "curAnim");
+								if (gcur == null && ReflectUtil.hasField(ga, "get_curAnim")) {
+									var ggetter = ReflectUtil.getField(ga, "get_curAnim");
+									if (ggetter != null) gcur = ggetter();
+								}
+								var gname:String = (gcur != null && Reflect.hasField(gcur, "name")) ? Std.string(Reflect.field(gcur, "name")) : null;
+								var gNeeds:Bool = (gname == null);
+								if (!gNeeds && gname != null) {
+									var lowerG = gname.toLowerCase();
+									if (lowerG.indexOf("start") >= 0) gNeeds = true;
+								}
+								if (gNeeds) {
+									var gnames = [
+										"HoldCoverGlowLoop", "holdCoverGlowLoop", "holdGlowLoop",
+										"coverGlowLoop", "loop", "scroll", "default", "idle", "cover"
+									];
+									playLoopAnim(cov.glow.animation, gnames, 24);
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 
-		// Count only player's judged note hits (PlayState dispatches NOTE_HIT for player).
+	// Fade-out tick overlays each frame
+	function updateTickFX() {
+		if (tickSprites == null) return;
+		var dt = FlxG.elapsed;
+		for (tk in tickSprites) if (tk != null && tk.alpha > 0) {
+			tk.alpha -= tickFadeSpeed * dt;
+			if (tk.alpha <= 0) { tk.alpha = 0; tk.visible = false; }
+		}
+	}
+
+	// Compute initial meter points from the configured percentage
+	function computeInitialChargePoints():Float {
+		var per = initialChargePercent;
+		if (Math.isNaN(per)) per = 0.0;
+		if (per < 0) per = 0; if (per > 1) per = 1;
+		var full = (notesPerFull <= 0) ? 1 : notesPerFull;
+		return per * full;
+	}
+
+	// ===== Runtime NoteStyle Swap (reflective and safe) =====
+	function startDrainVisualStyleSwap() {
+		if (styleSwapActive) return;
+		// detect current player style (if possible) and save it
+		savedPlayerNoteStyle = detectCurrentPlayerNoteStyle();
+		// fetch style objects (drain + normal)
+		var ps = PlayState.instance;
+		var normalId:String = normalStyleFallback;
+		if (savedPlayerNoteStyle != null) normalId = Std.string(savedPlayerNoteStyle);
+		_normalStyleObj = fetchNoteStyleObj(normalId);
+		_drainStyleObj = fetchNoteStyleObj(styleDuringDrain);
+		// visually apply to receptors and current notes
+		if (_drainStyleObj != null) {
+			applyNoteStyleToPlayer(_drainStyleObj);
+			// hook future note spawns while draining
+			attachIncomingHook();
+		}
+		styleSwapActive = true;
+		_coverResyncTime = 0.35; // breve ventana para corregir covers pegados
+	}
+
+	function endDrainVisualStyleSwap() {
+		if (!styleSwapActive) return;
+		var target:String = normalStyleFallback;
+		if (savedPlayerNoteStyle != null) target = Std.string(savedPlayerNoteStyle);
+		// reapply visual style to receptors and current notes
+		_normalStyleObj = fetchNoteStyleObj(target);
+		if (_normalStyleObj != null) applyNoteStyleToPlayer(_normalStyleObj);
+		// unhook spawns
+		detachIncomingHook();
+		// saneo: SOLO limpiar efectos visibles/activos que hayan quedado sin animación;
+		// no tocar el pool inactivo para no romper futuros spawns
+		var ps = PlayState.instance;
+		if (ps != null && ps.playerStrumline != null) {
+			var str:Dynamic = ps.playerStrumline;
+			if (str.noteSplashes != null && str.noteSplashes.members != null) {
+				for (ns in str.noteSplashes.members) {
+					if (ns == null) continue;
+					var hasAnim:Bool = (ns.animation != null && ns.animation.curAnim != null);
+					if (ns.alive == true && ns.visible == true && !hasAnim) { ns.visible = false; ns.kill(); }
+				}
+			}
+			// Cubrir también covers congelados por si el rebuild los dejó sin animación
+			if (str.noteHoldCovers != null && str.noteHoldCovers.members != null) {
+				for (cov in str.noteHoldCovers.members) {
+					if (cov == null) continue;
+					var hasAnimC:Bool = (cov.animation != null && cov.animation.curAnim != null);
+					if (cov.alive == true && cov.visible == true && !hasAnimC) { cov.visible = false; cov.kill(); }
+				}
+			}
+		}
+		savedPlayerNoteStyle = null;
+		styleSwapActive = false;
+		_coverResyncTime = 0.35; // también al revertir
+	}
+
+	// Retrieve a NoteStyle object by ID, falling back to the game's default if missing.
+	function fetchNoteStyleObj(id:String):Dynamic {
+		var sty:Dynamic = NoteStyleRegistry.instance.fetchEntry(id);
+		if (sty == null) sty = NoteStyleRegistry.instance.fetchDefault();
+		return sty;
+	}
+
+	// Apply the given NoteStyle object to the player's current receptors and existing notes, without rebuilding the strumline.
+	function applyNoteStyleToPlayer(styleObj:Dynamic) {
+		var ps = PlayState.instance; if (ps == null) return;
+		var str:Dynamic = ps.playerStrumline; if (str == null) return;
+		// 1) Re-skin receptors (use the direction by index to avoid enum/dynamic issues)
+		if (str.strumlineNotes != null && str.strumlineNotes.members != null) {
+			var i = 0;
+			for (rec in str.strumlineNotes.members) {
+				if (rec == null) { i++; continue; }
+				// Re-apply frames first
+				styleObj.applyStrumlineFrames(rec);
+				// Choose direction reliably from static DIRECTIONS
+				var dir = null;
+				if (Strumline.DIRECTIONS != null && i >= 0 && i < Strumline.DIRECTIONS.length) dir = Strumline.DIRECTIONS[i];
+				else dir = rec.direction;
+				styleObj.applyStrumlineAnimations(rec, dir);
+				// Scale/offsets
+				var s = styleObj.getStrumlineScale();
+				rec.scale.set(s, s);
+				rec.updateHitbox();
+				styleObj.applyStrumlineOffsets(rec);
+				// Reset to a clean animation so we don't keep a stale frame
+				rec.playStatic();
+				i++;
+			}
+		}
+		// 2) Re-skin any currently spawned notes (and force the proper direction animation)
+		if (str.notes != null && str.notes.members != null) {
+			for (n in str.notes.members) {
+				if (n == null) continue;
+				n.setupNoteGraphic(styleObj);
+				// Re-apply the correct scroll animation for this note's direction
+				n.direction = n.direction;
+			}
+		}
+		// 3) Re-skin any currently spawned sustains
+		if (str.holdNotes != null && str.holdNotes.members != null) {
+			for (hn in str.holdNotes.members) {
+				if (hn == null) continue;
+				hn.setupHoldNoteGraphic(styleObj);
+				// If there's a live cover attached, rebuild it too
+				if (hn.cover != null) {
+					styleObj.buildHoldCoverSprite(hn.cover);
+					// And ensure it enters its sustain loop
+					ensureHoldCoverLoop(hn.cover);
+					if (hn.cover.glow != null) ensureHoldCoverGlowLoop(hn.cover.glow);
+				}
+			}
+		}
+		// 4) Rebuild pooled NoteSplashes and HoldCovers so future effects use the new style
+		if (str.noteSplashes != null && str.noteSplashes.members != null) {
+			for (ns in str.noteSplashes.members) {
+				if (ns == null) continue;
+				// If it's alive, save the animation to resume it after the rebuild
+				var wasAlive:Bool = (ns.alive == true && ns.visible == true);
+				var curName:String = null;
+				if (ns.animation != null && ns.animation.curAnim != null) curName = ns.animation.curAnim.name;
+				styleObj.buildSplashSprite(ns);
+				// Avoid a "frozen splash": if it was alive, resume the current animation so it autokills after finishing
+				if (wasAlive && curName != null && ns.animation != null) ns.animation.play(curName, true);
+			}
+		}
+		if (str.noteHoldCovers != null && str.noteHoldCovers.members != null) {
+			for (cov in str.noteHoldCovers.members) {
+				if (cov == null) continue;
+				// Rebuild with the new style
+				styleObj.buildHoldCoverSprite(cov);
+				// Force a stable loop via animation or, if missing, create it by prefix
+				ensureHoldCoverLoop(cov);
+				if (cov.glow != null) ensureHoldCoverGlowLoop(cov.glow);
+			}
+		}
+		// Ensure z-index sorted after graphic updates
+		str.refresh();
+		ps.refresh();
+	}
+
+	// While draining, ensure newly incoming notes get re-skinned to the drain style immediately.
+	function attachIncomingHook() {
+		if (_incomingHookActive) return;
+		var ps = PlayState.instance; if (ps == null) return;
+		var str:Dynamic = ps.playerStrumline; if (str == null) return;
+		var self = this;
+		_incomingHookFunc = function(note:NoteSprite) {
+			if (!_incomingHookActive) return;
+			var st:Dynamic = self._drainStyleObj;
+			if (st == null) return;
+			note.setupNoteGraphic(st);
+			// Ensure the right animation based on the note's direction
+			note.direction = note.direction;
+			if (note.holdNoteSprite != null) {
+				note.holdNoteSprite.setupHoldNoteGraphic(st);
+					// Re-ensure the active cover enters its loop (in case it's mid-sustain)
+				if (note.holdNoteSprite.cover != null) {
+					ensureHoldCoverLoop(note.holdNoteSprite.cover);
+					if (note.holdNoteSprite.cover.glow != null) ensureHoldCoverGlowLoop(note.holdNoteSprite.cover.glow);
+				}
+			}
+		};
+		if (str.onNoteIncoming != null && _incomingHookFunc != null) { str.onNoteIncoming.add(_incomingHookFunc); _incomingHookActive = true; }
+	}
+
+	function detachIncomingHook() {
+		if (!_incomingHookActive) return;
+		var ps = PlayState.instance; if (ps == null) { _incomingHookActive = false; _incomingHookFunc = null; return; }
+		var str:Dynamic = ps.playerStrumline; if (str == null) { _incomingHookActive = false; _incomingHookFunc = null; return; }
+				if (_incomingHookFunc != null && str.onNoteIncoming != null) str.onNoteIncoming.remove(_incomingHookFunc);
+		_incomingHookActive = false;
+		_incomingHookFunc = null;
+	}
+
+	function detectCurrentPlayerNoteStyle():Dynamic {
+		var ps = PlayState.instance;
+		if (ps == null) return null;
+		// Try common properties on PlayState
+		var fields = [
+			"noteStyleId", "playerNoteStyleId", "noteStyleP1", "playerNoteStyle", "noteStyle"
+		];
+		for (f in fields) {
+			if (ReflectUtil.hasField(ps, f)) {
+				var v = ReflectUtil.getField(ps, f);
+				if (v != null) return v;
+			}
+		}
+		// Fallback to the chart's configured noteStyle
+		if (ps.currentChart != null && ReflectUtil.hasField(ps.currentChart, "noteStyle")) {
+			var cv = ReflectUtil.getField(ps.currentChart, "noteStyle");
+			if (cv != null) return cv;
+		}
+		// Try to locate player strumline(s) and read from there
+		var strums = getLikelyPlayerStrumlines(ps);
+		for (s in strums) {
+			if (s == null) continue;
+			var sFields = ["noteStyleId", "noteStyle", "styleId", "style"];
+			for (sf in sFields) {
+				if (ReflectUtil.hasField(s, sf)) {
+					var sv = ReflectUtil.getField(s, sf);
+					if (sv != null) return sv;
+				}
+			}
+		}
+		return null;
+	}
+
+	function applyPlayerNoteStyle(styleId:String):Bool {
+		// Direct field setting isn't reliably visual across forks.
+		// Prefer our visual re-skin path instead.
+		var ns = fetchNoteStyleObj(styleId);
+		if (ns == null) return false;
+		applyNoteStyleToPlayer(ns);
+		return true;
+	}
+
+	// Helper: get current frame index from an AnimationController's current animation, robustly across forks
+	function getAnimCurFrame(animCtrl:Dynamic):Int {
+		var idx:Int = 0;
+		if (animCtrl == null) return idx;
+		var cur = null;
+		if (ReflectUtil.hasField(animCtrl, "curAnim")) cur = ReflectUtil.getField(animCtrl, "curAnim");
+		// Some forks expose accessor functions; attempt it carefully
+		if (cur == null && ReflectUtil.hasField(animCtrl, "get_curAnim")) {
+			var getter = ReflectUtil.getField(animCtrl, "get_curAnim");
+			if (getter != null) cur = getter();
+		}
+		if (cur != null) {
+			if (ReflectUtil.hasField(cur, "curFrame")) {
+				var v = ReflectUtil.getField(cur, "curFrame");
+				if (v != null) idx = Std.int(v);
+			} else if (ReflectUtil.hasField(cur, "frameIndex")) {
+				var v2 = ReflectUtil.getField(cur, "frameIndex");
+				if (v2 != null) idx = Std.int(v2);
+			} else if (ReflectUtil.hasField(cur, "curIndex")) {
+				var v3 = ReflectUtil.getField(cur, "curIndex");
+				if (v3 != null) idx = Std.int(v3);
+			}
+		}
+		if (idx < 0) idx = 0;
+		return idx;
+	}
+
+	// Helper: play a safe LOOPING animation by preferred names; ensure it actually loops and has a positive frameRate.
+	function playLoopAnim(animCtrl:Dynamic, preferred:Array<String>, defaultRate:Int):Bool {
+		if (animCtrl == null) return false;
+		// Direct attempt: play candidate names in order until a curAnim exists
+		var playFn = ReflectUtil.hasField(animCtrl, "play") ? ReflectUtil.getField(animCtrl, "play") : null;
+		if (playFn == null) return false;
+		for (nm in preferred) {
+			playFn(nm, true);
+			var cur = null;
+			if (ReflectUtil.hasField(animCtrl, "curAnim")) cur = ReflectUtil.getField(animCtrl, "curAnim");
+			if (cur == null && ReflectUtil.hasField(animCtrl, "get_curAnim")) {
+				var getter = ReflectUtil.getField(animCtrl, "get_curAnim");
+				if (getter != null) cur = getter();
+			}
+			if (cur != null) {
+								// Ensure loop and a positive framerate
+				if (Reflect.hasField(cur, "looped")) Reflect.setField(cur, "looped", true);
+				if (Reflect.hasField(cur, "frameRate")) {
+					var fr = Reflect.field(cur, "frameRate");
+					if (fr == null || Std.int(fr) <= 0) Reflect.setField(cur, "frameRate", defaultRate);
+				}
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// Helper: create and play a loop from frame prefixes if declared animations don't exist
+	function ensureLoopByPrefix(owner:Dynamic, animName:String, prefixes:Array<String>, defaultRate:Int):Bool {
+		if (owner == null) return false;
+		var anim = ReflectUtil.hasField(owner, "animation") ? ReflectUtil.getField(owner, "animation") : null;
+		if (anim == null) return false;
+		var addByPrefixFn = ReflectUtil.hasField(anim, "addByPrefix") ? ReflectUtil.getField(anim, "addByPrefix") : null;
+		var playFn = ReflectUtil.hasField(anim, "play") ? ReflectUtil.getField(anim, "play") : null;
+		if (addByPrefixFn == null || playFn == null) return false;
+		for (p in prefixes) {
+			// Try creating an animation by prefix and play it
+			addByPrefixFn(animName, p, defaultRate, true);
+			playFn(animName, true);
+			var cur = null;
+			if (ReflectUtil.hasField(anim, "curAnim")) cur = ReflectUtil.getField(anim, "curAnim");
+			if (cur == null && ReflectUtil.hasField(anim, "get_curAnim")) {
+				var getter = ReflectUtil.getField(anim, "get_curAnim");
+				if (getter != null) cur = getter();
+			}
+			if (cur != null) {
+				if (Reflect.hasField(cur, "looped")) Reflect.setField(cur, "looped", true);
+				if (Reflect.hasField(cur, "frameRate")) {
+					var fr = Reflect.field(cur, "frameRate");
+					if (fr == null || Std.int(fr) <= 0) Reflect.setField(cur, "frameRate", defaultRate);
+				}
+				return true;
+			}
+		}
+		return false;
+	}
+
+	function ensureHoldCoverLoop(cov:Dynamic):Void {
+		if (cov == null) return;
+		var ok:Bool = false;
+		if (cov.animation != null) {
+			var names = [
+				"hold", "Hold", // estilos que nombran directamente la anim de sustain
+				"HoldCoverLoop", "holdCoverLoop", "holdLoop", "coverLoop",
+				"sustainLoop", "loop", "scroll", "cover", "idle", "default"
+			];
+			ok = playLoopAnim(cov.animation, names, 24);
+		}
+		if (!ok) {
+			var prefs = [
+				"holdCoverBlue", "HoldCoverBlue", "holdCover", "HoldCover"
+			];
+			ok = ensureLoopByPrefix(cov, "mikuHoldLoop", prefs, 24);
+		}
+		cov.visible = ok;
+		if (ok) { cov.alpha = 1.0; }
+	}
+
+	function ensureHoldCoverGlowLoop(glow:Dynamic):Void {
+		if (glow == null) return;
+		var ok:Bool = false;
+		if (glow.animation != null) {
+			var names = [
+				"hold", "Hold",
+				"HoldCoverGlowLoop", "holdCoverGlowLoop", "holdGlowLoop",
+				"coverGlowLoop", "loop", "scroll", "default", "idle", "cover"
+			];
+			ok = playLoopAnim(glow.animation, names, 24);
+		}
+		if (!ok) {
+			var prefs = [
+				"holdCoverGlowBlue", "HoldCoverGlowBlue", "holdCoverGlow", "HoldCoverGlow"
+			];
+			ok = ensureLoopByPrefix(glow, "mikuHoldGlowLoop", prefs, 24);
+		}
+		glow.visible = ok;
+		if (ok) { glow.alpha = 1.0; }
+	}
+
+	function getLikelyPlayerStrumlines(ps:Dynamic) {
+		var out = [];
+		// Common field names across FNF forks
+		var candidates = [
+			"playerStrumline", "playerStrumlines", "p1Strumline", "p1Strumlines",
+			"strumLine", "strumLines", "playerStrums", "p1Strums"
+		];
+		for (c in candidates) {
+			if (ReflectUtil.hasField(ps, c)) {
+				var v = ReflectUtil.getField(ps, c);
+				var pushed = false;
+				// Prefer array path when possible
+				if (v != null && Std.isOfType != null && Std.isOfType(v, Array)) {
+					for (item in v) if (item != null) out.push(item);
+					pushed = true;
+				} else if (v != null && Reflect.hasField(v, "length")) {
+					// Fallback: treat anything con length as iterable
+					for (item in v) if (item != null) out.push(item);
+					pushed = true;
+				}
+				if (!pushed && v != null) out.push(v);
+			}
+		}
+		return out;
+	}
+
+		// Count only player's judged note hits and apply score multiplier while draining.
 		override function onNoteHit(event:HitNoteScriptEvent) {
+			// While draining, multiply positive score gains by a configurable factor.
+			// Include bad/shit hits too (score x2), but keep gauge penalty behavior intact.
+			var j = event.judgement;
+			if (draining && scoreGainMultiplierDuringDrain != null && scoreGainMultiplierDuringDrain > 1.0) {
+				// Apply only to real hits (sick/good/bad/shit). Misses/ghosts are handled elsewhere.
+				if (j == 'sick' || j == 'good' || j == 'bad' || j == 'shit') {
+					var base:Int = event.score;
+					if (base > 0) {
+						var scaled:Float = base * scoreGainMultiplierDuringDrain;
+						// Round to nearest int to preserve fairness; engine expects Int.
+						event.score = Std.int(Math.round(scaled));
+					}
+				}
+			}
 			if (!this.active) return;
-			// increment and clamp at notesPerFull
-			notesHitCounter += 1;
-			if (notesHitCounter < 0) notesHitCounter = 0;
+			// Points system: +1p (sick/good), -0.5p (bad), -1p (shit)
+			if (!draining && j == 'sick') notesHitCounter += sickIncrementPoints;
+			else if (!draining && j == 'good') notesHitCounter += goodIncrementPoints;
+			else if (j == 'bad') notesHitCounter -= badPenaltySegments;
+			else if (j == 'shit') notesHitCounter -= shitPenaltySegments;
+			// clamp within [0, notesPerFull]
 			if (notesPerFull <= 0) notesPerFull = 1;
+			if (notesHitCounter < 0) notesHitCounter = 0.0;
+			if (notesHitCounter > notesPerFull) notesHitCounter = notesPerFull;
 			updateSegmentsFill();
+			// Flash: success on Sick/Good (only if not draining), failure on Bad/Shit always
+			if (!draining && (j == 'sick' || j == 'good')) triggerNextTick(); else if (j == 'bad' || j == 'shit') triggerFailTick();
+		}
+
+	function triggerNextTick() {
+		if (tickSprites == null || numSegments <= 0) return;
+		if (notesPerFull <= 0) notesPerFull = 1;
+		var progress:Float = notesHitCounter / notesPerFull;
+		if (progress < 0) progress = 0; if (progress > 1) progress = 1;
+		var filled:Int = Std.int(Math.floor(progress * numSegments + 1e-6));
+		if (filled >= numSegments) return;
+		var idx = filled;
+		if (idx < 0 || idx >= tickSprites.length) return;
+		var tk = tickSprites[idx];
+		if (tk == null) return;
+		tk.visible = true; tk.alpha = tickMaxAlpha; tk.color = tickColor;
+	}
+
+	// Failure tick flashes over the LAST filled segment (or first if none)
+	function triggerFailTick() {
+		if (tickSprites == null || numSegments <= 0) return;
+		if (notesPerFull <= 0) notesPerFull = 1;
+		var progress:Float = notesHitCounter / notesPerFull;
+		if (progress < 0) progress = 0; if (progress > 1) progress = 1;
+		var filled:Int = Std.int(Math.floor(progress * numSegments + 1e-6));
+		var idx = (filled > 0) ? (filled - 1) : 0;
+		if (idx < 0 || idx >= tickSprites.length) return;
+		var tk = tickSprites[idx];
+		if (tk == null) return;
+		tk.visible = true; tk.alpha = tickMaxAlpha; tk.color = failTickColor;
+	}
+
+		// Decrement on true misses as well
+		override function onNoteMiss(event:NoteScriptEvent) {
+			if (!this.active) return;
+			// Points system: -1p on miss
+			notesHitCounter -= missPenaltySegments;
+			if (notesPerFull <= 0) notesPerFull = 1;
+			if (notesHitCounter < 0) notesHitCounter = 0.0;
+			if (notesHitCounter > notesPerFull) notesHitCounter = notesPerFull;
+			updateSegmentsFill();
+			triggerFailTick();
+			// Instant health immunity correction for visible dips
+			if (healthDrainLockActive && PlayState.instance != null) {
+				var ps = PlayState.instance;
+				if (ps.health < healthFloorDuringDrain) ps.health = healthFloorDuringDrain;
+			}
+		}
+
+		// Optionally also decrement on ghost misses (pressing with no note)
+		override function onNoteGhostMiss(event:GhostMissNoteScriptEvent) {
+			if (!this.active) return;
+			// Points system: -1p on ghost miss
+			notesHitCounter -= ghostMissPenaltySegments;
+			if (notesPerFull <= 0) notesPerFull = 1;
+			if (notesHitCounter < 0) notesHitCounter = 0.0;
+			if (notesHitCounter > notesPerFull) notesHitCounter = notesPerFull;
+			updateSegmentsFill();
+			triggerFailTick();
+			// Instant health immunity correction for visible dips
+			if (healthDrainLockActive && PlayState.instance != null) {
+				var ps = PlayState.instance;
+				if (ps.health < healthFloorDuringDrain) ps.health = healthFloorDuringDrain;
+			}
 		}
 
 	function ensureBuilt() {
@@ -135,6 +825,16 @@ class MikuVoltagePanel extends ScriptedModule {
 		PlayState.instance.add(panelBorder);
 		PlayState.instance.add(panel);
 
+		// Panel glow overlay (added after panel so it renders above it but below segments)
+		panelGlow = new FlxSprite();
+		panelGlow.makeGraphic(4, 4, FlxColor.WHITE);
+		panelGlow.alpha = 0.0; panelGlow.visible = false;
+		panelGlow.scrollFactor.set();
+		panelGlow.cameras = [hudCam];
+		panelGlow.antialiasing = true;
+		panelGlow.zIndex = 740; // same layer as panel, added later -> on top of panel
+		PlayState.instance.add(panelGlow);
+
 		// Create segments, above the panel but below other HUD (keep tight order)
 		segmentSprites = [];
 		for (i in 0...numSegments) {
@@ -147,6 +847,30 @@ class MikuVoltagePanel extends ScriptedModule {
 			seg.zIndex = 741; // above panel
 			PlayState.instance.add(seg);
 			segmentSprites.push(seg);
+		}
+
+		// Segment breathing glow sprite (on top of segments but below tick flashes)
+		segGlow = new FlxSprite();
+		segGlow.makeGraphic(2, 2, FlxColor.WHITE);
+		segGlow.scrollFactor.set();
+		segGlow.cameras = [hudCam];
+		segGlow.antialiasing = true;
+		segGlow.alpha = 0.0; segGlow.visible = false;
+		segGlow.zIndex = 742; // below tick flashes
+		PlayState.instance.add(segGlow);
+		// Create tick overlay sprites (white flash) above segments
+		tickSprites = [];
+		for (i in 0...numSegments) {
+			var tick = new FlxSprite();
+			tick.makeGraphic(2, 2, FlxColor.WHITE);
+			tick.scrollFactor.set();
+			tick.cameras = [hudCam];
+			tick.antialiasing = true;
+			tick.alpha = 0.0;
+			tick.visible = false;
+			tick.zIndex = 743; // above segment glow
+			PlayState.instance.add(tick);
+			tickSprites.push(tick);
 		}
 		layout();
 		layoutSegments();
@@ -169,6 +893,8 @@ class MikuVoltagePanel extends ScriptedModule {
 
 		// Rebuild the graphic only if size changed to avoid GPU churn.
 		if (panel.width != side || panel.height != side) panel.makeGraphic(side, side, panelColor);
+		// Keep panelGlow the same size and position as the panel (overlay)
+		if (panelGlow != null && (Std.int(panelGlow.width) != side || Std.int(panelGlow.height) != side)) panelGlow.makeGraphic(side, side, FlxColor.WHITE);
 		// Border size (scaled thickness)
 		var t = Std.int(borderThickness * (scaleOffsetsWithHeight ? scale : 1.0));
 		if (t < 1) t = 1;
@@ -188,6 +914,7 @@ class MikuVoltagePanel extends ScriptedModule {
 				panel.y = y;
 				panelBorder.x = x - t;
 				panelBorder.y = y - t;
+				if (panelGlow != null) { panelGlow.x = x; panelGlow.y = y; }
 			panel.visible = true;
 				panelBorder.visible = true;
 			// Make sure render order updates if the engine rebuilds or re-sorts.
@@ -204,23 +931,36 @@ class MikuVoltagePanel extends ScriptedModule {
 		var side = Std.int((scaleSizeWithHeight ? baseSize * scale : baseSize));
 		if (side < 8) side = 8;
 		var sGap = Std.int(segmentGap * (scaleSegmentsWithHeight ? scale : 1.0));
-		var innerW = side; // segments sit directly atop the panel area
-		var innerH = side;
+		var innerW = side; // fill spans full width
+		var innerH = side; // stack vertically inside square
 		var totalGaps = (numSegments - 1) * sGap;
-		var segW = Std.int((innerW - totalGaps) / numSegments);
-		if (segW < 1) segW = 1;
+		var segH = Std.int((innerH - totalGaps) / numSegments);
+		if (segH < 1) segH = 1;
 		// Recompute color (in case icons changed) and apply to all segments
 		recalcSegmentColorFromIcon();
 		for (i in 0...segmentSprites.length) {
 			var seg = segmentSprites[i];
 			if (seg == null) continue;
-			// rebuild if size changed
-			if (seg.width != segW || seg.height != innerH) seg.makeGraphic(segW, innerH, segmentColor);
+			// rebuild if size changed (width spans full inner width)
+			if (Std.int(seg.width) != innerW || Std.int(seg.height) != segH) seg.makeGraphic(innerW, segH, segmentColor);
 			seg.color = segmentColor;
-			// position
-			var x = Std.int(panel.x + i * (segW + sGap));
-			var y = Std.int(panel.y);
+			// position bottom-to-top: i=0 bottom segment
+			var x = Std.int(panel.x);
+			var y = Std.int(panel.y + innerH - segH - i * (segH + sGap));
 			seg.x = x; seg.y = y;
+
+			// Align tick overlay bounds and position
+			if (tickSprites != null && i < tickSprites.length) {
+				var tk = tickSprites[i];
+				if (tk != null) {
+					if (Std.int(tk.width) != innerW || Std.int(tk.height) != segH) tk.makeGraphic(innerW, segH, FlxColor.WHITE);
+					tk.x = x; tk.y = y;
+				}
+			}
+		}
+		// Ensure segGlow matches a segment tile size
+		if (segGlow != null) {
+			if (Std.int(segGlow.width) != innerW || Std.int(segGlow.height) != segH) segGlow.makeGraphic(innerW, segH, FlxColor.WHITE);
 		}
 		updateSegmentsFill();
 	}
@@ -236,6 +976,7 @@ class MikuVoltagePanel extends ScriptedModule {
 		var filled:Int = Std.int(Math.floor(progress * numSegments + 1e-6));
 		for (i in 0...segmentSprites.length) {
 			var seg = segmentSprites[i]; if (seg == null) continue;
+			// with i=0 bottom, show bottom-most 'filled' segments
 			seg.visible = (i < filled);
 		}
 		if (PlayState.instance != null) PlayState.instance.refresh();
@@ -297,16 +1038,30 @@ class MikuVoltagePanel extends ScriptedModule {
 			if (panelBorder != null && PlayState.instance != null) {
 				PlayState.instance.remove(panelBorder, true);
 			}
+			if (panelGlow != null && PlayState.instance != null) {
+				PlayState.instance.remove(panelGlow, true);
+			}
 			if (segmentSprites != null && PlayState.instance != null) {
 				for (s in segmentSprites) if (s != null) PlayState.instance.remove(s, true);
 			}
+			if (segGlow != null && PlayState.instance != null) {
+				PlayState.instance.remove(segGlow, true);
+			}
+			if (tickSprites != null && PlayState.instance != null) {
+				for (t in tickSprites) if (t != null) PlayState.instance.remove(t, true);
+			}
 			if (panel != null) panel.destroy();
 			if (panelBorder != null) panelBorder.destroy();
+			if (panelGlow != null) panelGlow.destroy();
 			if (segmentSprites != null) { for (s in segmentSprites) if (s != null && s.destroy != null) s.destroy(); }
+			if (segGlow != null && segGlow.destroy != null) segGlow.destroy();
+			if (tickSprites != null) { for (t in tickSprites) if (t != null && t.destroy != null) t.destroy(); }
 			panel = null;
 			panelBorder = null;
+			panelGlow = null;
 			segmentSprites = null;
+			segGlow = null;
+			tickSprites = null;
 	}
 
 }
-

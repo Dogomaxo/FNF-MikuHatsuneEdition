@@ -1,0 +1,7 @@
+/**
+ * MHE_SharedState: cross-module shared flags for this mod (unique name to avoid collisions).
+ * hscript-friendly static holder to avoid Reflect on native classes.
+ */
+class MHE_SharedState {
+    public static var drainActive:Bool = false;
+}

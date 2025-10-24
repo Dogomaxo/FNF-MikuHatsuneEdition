@@ -45,7 +45,7 @@
     "noteSplash": {
       "assetPath": "shared:VoltagePowerASSETS/VP_NoteAssets/MIKU/vp_noteSplashes",
       "alpha": 0.8,
-      "offsets": [20, -11],
+      "offsets": [25, -5],
       "data": {
         "enabled": true,
         "leftSplashes": [
@@ -68,9 +68,9 @@
     },
     "holdNoteCover": {
       "assetPath": "",
-      "offsets": [0, -21],
       "alpha":1.0,
-      "scale": 1.2,
+      "scale": 1.0,
+      "offsets": [0, -21],
       "data": {
         "enabled": true,
         "left": {
