@@ -120,11 +120,11 @@ class MikuVoltagePanel extends ScriptedModule {
 	// Haptics (mobile vibration) config
 	// These values are multiplied by the engine preference intensity.
 	var hapticsEnabled:Bool = true;           // Additional toggle (engine prefs still apply)
-	var hapticsStartDuration:Float = 0.02;    // Seconds for the start tap
-	var hapticsStartAmplitude:Float = 0.18;   // 0..1 intensity for the start tap
-	var hapticsEndDuration:Float = 0.02;      // Seconds for the end tap
-	var hapticsEndAmplitude:Float = 0.18;     // 0..1 intensity for the end tap
-	var hapticsSharpness:Float = 0.9;         // 0..1, controls feel
+	var hapticsStartDuration:Float = 0.35;    // Seconds for the start tap
+	var hapticsStartAmplitude:Float = 0.92;   // 0..1 intensity for the start tap
+	var hapticsEndDuration:Float = 0.27;      // Seconds for the end tap
+	var hapticsEndAmplitude:Float = 0.52;     // 0..1 intensity for the end tap
+	var hapticsSharpness:Float = 0.15;         // 0..1, controls feel
 
 		public function new() {
 			// Priority: fairly early so it appears under score popups but above background HUD bits.
@@ -355,16 +355,16 @@ class MikuVoltagePanel extends ScriptedModule {
 	function triggerHapticStart():Void {
 		if (!hapticsEnabled) return;
 		if (HapticUtil != null && HapticUtil.hapticsAvailable) {
-			// No target modes passed from script; engine defaults will apply (usually ALL)
-			HapticUtil.vibrate(0, hapticsStartDuration, hapticsStartAmplitude, hapticsSharpness);
+			// Pass both ALL(2) and NOTES_ONLY(1) so it vibrates regardless of the user mode.
+			HapticUtil.vibrate(0, hapticsStartDuration, hapticsStartAmplitude, hapticsSharpness, [2, 1]);
 		}
 	}
 
 	function triggerHapticEnd():Void {
 		if (!hapticsEnabled) return;
 		if (HapticUtil != null && HapticUtil.hapticsAvailable) {
-			// No target modes passed from script; engine defaults will apply (usually ALL)
-			HapticUtil.vibrate(0, hapticsEndDuration, hapticsEndAmplitude, hapticsSharpness);
+			// Pass both ALL(2) and NOTES_ONLY(1) so it vibrates regardless of the user mode.
+			HapticUtil.vibrate(0, hapticsEndDuration, hapticsEndAmplitude, hapticsSharpness, [2, 1]);
 		}
 	}
 
