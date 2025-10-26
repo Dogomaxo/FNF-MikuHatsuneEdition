@@ -5,6 +5,8 @@ import funkin.Preferences;
 import flixel.FlxG;
 import flixel.FlxSprite;
 import flixel.util.FlxColor;
+import flixel.text.FlxText;
+import flixel.text.FlxTextBorderStyle;
 import funkin.util.ReflectUtil;
 import MHE_SharedState;
 import funkin.data.notestyle.NoteStyleRegistry;
@@ -50,16 +52,19 @@ class MikuVoltagePanel extends ScriptedModule {
 	var segmentGap:Int = 2;             // Small gap between segments (scaled)
 	var scaleSegmentsWithHeight:Bool = true; // Scale gaps and segment padding with height (recommended)
 
-	// Progress rules (points-based)
-	// Increments (in POINTS). With defaults below and notesPerFull=100:
-	// - Sick/Good add +1p, so 100 aciertos llenan al 100% (si no hay penalizaciones)
-	var goodIncrementPoints:Float = 1.0;
-	var sickIncrementPoints:Float = 1.0;
-	// Penalties in POINTS (negative values applied):
-	var badPenaltySegments:Float = 0.35;     // interpreted as POINTS to subtract on 'bad'
-	var shitPenaltySegments:Float = 0.5;    // interpreted as POINTS to subtract on 'shit'
-	var missPenaltySegments:Float = 1.0;    // interpreted as POINTS to subtract on true miss
-	var ghostMissPenaltySegments:Float = 1.0; // interpreted as POINTS to subtract on ghost miss (no tocado)
+	// Progress rules (segment-based)
+	// Ahora defines cuántos eventos hacen subir/bajar 1 SEGMENTO (números enteros).
+	// La conversión a puntos se hace con: pointsPerSegment = notesPerFull / numSegments.
+	// - Para ganar: cada 'sick' suma pointsPerSegment / sickHitsPerSegment.
+	// - Para ganar: cada 'good' suma pointsPerSegment / goodHitsPerSegment.
+	// - Para penalizar: cada 'bad/shit/miss/ghost' resta pointsPerSegment / <eventsPerSegment>.
+	// Recomendado: empieza con valores pequeños (p.ej. 5-10) y ajusta.
+	var sickHitsPerSegment:Int = 14;      // Nº de SICK para subir 1 segmento
+	var goodHitsPerSegment:Int = 15;     // Nº de GOOD para subir 1 segmento
+	var badEventsPerSegment:Int = 10;     // Nº de BAD para bajar 1 segmento
+	var shitEventsPerSegment:Int = 8;    // Nº de SHIT para bajar 1 segmento
+	var missEventsPerSegment:Int = 7;    // Nº de MISS (nota real) para bajar 1 segmento
+	var ghostEventsPerSegment:Int = 5;   // Nº de GHOST MISS (tecla sin nota) para bajar 1 segmento
 
 	// Initial fill at song start (as a fraction of the full meter)
 	// 0.0 = empty (default), 1.0 = fully charged
@@ -78,6 +83,7 @@ class MikuVoltagePanel extends ScriptedModule {
 	var tickMaxAlpha:Float = 1.0;
 	var tickColor:FlxColor = FlxColor.WHITE; // success tick
 	var failTickColor:FlxColor = FlxColor.fromRGB(212, 97, 188); // failure tick color
+	var failTickFullAlpha:Float = 0.6; // alpha para overlay rosado cuando está al 100%
 	// Drain mode (SHIFT to activate when full)
 	var drainDurationSec:Float = 10.0; // seconds to drain from full -> empty
 	var draining:Bool = false;
@@ -110,12 +116,30 @@ class MikuVoltagePanel extends ScriptedModule {
 	var panelGlowMaxAlpha:Float = 0.38;
 	var segmentGlowMinAlpha:Float = 0.20;
 	var segmentGlowMaxAlpha:Float = 0.55;
+	// Courtesy buffer config: hidden extra capacity above 100% (in segments)
+	var courtesyEnabled:Bool = true;
+	var courtesySegments:Int = 1; // 1 segmento = ~10% extra invisible al llegar a 100%
+	// Track last normalized progress to implement directional hysteresis (fill vs drain)
+	var _lastProgress:Float = 0.0;
+	// Track last visible filled segment count to prevent flicker (monotonic hysteresis)
+	var _lastFilled:Int = 0;
+	// Track if the gauge has ever reached full during this song
+	var _hasReachedFullOnce:Bool = false;
 	var lastW:Int = -1;
 	var lastH:Int = -1;
 	var lastDownscroll:Null<Bool> = null;
 		var builtState:Dynamic = null; // Track the PlayState we attached to
   // Mobile/touch: engine-managed button overlay for panel taps
   var tapButton:FunkinButton = null;
+
+	// Debug text fields
+	var percentTextVisual:FlxText = null;   // Visual (floor) % aligned with segment thresholds
+	var percentTextReal:FlxText = null;      // Real internal % (0..110%) with two decimals
+	var percentTextTheo:FlxText = null;      // Theoretical 100% % (clamped 0..100) with two decimals (light green)
+	// Cache last shown percent strings to avoid churn
+	var _lastPercentInt:Int = -1;            // for visual
+	var _lastRealStr:String = null;
+	var _lastTheoStr:String = null;
 
 	// Haptics (mobile vibration) config
 	// These values are multiplied by the engine preference intensity.
@@ -125,6 +149,9 @@ class MikuVoltagePanel extends ScriptedModule {
 	var hapticsEndDuration:Float = 0.27;      // Seconds for the end tap
 	var hapticsEndAmplitude:Float = 0.52;     // 0..1 intensity for the end tap
 	var hapticsSharpness:Float = 0.15;         // 0..1, controls feel
+
+	// Debug UI
+	var showPercentDebug:Bool = true; // Toggle to show a small percentage text next to the square
 
 		public function new() {
 			// Priority: fairly early so it appears under score popups but above background HUD bits.
@@ -154,7 +181,14 @@ class MikuVoltagePanel extends ScriptedModule {
 		  draining = false;
 				// expose drain flag to other HUD modules (shared singleton)
 				MHE_SharedState.drainActive = false;
+			// reset progress trackers
+			if (notesPerFull <= 0) notesPerFull = 1;
+			_lastProgress = (notesHitCounter / notesPerFull);
+			if (_lastProgress < 0) _lastProgress = 0; if (_lastProgress > 1) _lastProgress = 1;
+			_lastFilled = 0;
+			_hasReachedFullOnce = (_lastProgress >= 1.0 - 1e-9);
 			drainGlowPhase = 0.0;
+			_lastPercentInt = -1; _lastRealStr = null; _lastTheoStr = null;
 			// ensure visual style is normal at song start
 			this.endDrainVisualStyleSwap();
 			// resample the color from the icon if possible
@@ -165,10 +199,17 @@ class MikuVoltagePanel extends ScriptedModule {
 	override function onSongRetry(e) {
 		// Also reset on quick restarts
 		notesHitCounter = computeInitialChargePoints();
-			draining = false;
+		draining = false;
 				// expose drain flag to other HUD modules (shared singleton)
 				MHE_SharedState.drainActive = false;
+			// reset trackers
+			if (notesPerFull <= 0) notesPerFull = 1;
+			_lastProgress = (notesHitCounter / notesPerFull);
+			if (_lastProgress < 0) _lastProgress = 0; if (_lastProgress > 1) _lastProgress = 1;
+			_lastFilled = 0;
+			_hasReachedFullOnce = (_lastProgress >= 1.0 - 1e-9);
 			drainGlowPhase = 0.0;
+			_lastPercentInt = -1; _lastRealStr = null; _lastTheoStr = null;
 			this.endDrainVisualStyleSwap();
 		updateSegmentsFill();
 	}
@@ -191,12 +232,17 @@ class MikuVoltagePanel extends ScriptedModule {
 					lastW = w; lastH = h; lastDownscroll = ds;
 				}
 			}
-					// Activate drain on SHIFT (desktop) or via engine touch button (mobile) if the gauge is full
+					// Activation: using the charge between 100%..110% drops instantly to 90% and starts draining
 					if (!draining) {
 						if (notesPerFull <= 0) notesPerFull = 1;
-						var isFull = (notesHitCounter >= notesPerFull - 1e-6);
+						var progressVisual:Float = notesHitCounter / notesPerFull;
+						if (progressVisual < 0) progressVisual = 0; if (progressVisual > 1) progressVisual = 1;
+						// Consider complete if internal is at or above 100% (within courtesy window)
+						var isComplete:Bool = (notesHitCounter >= notesPerFull - 1e-6);
 						var tapPressed:Bool = (tapButton != null && !ControlsHandler.usingExternalInputDevice && tapButton.justPressed);
-						if (isFull && ((FlxG.keys != null && FlxG.keys.justPressed != null && FlxG.keys.justPressed.SHIFT) || tapPressed)) {
+						if (isComplete && ((FlxG.keys != null && FlxG.keys.justPressed != null && FlxG.keys.justPressed.SHIFT) || tapPressed)) {
+							// 2) Al usar la carga cuando está completa (entre 100% y 110%), empezar a bajar desde 100%
+							notesHitCounter = notesPerFull;
 							draining = true;
 							// set drain flag for other HUD modules (e.g., show "protected")
 							MHE_SharedState.drainActive = true;
@@ -216,7 +262,12 @@ class MikuVoltagePanel extends ScriptedModule {
 						var dur = (drainDurationSec <= 0) ? 10.0 : drainDurationSec;
 						var rate = notesPerFull / dur; // points per second
 						var dec = rate * FlxG.elapsed;
+						var prevDrain:Float = notesHitCounter;
 						notesHitCounter -= dec;
+						// 3) Si cruzamos de >100% a <=100% durante el drain, caer directo a 90%
+						if (courtesyEnabled && prevDrain > notesPerFull + 1e-6 && notesHitCounter <= notesPerFull + 1e-6) {
+							notesHitCounter = notesPerFull - getPointsPerSegment() * courtesySegments;
+						}
 						if (notesHitCounter <= 0) { notesHitCounter = 0; draining = false; }
 						updateSegmentsFill();
 					}
@@ -256,13 +307,10 @@ class MikuVoltagePanel extends ScriptedModule {
 							panelGlow.alpha = 0.0;
 						}
 					}
-					// Segment breathing glow follows the currently draining (last filled) segment
+						// Segment breathing glow follows the currently draining (last visible filled) segment
 					if (segGlow != null) {
-						if (draining && notesPerFull > 0 && segmentSprites != null && segmentSprites.length > 0) {
-							var progress:Float = notesHitCounter / notesPerFull;
-							if (progress < 0) progress = 0; if (progress > 1) progress = 1;
-							var filled:Int = Std.int(Math.floor(progress * numSegments + 1e-6));
-							var idx = filled - 1; // last filled
+							if (draining && notesPerFull > 0 && segmentSprites != null && segmentSprites.length > 0) {
+								var idx = _lastFilled - 1; // last actually visible filled segment
 							if (idx >= 0 && idx < segmentSprites.length) {
 								var ref = segmentSprites[idx];
 								segGlow.visible = true;
@@ -276,6 +324,42 @@ class MikuVoltagePanel extends ScriptedModule {
 							}
 						} else {
 							segGlow.visible = false; segGlow.alpha = 0.0;
+						}
+					}
+					// Update percent debug texts
+					if (showPercentDebug) {
+						if (notesPerFull <= 0) notesPerFull = 1;
+						var rawPercent:Float = (notesHitCounter / notesPerFull) * 100.0; // may exceed 100 with courtesy
+						var maxPctAll:Float = (getInternalMax() / notesPerFull) * 100.0; // up to 110
+						if (rawPercent < 0) rawPercent = 0; if (rawPercent > maxPctAll) rawPercent = maxPctAll;
+						// Visual (floor)
+						var visInt:Int = Std.int(Math.floor(rawPercent + 1e-6));
+						if (percentTextVisual != null && visInt != _lastPercentInt) {
+							percentTextVisual.text = "vis: " + visInt + "%";
+							_lastPercentInt = visInt;
+						}
+						// Real (two decimals, up to internal max)
+						var realStr = toTwoDecimalsString((notesHitCounter / notesPerFull) * 100.0, 0.0, maxPctAll);
+						if (percentTextReal != null && realStr != _lastRealStr) {
+							percentTextReal.text = "real: " + realStr + "%";
+							_lastRealStr = realStr;
+						}
+						// Theoretical (0..100) mapping courtesy as an offset: internal 110..100 -> theoretical 100..90
+						var internalPct:Float = (notesHitCounter / notesPerFull) * 100.0;
+						var courtesyPct:Float = (courtesyEnabled && courtesySegments > 0) ? (courtesySegments * (100.0 / Math.max(1, numSegments))) : 0.0;
+						var theoPercent:Float;
+						if (courtesyEnabled && _hasReachedFullOnce && internalPct >= 100.0 - 1e-6) {
+							// While at/above 100% internal, subtract the courtesy headroom for the theoretical value.
+							theoPercent = internalPct - courtesyPct;
+							if (theoPercent < 0) theoPercent = 0; if (theoPercent > 100) theoPercent = 100;
+						} else {
+							// Below 100 internal, theoretical is just the clamped internal percent.
+							var t = internalPct; if (t < 0) t = 0; if (t > 100) t = 100; theoPercent = t;
+						}
+						var theoStr = toTwoDecimalsString(theoPercent, 0.0, 100.0);
+						if (percentTextTheo != null && theoStr != _lastTheoStr) {
+							percentTextTheo.text = "teor: " + theoStr + "%";
+							_lastTheoStr = theoStr;
 						}
 					}
 			// Update tick fade-out
@@ -374,7 +458,48 @@ class MikuVoltagePanel extends ScriptedModule {
 		if (Math.isNaN(per)) per = 0.0;
 		if (per < 0) per = 0; if (per > 1) per = 1;
 		var full = (notesPerFull <= 0) ? 1 : notesPerFull;
+		// Si per=1.0 y hay cortesía, iniciar directamente en 110% interno (invisible),
+		// pero para el resto del sistema matemático se seguirá tratando como 100%.
+		if (courtesyEnabled && per >= 1.0 - 1e-9) {
+			return getInternalMax();
+		}
 		return per * full;
+	}
+
+	// Max points including the hidden courtesy buffer above 100%
+	function getInternalMax():Float {
+		if (notesPerFull <= 0) notesPerFull = 1;
+		var extra:Float = 0.0;
+		if (courtesyEnabled && courtesySegments > 0) extra = getPointsPerSegment() * courtesySegments;
+		return notesPerFull + extra;
+	}
+
+	// ===== Segment helpers: convertir eventos -> puntos =====
+	function getPointsPerSegment():Float {
+		var full:Float = (notesPerFull <= 0) ? 1.0 : notesPerFull;
+		var segments:Float = (numSegments <= 0) ? 1.0 : numSegments;
+		return full / segments;
+	}
+
+	// Devuelve cuántos puntos suma/resta un único evento dado un
+	// "eventos por segmento". Si eps <= 0, se trata como 1.
+	function pointsForEventCount(eps:Int):Float {
+		var pps = getPointsPerSegment();
+		if (eps <= 0) return pps; // 1 evento = 1 segmento
+		return pps / eps;
+	}
+
+	// Visual hysteresis direccional:
+	// - Al SUBIR (llenando): usa FLOOR(progress * numSegments) -> un segmento aparece cuando llegas a su umbral.
+	// - Al BAJAR (drenando/penalidades): usa CEIL(progress * numSegments - epsilon) -> el segmento se mantiene visible hasta agotarse.
+	function getVisibleFilledSegments(progress:Float, decreasing:Bool = false):Int {
+		if (numSegments <= 0) return 0;
+		if (progress < 0) progress = 0; if (progress > 1) progress = 1;
+		var v:Float = progress * numSegments;
+		var filled:Int;
+		if (decreasing) filled = Std.int(Math.ceil(v - 1e-6)); else filled = Std.int(Math.floor(v + 1e-6));
+		if (filled < 0) filled = 0; if (filled > numSegments) filled = numSegments;
+		return filled;
 	}
 
 	// ===== Runtime NoteStyle Swap (reflective and safe) =====
@@ -784,7 +909,7 @@ class MikuVoltagePanel extends ScriptedModule {
 		return out;
 	}
 
-		// Count only player's judged note hits and apply score multiplier while draining.
+	// Count only player's judged note hits and apply score multiplier while draining.
 		override function onNoteHit(event:HitNoteScriptEvent) {
 			// While draining, multiply positive score gains by a configurable factor.
 			// Include bad/shit hits too (score x2), but keep gauge penalty behavior intact.
@@ -801,15 +926,31 @@ class MikuVoltagePanel extends ScriptedModule {
 				}
 			}
 			if (!this.active) return;
-			// Points system: +1p (sick/good), -0.5p (bad), -1p (shit)
-			if (!draining && j == 'sick') notesHitCounter += sickIncrementPoints;
-			else if (!draining && j == 'good') notesHitCounter += goodIncrementPoints;
-			else if (j == 'bad') notesHitCounter -= badPenaltySegments;
-			else if (j == 'shit') notesHitCounter -= shitPenaltySegments;
-			// clamp within [0, notesPerFull]
+			// Sistema por segmentos: convierte eventos en puntos automáticamente.
+			var prev:Float = notesHitCounter;
+			if (!draining && j == 'sick') notesHitCounter += pointsForEventCount(sickHitsPerSegment);
+			else if (!draining && j == 'good') notesHitCounter += pointsForEventCount(goodHitsPerSegment);
+			else if (j == 'bad') notesHitCounter -= pointsForEventCount(badEventsPerSegment);
+			else if (j == 'shit') notesHitCounter -= pointsForEventCount(shitEventsPerSegment);
+			// Courtesy buffer behaviors
+			if (courtesyEnabled) {
+				var eps = 1e-6;
+				var full:Float = notesPerFull;
+				var internalMax:Float = getInternalMax();
+				// 1) Al llegar al 100%, pasa al instante a 110%
+				if (prev < full - eps && notesHitCounter >= full - eps) {
+					notesHitCounter = internalMax;
+				}
+				// 3) Al pasar de 110% a 100% (o cruzar hacia <=100%), cae directo a 90%
+				if (prev > full + eps && notesHitCounter <= full + eps) {
+					notesHitCounter = full - getPointsPerSegment() * courtesySegments; // 90%
+				}
+			}
+			// clamp within [0, internalMax]
 			if (notesPerFull <= 0) notesPerFull = 1;
+			var maxP = courtesyEnabled ? getInternalMax() : notesPerFull;
 			if (notesHitCounter < 0) notesHitCounter = 0.0;
-			if (notesHitCounter > notesPerFull) notesHitCounter = notesPerFull;
+			if (notesHitCounter > maxP) notesHitCounter = maxP;
 			updateSegmentsFill();
 			// Flash: success on Sick/Good (only if not draining), failure on Bad/Shit always
 			if (!draining && (j == 'sick' || j == 'good')) triggerNextTick(); else if (j == 'bad' || j == 'shit') triggerFailTick();
@@ -818,25 +959,35 @@ class MikuVoltagePanel extends ScriptedModule {
 	function triggerNextTick() {
 		if (tickSprites == null || numSegments <= 0) return;
 		if (notesPerFull <= 0) notesPerFull = 1;
-		var progress:Float = notesHitCounter / notesPerFull;
-		if (progress < 0) progress = 0; if (progress > 1) progress = 1;
-		var filled:Int = Std.int(Math.floor(progress * numSegments + 1e-6));
-		if (filled >= numSegments) return;
-		var idx = filled;
+		// Mostrar el tick blanco en el PRÓXIMO segmento a llenar desde lo que está VISUALMENTE lleno
+		var visibleFilled:Int = _lastFilled;
+		if (visibleFilled >= numSegments) return;
+		var idx = visibleFilled;
 		if (idx < 0 || idx >= tickSprites.length) return;
 		var tk = tickSprites[idx];
 		if (tk == null) return;
 		tk.visible = true; tk.alpha = tickMaxAlpha; tk.color = tickColor;
 	}
 
-	// Failure tick flashes over the LAST filled segment (or first if none)
+	// Failure tick behavior
 	function triggerFailTick() {
 		if (tickSprites == null || numSegments <= 0) return;
 		if (notesPerFull <= 0) notesPerFull = 1;
-		var progress:Float = notesHitCounter / notesPerFull;
-		if (progress < 0) progress = 0; if (progress > 1) progress = 1;
-		var filled:Int = Std.int(Math.floor(progress * numSegments + 1e-6));
-		var idx = (filled > 0) ? (filled - 1) : 0;
+		// Usar la cantidad de segmentos realmente visibles para alinear el tick rosado
+		var visibleFilled:Int = _lastFilled;
+		// 1) Si está vacío, no mostrar tick rosado
+		if (visibleFilled <= 0) return;
+		// 2) Si está al 100% visual, overlay rosado en todo el indicador (más transparente)
+		if (visibleFilled >= numSegments) {
+			for (i in 0...numSegments) {
+				if (i < 0 || i >= tickSprites.length) continue;
+				var t = tickSprites[i]; if (t == null) continue;
+				t.visible = true; t.alpha = tickMaxAlpha * failTickFullAlpha; t.color = failTickColor;
+			}
+			return;
+		}
+		// 3) Caso normal: tick rosado en el ÚLTIMO segmento visible
+		var idx = visibleFilled - 1;
 		if (idx < 0 || idx >= tickSprites.length) return;
 		var tk = tickSprites[idx];
 		if (tk == null) return;
@@ -846,12 +997,24 @@ class MikuVoltagePanel extends ScriptedModule {
 		// Decrement on true misses as well
 		override function onNoteMiss(event:NoteScriptEvent) {
 			if (!this.active) return;
-			// Points system: -1p on miss
-			notesHitCounter -= missPenaltySegments;
+			// Segmentos: cada MISS resta pointsPerSegment / missEventsPerSegment
+			var prev:Float = notesHitCounter;
+			notesHitCounter -= pointsForEventCount(missEventsPerSegment);
 			if (notesPerFull <= 0) notesPerFull = 1;
 			if (notesHitCounter < 0) notesHitCounter = 0.0;
-			if (notesHitCounter > notesPerFull) notesHitCounter = notesPerFull;
+			var full = notesPerFull;
+			if (courtesyEnabled) {
+				var eps = 1e-6;
+				// 3) Al cruzar de >100% a <=100%, forzar a 90%
+				if (prev > full + eps && notesHitCounter <= full + eps) {
+					notesHitCounter = full - getPointsPerSegment() * courtesySegments;
+				}
+			}
+			var maxP = courtesyEnabled ? getInternalMax() : notesPerFull;
+			if (notesHitCounter > maxP) notesHitCounter = maxP;
 			updateSegmentsFill();
+			// Al bajar, ya no estamos en full
+			if (notesPerFull > 0 && (notesHitCounter / notesPerFull) < 1.0 - 1e-9) _hasReachedFullOnce = _hasReachedFullOnce; // no-op but kept for clarity
 			triggerFailTick();
 			// Instant health immunity correction for visible dips
 			if (healthDrainLockActive && PlayState.instance != null) {
@@ -863,11 +1026,20 @@ class MikuVoltagePanel extends ScriptedModule {
 		// Optionally also decrement on ghost misses (pressing with no note)
 		override function onNoteGhostMiss(event:GhostMissNoteScriptEvent) {
 			if (!this.active) return;
-			// Points system: -1p on ghost miss
-			notesHitCounter -= ghostMissPenaltySegments;
+			// Segmentos: cada GHOST MISS resta pointsPerSegment / ghostEventsPerSegment
+			var prev:Float = notesHitCounter;
+			notesHitCounter -= pointsForEventCount(ghostEventsPerSegment);
 			if (notesPerFull <= 0) notesPerFull = 1;
 			if (notesHitCounter < 0) notesHitCounter = 0.0;
-			if (notesHitCounter > notesPerFull) notesHitCounter = notesPerFull;
+			var full = notesPerFull;
+			if (courtesyEnabled) {
+				var eps = 1e-6;
+				if (prev > full + eps && notesHitCounter <= full + eps) {
+					notesHitCounter = full - getPointsPerSegment() * courtesySegments;
+				}
+			}
+			var maxP = courtesyEnabled ? getInternalMax() : notesPerFull;
+			if (notesHitCounter > maxP) notesHitCounter = maxP;
 			updateSegmentsFill();
 			triggerFailTick();
 			// Instant health immunity correction for visible dips
@@ -960,6 +1132,45 @@ class MikuVoltagePanel extends ScriptedModule {
 			tapButton.zIndex = 744;
 			PlayState.instance.add(tapButton);
 		}
+
+		// Create debug percent texts (optional)
+		if (showPercentDebug) {
+			var scale = FlxG.height / 720.0;
+			var sz = Std.int(18 * scale); if (sz < 8) sz = 8;
+			if (percentTextVisual == null) {
+				percentTextVisual = new FlxText(0, 0, 0, "");
+				percentTextVisual.scrollFactor.set();
+				percentTextVisual.cameras = [hudCam];
+				percentTextVisual.antialiasing = true;
+				percentTextVisual.setFormat(null, sz, FlxColor.WHITE, "left");
+				percentTextVisual.setBorderStyle(FlxTextBorderStyle.OUTLINE, FlxColor.BLACK, 1.0);
+				percentTextVisual.text = "vis: 0%";
+				percentTextVisual.zIndex = 745;
+				PlayState.instance.add(percentTextVisual);
+			}
+			if (percentTextReal == null) {
+				percentTextReal = new FlxText(0, 0, 0, "");
+				percentTextReal.scrollFactor.set();
+				percentTextReal.cameras = [hudCam];
+				percentTextReal.antialiasing = true;
+				percentTextReal.setFormat(null, sz, FlxColor.CYAN, "left");
+				percentTextReal.setBorderStyle(FlxTextBorderStyle.OUTLINE, FlxColor.BLACK, 1.0);
+				percentTextReal.text = "real: 0.00%";
+				percentTextReal.zIndex = 745;
+				PlayState.instance.add(percentTextReal);
+			}
+			if (percentTextTheo == null) {
+				percentTextTheo = new FlxText(0, 0, 0, "");
+				percentTextTheo.scrollFactor.set();
+				percentTextTheo.cameras = [hudCam];
+				percentTextTheo.antialiasing = true;
+				percentTextTheo.setFormat(null, sz, FlxColor.fromRGB(144, 238, 144), "left"); // light green
+				percentTextTheo.setBorderStyle(FlxTextBorderStyle.OUTLINE, FlxColor.BLACK, 1.0);
+				percentTextTheo.text = "teor: 0.00%";
+				percentTextTheo.zIndex = 745;
+				PlayState.instance.add(percentTextTheo);
+			}
+		}
 		layout();
 		layoutSegments();
 		updateSegmentsFill();
@@ -1012,6 +1223,34 @@ class MikuVoltagePanel extends ScriptedModule {
 				tapButton.y = panel.y;
 				// Hide when using external input device to avoid conflicts
 				tapButton.visible = !ControlsHandler.usingExternalInputDevice;
+			}
+			// Position debug texts next to the square
+			if (showPercentDebug) {
+				var rightPad = Std.int(8 * sOff);
+				var sz = Std.int(18 * (scaleOffsetsWithHeight ? scale : 1.0)); if (sz < 8) sz = 8;
+				var baseX = panelBorder.x + panelBorder.width + rightPad;
+				var lineGap = Std.int(2 * sOff);
+				// Ensure sizes (in case of resolution change)
+				if (percentTextVisual != null) { percentTextVisual.visible = true; percentTextVisual.setFormat(null, sz, FlxColor.WHITE, "left"); percentTextVisual.setBorderStyle(FlxTextBorderStyle.OUTLINE, FlxColor.BLACK, 1.0); }
+				if (percentTextReal != null) { percentTextReal.visible = true; percentTextReal.setFormat(null, sz, FlxColor.CYAN, "left"); percentTextReal.setBorderStyle(FlxTextBorderStyle.OUTLINE, FlxColor.BLACK, 1.0); }
+				if (percentTextTheo != null) { percentTextTheo.visible = true; percentTextTheo.setFormat(null, sz, FlxColor.fromRGB(144, 238, 144), "left"); percentTextTheo.setBorderStyle(FlxTextBorderStyle.OUTLINE, FlxColor.BLACK, 1.0); }
+				// Compute vertical positions stacked: visual, real, theoretical
+				var totalH = 0;
+				if (percentTextVisual != null) totalH += Std.int(percentTextVisual.height);
+				if (percentTextReal != null) totalH += Std.int(percentTextReal.height) + lineGap;
+				if (percentTextTheo != null) totalH += Std.int(percentTextTheo.height) + lineGap;
+				// Center stack vertically next to panel
+				var startY = Std.int(panel.y + (side / 2) - (totalH / 2));
+				var curY = startY;
+				if (percentTextVisual != null) { percentTextVisual.x = baseX; percentTextVisual.y = curY; curY += Std.int(percentTextVisual.height) + lineGap; }
+				if (percentTextReal != null) { percentTextReal.x = baseX; percentTextReal.y = curY; curY += Std.int(percentTextReal.height) + lineGap; }
+				if (percentTextTheo != null) { percentTextTheo.x = baseX; percentTextTheo.y = curY; }
+			} else {
+				// Fully tear down debug texts when disabled to remove any footprint
+				if (percentTextVisual != null || percentTextReal != null || percentTextTheo != null) {
+					destroyDebugTexts();
+					_lastPercentInt = -1; _lastRealStr = null; _lastTheoStr = null;
+				}
 			}
 			// Make sure render order updates if the engine rebuilds or re-sorts.
 			if (PlayState.instance != null) PlayState.instance.refresh();
@@ -1069,12 +1308,43 @@ class MikuVoltagePanel extends ScriptedModule {
 		if (notesPerFull <= 0) notesPerFull = 1;
 		var progress:Float = notesHitCounter / notesPerFull;
 		if (progress < 0) progress = 0; if (progress > 1) progress = 1;
-		var filled:Int = Std.int(Math.floor(progress * numSegments + 1e-6));
+		var decreasing:Bool = (progress + 1e-6 < _lastProgress);
+		// Base thresholds
+		var v:Float = progress * numSegments;
+		var baseFloor:Int = Std.int(Math.floor(v + 1e-6));
+		if (baseFloor < 0) baseFloor = 0; if (baseFloor > numSegments) baseFloor = numSegments;
+		var baseCeil:Int = Std.int(Math.ceil(v - 1e-6));
+		if (baseCeil < 0) baseCeil = 0; if (baseCeil > numSegments) baseCeil = numSegments;
+		var proposed:Int;
+		if (decreasing) {
+			// While decreasing, never create a new segment that wasn't visible before.
+			// Hold until threshold using ceil, but clamp by previous visible count.
+			proposed = baseCeil;
+			if (proposed > _lastFilled) proposed = _lastFilled;
+			// Also never drop below the floor baseline due to rounding noise while decreasing
+			if (proposed < baseFloor) proposed = baseFloor;
+		} else {
+			// While increasing, never hide segments; show on threshold using floor.
+			proposed = baseFloor;
+			if (proposed < _lastFilled) proposed = _lastFilled;
+		}
+		var filled:Int = proposed;
+		// Guard: si el porcentaje visual redondeado es 0%, no mostrar ningún segmento
+		// (evita que el primer segmento "se quede pegado" por decimales cerca de 0%).
+		var visualPercentInt:Int = Std.int(Math.round(progress * 100.0));
+		if (visualPercentInt <= 0) filled = 0;
+		// Early out if nothing changes; still update lastProgress for correct direction detection.
+		if (filled == _lastFilled) {
+			_lastProgress = progress;
+			return;
+		}
 		for (i in 0...segmentSprites.length) {
 			var seg = segmentSprites[i]; if (seg == null) continue;
 			// with i=0 bottom, show bottom-most 'filled' segments
 			seg.visible = (i < filled);
 		}
+		_lastProgress = progress;
+		_lastFilled = filled;
 		if (PlayState.instance != null) PlayState.instance.refresh();
 	}
 
@@ -1149,6 +1419,9 @@ class MikuVoltagePanel extends ScriptedModule {
 			if (tapButton != null && PlayState.instance != null) {
 				PlayState.instance.remove(tapButton, true);
 			}
+			if (percentTextVisual != null && PlayState.instance != null) { PlayState.instance.remove(percentTextVisual, true); }
+			if (percentTextReal != null && PlayState.instance != null) { PlayState.instance.remove(percentTextReal, true); }
+			if (percentTextTheo != null && PlayState.instance != null) { PlayState.instance.remove(percentTextTheo, true); }
 			if (panel != null) panel.destroy();
 			if (panelBorder != null) panelBorder.destroy();
 			if (panelGlow != null) panelGlow.destroy();
@@ -1156,6 +1429,9 @@ class MikuVoltagePanel extends ScriptedModule {
 			if (segGlow != null && segGlow.destroy != null) segGlow.destroy();
 			if (tickSprites != null) { for (t in tickSprites) if (t != null && t.destroy != null) t.destroy(); }
 			if (tapButton != null && tapButton.destroy != null) tapButton.destroy();
+			if (percentTextVisual != null && percentTextVisual.destroy != null) percentTextVisual.destroy();
+			if (percentTextReal != null && percentTextReal.destroy != null) percentTextReal.destroy();
+			if (percentTextTheo != null && percentTextTheo.destroy != null) percentTextTheo.destroy();
 			panel = null;
 			panelBorder = null;
 			panelGlow = null;
@@ -1163,6 +1439,44 @@ class MikuVoltagePanel extends ScriptedModule {
 			segGlow = null;
 			tickSprites = null;
 			tapButton = null;
+			percentTextVisual = null;
+			percentTextReal = null;
+			percentTextTheo = null;
+	}
+
+	// Explicitly destroy debug text UI and detach from state
+	function destroyDebugTexts():Void {
+		var ps = PlayState.instance;
+		if (ps != null) {
+			if (percentTextVisual != null) ps.remove(percentTextVisual, true);
+			if (percentTextReal != null) ps.remove(percentTextReal, true);
+			if (percentTextTheo != null) ps.remove(percentTextTheo, true);
+		}
+		if (percentTextVisual != null && percentTextVisual.destroy != null) percentTextVisual.destroy();
+		if (percentTextReal != null && percentTextReal.destroy != null) percentTextReal.destroy();
+		if (percentTextTheo != null && percentTextTheo.destroy != null) percentTextTheo.destroy();
+		percentTextVisual = null;
+		percentTextReal = null;
+		percentTextTheo = null;
+	}
+
+	// Helper to build a two-decimal string with clamping and zero-padding without float artifacts
+	function toTwoDecimalsString(value:Float, min:Float, max:Float):String {
+		var v = value;
+		if (Math.isNaN(v)) v = 0.0;
+		if (v < min) v = min; if (v > max) v = max;
+		var cents:Int = Std.int(Math.round(v * 100.0));
+		var whole:Int = Std.int(cents / 100);
+		var frac:Int = Math.abs(cents % 100);
+		return Std.string(whole) + "." + lpad(Std.string(frac), "0", 2);
+	}
+
+	// Minimal left-pad helper to avoid importing StringTools in hscript
+	function lpad(s:String, pad:String, len:Int):String {
+		var out = s;
+		var p = (pad == null || pad.length <= 0) ? "0" : pad;
+		while (out.length < len) out = p + out;
+		return out;
 	}
 
 }
