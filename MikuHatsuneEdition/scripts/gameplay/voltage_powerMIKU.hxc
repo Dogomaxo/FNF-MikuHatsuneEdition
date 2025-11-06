@@ -15,66 +15,203 @@ import funkin.play.notes.Strumline;
 import funkin.play.notes.StrumlineNote;
 import funkin.play.notes.NoteSprite;
 import funkin.play.notes.SustainTrail;
+import funkin.play.notes.NoteHoldCover;
+import funkin.play.notes.NoteSplash;
+import funkin.play.notes.StrumlineNote;
 import funkin.mobile.ui.FunkinButton;
 import funkin.mobile.input.ControlsHandler;
 import funkin.util.GRhythmUtil;
 import funkin.util.HapticUtil;
-
+import flixel.util.FlxTimer;
 /**
  * Miku Voltage Panel
- * Draws a configurable azure square on the HUD, anchored to the lower-left.
- * - Scales with screen aspect ratio (uses screen height as reference so size looks consistent on 4:3/16:9/21:9)
- * - Repositions for upscroll (bottom-left) vs downscroll (top-left)
- * - Safe to enable/disable per character via ModuleRouter
- *
- * File: scripts/gameplay/voltage_powerMIKU.hxc
+ * HUD overlay square gauge using VP atlas.
  */
 class MikuVoltagePanel extends ScriptedModule {
 	// Config
 	// Size config
-		var baseSize:Int = 128;                 // Square side at 720p reference
-		var scaleSizeWithHeight:Bool = true;    // Scale the square size with screen height
+	var baseSize:Int = 128;                 // Square side at 720p reference
+	var scaleSizeWithHeight:Bool = true;    // Scale the square size with screen height
+	// Master scale for the whole indicator (applies to sizes, stroke and offsets)
+	var indicatorScale:Float = 1.28;
 
-	// Friendlier positioning (mirrors HatsuneHealthBar style)
-		var baseX:Int = 28;                     // Fixed left margin from screen edge (720p reference)
-	var topMargin:Int = 28;                 // Distance from TOP edge when downscroll (720p reference)
-	var bottomMargin:Int = 28;              // Distance from BOTTOM edge when upscroll (720p reference)
-		var barOffsetX:Int = 20;                 // Extra horizontal offset (positive moves right)
-		var barOffsetY:Int = -100;                // Extra vertical offset (positive moves down)
-		var scaleOffsetsWithHeight:Bool = true; // Whether offsets/margins scale with height (recommended for aspect adaptation)
-	var panelColor:FlxColor = FlxColor.fromRGB(1, 23, 55); // Base background of the square (darker)
-	var panelAlpha:Float = 1.0;       // Opacity of the square
-		var borderThickness:Int = 6;      // Black border thickness at 720p reference
+	// Placement config
+	var baseX:Int = 28;                     // Left margin from screen edge (720p ref)
+	var topMargin:Int = 28;                 // Distance from TOP edge when downscroll (720p ref)
+	var bottomMargin:Int = 28;              // Distance from BOTTOM edge when upscroll (720p ref)
+	var barOffsetX:Int = 20;                // Extra horizontal offset (positive moves right)
+	var barOffsetY:Int = -100;              // Extra vertical offset (positive moves down)
+	var scaleOffsetsWithHeight:Bool = true; // Scale offsets with height
+	var panelColor:FlxColor = FlxColor.fromRGB(1, 23, 55); // base bg
+	var panelAlpha:Float = 1.0;             // bg opacity
+	var borderThickness:Int = 6;            // stroke thickness at 720p
 
-	// Fill config
-	var numSegments:Int = 10;           // Number of uniform pieces inside the gauge
-	var notesPerFull:Int = 150;         // Total POINTS needed to fill the whole gauge (10 segments => 10p each by default)
-	var segmentGap:Int = 2;             // Small gap between segments (scaled)
-	var scaleSegmentsWithHeight:Bool = true; // Scale gaps and segment padding with height (recommended)
+	// === Ajustes por elemento (editables en este script) ===
+	// Todos los offsets están en "pixels 720p" y se escalan con la altura de pantalla.
+	// Todas las escalas son relativas al lado del panel (1.0 = ocupar todo el lado, 0.5 = mitad, etc.).
+	var noteScaleRel:Float = 0.42;  var noteOffsetX:Int = 0;  var noteOffsetY:Int = 0;
+	var chargeScaleRel:Float = 1.00; var chargeOffsetX:Int = 0; var chargeOffsetY:Int = 0;
+	var tickScaleRel:Float = 1.00;  var tickOffsetX:Int = 0;  var tickOffsetY:Int = 0;
+	var auraScaleRel:Float = 1.15;  var auraOffsetX:Int = 3;  var auraOffsetY:Int = 3;
+	var glowScaleRel:Float = 1.00;  var glowOffsetX:Int = 0;  var glowOffsetY:Int = 0;
 
-	// Progress rules (segment-based)
-	// Ahora defines cuántos eventos hacen subir/bajar 1 SEGMENTO (números enteros).
-	// La conversión a puntos se hace con: pointsPerSegment = notesPerFull / numSegments.
-	// - Para ganar: cada 'sick' suma pointsPerSegment / sickHitsPerSegment.
-	// - Para ganar: cada 'good' suma pointsPerSegment / goodHitsPerSegment.
-	// - Para penalizar: cada 'bad/shit/miss/ghost' resta pointsPerSegment / <eventsPerSegment>.
-	// Recomendado: empieza con valores pequeños (p.ej. 5-10) y ajusta.
-	var sickHitsPerSegment:Int = 14;      // Nº de SICK para subir 1 segmento
-	var goodHitsPerSegment:Int = 15;     // Nº de GOOD para subir 1 segmento
-	var badEventsPerSegment:Int = 10;     // Nº de BAD para bajar 1 segmento
-	var shitEventsPerSegment:Int = 8;    // Nº de SHIT para bajar 1 segmento
-	var missEventsPerSegment:Int = 7;    // Nº de MISS (nota real) para bajar 1 segmento
-	var ghostEventsPerSegment:Int = 5;   // Nº de GHOST MISS (tecla sin nota) para bajar 1 segmento
+	// Fondo (panel) y Borde (stroke) ajustes independientes
+	var bgScaleRel:Float = 1.05;    var bgOffsetX:Int = 0;    var bgOffsetY:Int = 0;
+	var borderScaleRel:Float = 1.00; var borderOffsetX:Int = 0; var borderOffsetY:Int = 0;
 
-	// Initial fill at song start (as a fraction of the full meter)
-	// 0.0 = empty (default), 1.0 = fully charged
-    // THIS IS JUST FOR DEBUG
-	var initialChargePercent:Float = 1.0;
+	// Prioridades de dibujo (z-index): mayor = encima
+	// Sube el indicador al mismo rango que el HUD (alrededor de 800+) para que no lo tapen las flechas/strums.
+	var zPanel:Int = 3000;
+	var zNote:Int = 3001;
+	var zPanelGlow:Int = 3002;
+	var zCharge:Int = 3003;
+	var zAura:Int = 3004; // aura por detrás de los ticks y por encima de la carga
+	var zTick:Int = 3005;
+	var zBorder:Int = 3006;
+	var zTapButton:Int = 3007;
 
-	// Runtime
-	var panel:FlxSprite = null;
-		var panelBorder:FlxSprite = null;
-	var segmentSprites:Array<FlxSprite> = null; // 10 uniform bars filling the square
+	// Fill logic (visual uses atlas step frames)
+	var numSegments:Int = 10;
+	var notesPerFull:Int = 150;
+	var segmentGap:Int = 2;
+	var scaleSegmentsWithHeight:Bool = true;
+
+	// Progress rules
+	var sickHitsPerSegment:Int = 14;
+	var goodHitsPerSegment:Int = 15;
+	var badEventsPerSegment:Int = 10;
+	var shitEventsPerSegment:Int = 8;
+	var missEventsPerSegment:Int = 7;
+	var ghostEventsPerSegment:Int = 5;
+
+	// Initial charge
+	var initialChargePercent:Float = 0.0;
+
+	/**
+	 * Computes size and position based on screen height and downscroll state.
+	 */
+	function layout() {
+		if (panel == null) return;
+		// Scale with screen height to preserve perceived size across aspect ratios.
+		var h = FlxG.height;
+		var scale = h / 720.0; // 720p reference
+		var sideBase = scaleSizeWithHeight ? (baseSize * scale) : baseSize;
+		var side = Std.int(sideBase * (indicatorScale <= 0 ? 0.01 : indicatorScale));
+		if (side < 8) side = 8; // safety cap
+
+		// Resize atlas-based sprites to side y centrar con ajustes relativos
+		var bgS = Std.int(side * (bgScaleRel <= 0 ? 0.1 : bgScaleRel)); if (bgS < 1) bgS = 1;
+		panel.setGraphicSize(bgS, bgS); panel.updateHitbox();
+		if (panelGlow != null) { var gsz = Std.int(side * glowScaleRel); panelGlow.setGraphicSize(gsz, gsz); panelGlow.updateHitbox(); }
+		if (chargeSprite != null) { var csz = Std.int(side * chargeScaleRel); chargeSprite.setGraphicSize(csz, csz); chargeSprite.updateHitbox(); }
+		if (panelBgNote != null) {
+			var noteW = Std.int(side * noteScaleRel);
+			panelBgNote.setGraphicSize(noteW, 0); panelBgNote.updateHitbox();
+		}
+		// Border size (scaled thickness)
+		var t = Std.int(borderThickness * ((scaleOffsetsWithHeight ? scale : 1.0) * (indicatorScale <= 0 ? 0.01 : indicatorScale)));
+		if (t < 1) t = 1;
+		var bwOrig = side + (t * 2);
+		var bhOrig = side + (t * 2);
+		var bS = Std.int((bwOrig) * (borderScaleRel <= 0 ? 0.1 : borderScaleRel)); if (bS < 1) bS = 1;
+		panelBorder.setGraphicSize(bS, bS); panelBorder.updateHitbox();
+
+		// Position: bottom-left for normal (upscroll), top-left for downscroll.
+		var sOff = (scaleOffsetsWithHeight ? scale : 1.0) * (indicatorScale <= 0 ? 0.01 : indicatorScale);
+		var x = Std.int((baseX * (scaleOffsetsWithHeight ? scale : 1.0)) + (barOffsetX * sOff));
+		var top = Std.int(topMargin * sOff);
+		var bottom = Std.int(bottomMargin * sOff);
+		var yAnchor = Preferences.downscroll ? top : (h - side - bottom);
+		var y = Std.int(yAnchor + (barOffsetY * sOff)); // Positive offset moves down regardless of scroll
+
+		// Store anchor (top-left) of the gauge area for other elements (decoupled from bg offsets)
+		_anchorX = x; _anchorY = y;
+		panel.x = Std.int(_anchorX + (side - panel.width) * 0.5 + bgOffsetX * sOff);
+		panel.y = Std.int(_anchorY + (side - panel.height) * 0.5 + bgOffsetY * sOff);
+		// Colocar el borde centrado sobre el área base (side + t*2) con offset propio
+		panelBorder.x = Std.int((_anchorX - t) + ((bwOrig - panelBorder.width) * 0.5) + borderOffsetX * sOff);
+		panelBorder.y = Std.int((_anchorY - t) + ((bhOrig - panelBorder.height) * 0.5) + borderOffsetY * sOff);
+		if (panelBgNote != null) { panelBgNote.x = Std.int(_anchorX + (side - panelBgNote.width) * 0.5 + noteOffsetX * sOff); panelBgNote.y = Std.int(_anchorY + (side - panelBgNote.height) * 0.5 + noteOffsetY * sOff); }
+		if (panelGlow != null) { panelGlow.x = Std.int(_anchorX + (side - panelGlow.width) * 0.5 + glowOffsetX * sOff); panelGlow.y = Std.int(_anchorY + (side - panelGlow.height) * 0.5 + glowOffsetY * sOff); }
+		if (chargeSprite != null) { chargeSprite.x = Std.int(_anchorX + (side - chargeSprite.width) * 0.5 + chargeOffsetX * sOff); chargeSprite.y = Std.int(_anchorY + (side - chargeSprite.height) * 0.5 + chargeOffsetY * sOff); }
+		if (tickAura != null) { tickAura.x = Std.int(_anchorX + (side - tickAura.width) * 0.5 + auraOffsetX * sOff); tickAura.y = Std.int(_anchorY + (side - tickAura.height) * 0.5 + auraOffsetY * sOff); }
+		// Keep the touch button aligned/sized with the panel and respect external inputs
+		if (tapButton != null) {
+			if (Std.int(tapButton.width) != side || Std.int(tapButton.height) != side) tapButton.makeSolidColor(side, side, 0x00000000);
+			tapButton.x = x; tapButton.y = y;
+			tapButton.visible = !_isPaused && !ControlsHandler.usingExternalInputDevice;
+		}
+		// Position debug texts next to the square
+		if (showPercentDebug) {
+			var rightPad = Std.int(8 * sOff);
+			var sz = Std.int(18 * (scaleOffsetsWithHeight ? scale : 1.0)); if (sz < 8) sz = 8;
+			if (percentTextVisual != null) { percentTextVisual.visible = true; percentTextVisual.setFormat(null, sz, FlxColor.WHITE, "left"); percentTextVisual.setBorderStyle(FlxTextBorderStyle.OUTLINE, FlxColor.BLACK, 1.0); }
+			if (percentTextReal != null) { percentTextReal.visible = true; percentTextReal.setFormat(null, sz, FlxColor.CYAN, "left"); percentTextReal.setBorderStyle(FlxTextBorderStyle.OUTLINE, FlxColor.BLACK, 1.0); }
+			if (percentTextTheo != null) { percentTextTheo.visible = true; percentTextTheo.setFormat(null, sz, FlxColor.fromRGB(144, 238, 144), "left"); percentTextTheo.setBorderStyle(FlxTextBorderStyle.OUTLINE, FlxColor.BLACK, 1.0); }
+			var baseX = panelBorder.x + panelBorder.width + rightPad;
+			var lineGap = Std.int(2 * sOff);
+			var totalH = 0;
+			if (percentTextVisual != null) totalH += Std.int(percentTextVisual.height);
+			if (percentTextReal != null) totalH += Std.int(percentTextReal.height) + lineGap;
+			if (percentTextTheo != null) totalH += Std.int(percentTextTheo.height) + lineGap;
+			var startY = Std.int(panel.y + (side / 2) - (totalH / 2));
+			var curY = startY;
+			if (percentTextVisual != null) { percentTextVisual.x = baseX; percentTextVisual.y = curY; curY += Std.int(percentTextVisual.height) + lineGap; }
+			if (percentTextReal != null) { percentTextReal.x = baseX; percentTextReal.y = curY; curY += Std.int(percentTextReal.height) + lineGap; }
+			if (percentTextTheo != null) { percentTextTheo.x = baseX; percentTextTheo.y = curY; }
+		}
+		// Make sure render order updates if the engine rebuilds or re-sorts.
+		if (PlayState.instance != null) PlayState.instance.refresh();
+	}
+
+	// Sizes and aligns atlas-driven pieces (charge, ticks, aura, glow) to the panel bounds
+	function layoutSegments() {
+		if (panel == null) return;
+		var h = FlxG.height;
+		var scale = h / 720.0;
+		var sideBase = scaleSizeWithHeight ? (baseSize * scale) : baseSize;
+		var side = Std.int(sideBase * (indicatorScale <= 0 ? 0.01 : indicatorScale));
+		if (side < 8) side = 8;
+		var sOff = (scaleOffsetsWithHeight ? scale : 1.0) * (indicatorScale <= 0 ? 0.01 : indicatorScale);
+		if (chargeSprite != null) {
+			var csz = Std.int(side * chargeScaleRel);
+			chargeSprite.setGraphicSize(csz, csz); chargeSprite.updateHitbox();
+			chargeSprite.x = Std.int(_anchorX + (side - chargeSprite.width) * 0.5 + chargeOffsetX * sOff);
+			chargeSprite.y = Std.int(_anchorY + (side - chargeSprite.height) * 0.5 + chargeOffsetY * sOff);
+		}
+		if (tickSprites != null) {
+			var tsz = Std.int(side * tickScaleRel);
+			for (tk in tickSprites) if (tk != null) {
+				tk.setGraphicSize(tsz, tsz); tk.updateHitbox();
+				tk.x = Std.int(_anchorX + (side - tk.width) * 0.5 + tickOffsetX * sOff);
+				tk.y = Std.int(_anchorY + (side - tk.height) * 0.5 + tickOffsetY * sOff);
+			}
+		}
+		if (tickAura != null) {
+			var asz = Std.int(side * auraScaleRel);
+			tickAura.setGraphicSize(asz, asz); tickAura.updateHitbox();
+			tickAura.x = Std.int(_anchorX + (side - tickAura.width) * 0.5 + auraOffsetX * sOff);
+			tickAura.y = Std.int(_anchorY + (side - tickAura.height) * 0.5 + auraOffsetY * sOff);
+		}
+		if (segGlow != null) {
+			var gsz = Std.int(side * glowScaleRel);
+			if (Std.int(segGlow.width) != gsz || Std.int(segGlow.height) != gsz) segGlow.makeGraphic(gsz, gsz, FlxColor.WHITE);
+			segGlow.x = Std.int(_anchorX + (side - segGlow.width) * 0.5 + glowOffsetX * sOff);
+			segGlow.y = Std.int(_anchorY + (side - segGlow.height) * 0.5 + glowOffsetY * sOff);
+		}
+	}
+	var panelBgNote:FlxSprite = null;           // "vp music note bg"
+	var chargeSprite:FlxSprite = null;          // "vp charge0000..0009" aggregated fill
+	var tickAura:FlxSprite = null;              // "vp charge hit aura" overlay for success tick
+	var atlasFramesVP:Dynamic = null;           // shared atlas frames for all sprites
+	var atlasKeyVP:String = 'VoltagePowerASSETS/VP_GAUGE/MIKU/VP_Assets';
+	var panel:FlxSprite = null;                 // background square ("vp background")
+	var panelBorder:FlxSprite = null;           // stroke ("vp stroke")
+	// Anchor (top-left) of the gauge area without per-element offsets; others use this, not panel.x/y
+	var _anchorX:Int = 0;
+	var _anchorY:Int = 0;
+
+	var segmentSprites:Array<FlxSprite> = null; // legacy array (unused for drawing now)
 	var notesHitCounter:Float = 0.0; // song progression units (0..notesPerFull)
 	var segmentColor:FlxColor = FlxColor.CYAN; // sampled from the player's icon (like HatsuneHealthBar)
 	// Tick overlays: success (white) and failure (pink)
@@ -85,7 +222,7 @@ class MikuVoltagePanel extends ScriptedModule {
 	var failTickColor:FlxColor = FlxColor.fromRGB(212, 97, 188); // failure tick color
 	var failTickFullAlpha:Float = 0.6; // alpha para overlay rosado cuando está al 100%
 	// Drain mode (SHIFT to activate when full)
-	var drainDurationSec:Float = 10.0; // seconds to drain from full -> empty
+	var drainDurationSec:Float = 15.0; // seconds to drain from full -> empty
 	var draining:Bool = false;
 	// Score multiplier while draining (applies to positive score gains on player's hits)
 	var scoreGainMultiplierDuringDrain:Float = 2.0; // e.g., 2.0 = x2, 1.0 = no change
@@ -107,6 +244,22 @@ class MikuVoltagePanel extends ScriptedModule {
 	var _coverResyncTime:Float = 0.0;
 	// Drain glow overlays
 	var panelGlow:FlxSprite = null; // overlay on top of panel, below segments
+	// Full-screen vignette for screen edges while the indicator is draining
+	var screenVignette:FlxSprite = null;
+	var vignetteEnabled:Bool = true;
+	var vignetteImageKey:String = 'VoltagePowerASSETS/blueVignette'; // shared/images/VoltagePowerASSETS/blueVignette.png
+	// Static mode settings (requested): appears quickly and stays constant while draining
+	var vignetteStaticAlpha:Float = 0.35;
+	// Global multiplier to quickly increase/decrease intensity (applies to static and breathing)
+	var vignetteIntensity:Float = 1.0; // 0.0..2.0 typical; clamped to 0..1 for alpha
+	var vignetteFastFadeSec:Float = 0.06; // 0 for instant pop-in
+	var vignetteBreathing:Bool = false; // keep false to avoid per-frame alpha changes
+	// If a breathing curve is ever desired, these apply
+	var vignetteMinAlpha:Float = 0.22; // subtle
+	var vignetteMaxAlpha:Float = 0.45; // stronger at pulse peak
+	var _vignetteTween:Dynamic = null;
+	var vignetteOrigW:Int = 0;
+	var vignetteOrigH:Int = 0;
 	var segGlow:FlxSprite = null;   // overlay on the currently draining segment
 	var drainGlowPhase:Float = 0.0; // phase accumulator for breathing wave
 	var panelGlowSpeedBase:Float = 1.6; // Hz
@@ -125,6 +278,8 @@ class MikuVoltagePanel extends ScriptedModule {
 	var _lastFilled:Int = 0;
 	// Track if the gauge has ever reached full during this song
 	var _hasReachedFullOnce:Bool = false;
+	// Defer expensive state refresh to once-per-frame
+	var _refreshPending:Bool = false;
 	var lastW:Int = -1;
 	var lastH:Int = -1;
 	var lastDownscroll:Null<Bool> = null;
@@ -149,9 +304,37 @@ class MikuVoltagePanel extends ScriptedModule {
 	var hapticsEndDuration:Float = 0.27;      // Seconds for the end tap
 	var hapticsEndAmplitude:Float = 0.52;     // 0..1 intensity for the end tap
 	var hapticsSharpness:Float = 0.15;         // 0..1, controls feel
+	// Optional offsets to better align audio/haptics on devices with latency
+	var hapticsStartOffsetSec:Float = 0.05; // +delay vibrate; negative would delay a (nonexistent) sound instead
+	var hapticsEndOffsetSec:Float = 0.05;   // >0 vibrate after sound; <0 vibrate before sound (delays sound)
+
+	// Conflict avoidance: if a note haptic just fired, delay our cue haptic slightly to avoid interruption
+	var hapticsConflictWindowSec:Float = 0.08; // consider a note haptic "recent" within this window
+	var hapticsConflictPushSec:Float = 0.06;   // extra delay to push our cue haptic out of the note haptic window
+	var _timeSec:Float = 0.0;                  // monotonic timer since song start (seconds)
+	// Pause gating: set via onPause/onResume to freeze indicator and block activation while paused
+	var _isPaused:Bool = false;
+	var _lastNoteHapticTimeSec:Float = -999.0; // last time a note hit likely vibrated (seconds)
+	// Global mode mute management (as a fallback to ensure indicator priority even if engine handlers still vibrate)
+	var _hapticsModeEpoch:Int = 0;
+	var _savedHapticsMode:Int = 2; // default to ALL
+
+	// SFX when the drain fully exhausts the charge
+	var endSfxKey:String = 'VP/VP_END'; // mods/MikuHatsuneEdition/sounds/VP/VP_END.ogg
+	var endSfxVolume:Float = 1.0;
+	var _hapticEndFired:Bool = false; // avoid double-firing end haptic in the same drain cycle
+
+	// SFX when the drain is activated (panel starts draining)
+	var startSfxKey:String = 'VP/VP_START'; // mods/MikuHatsuneEdition/sounds/VP/VP_START.ogg
+	var startSfxVolume:Float = 0.85;
+	var _hapticStartFired:Bool = false; // avoid double-firing start haptic in the same drain cycle
+
+	// SFX cuando la barra llega a 100%
+	var fullSfxKey:String = 'VP/VP_FULL'; // mods/MikuHatsuneEdition/sounds/VP/VP_FULL.ogg
+	var fullSfxVolume:Float = 1.00;
 
 	// Debug UI
-	var showPercentDebug:Bool = true; // Toggle to show a small percentage text next to the square
+	var showPercentDebug:Bool = false; // Toggle to show a small percentage text next to the square
 
 		public function new() {
 			// Priority: fairly early so it appears under score popups but above background HUD bits.
@@ -161,12 +344,20 @@ class MikuVoltagePanel extends ScriptedModule {
 		}
 
 	override function onActivate() {
+			// Clear any stale pause/locks when re-activating in a new state
+			_isPaused = false;
+			healthDrainLockActive = false;
 		ensureBuilt();
 	}
 
 	override function onDeactivate() {
 			// ensure we revert any style swap on deactivate
 			this.endDrainVisualStyleSwap();
+				// clear drain flags and cleanup
+				draining = false; MHE_SharedState.drainActive = false;
+				// Clear pause and any health lock to avoid leaking across states
+				_isPaused = false;
+				healthDrainLockActive = false;
 			cleanup();
 	}
 
@@ -175,12 +366,35 @@ class MikuVoltagePanel extends ScriptedModule {
 				if (this.active) ensureBuilt();
 		}
 
+			// Pause hooks from the engine: use these to freeze our indicator and block activation
+			override function onPause(event) {
+				_isPaused = true;
+				// Hide the mobile tap button immediately while paused
+				if (tapButton != null) tapButton.visible = false;
+			}
+
+			override function onResume(event) {
+				_isPaused = false;
+				// Restore the mobile tap button immediately on resume (don't wait for a layout tick)
+				if (tapButton != null) {
+					tapButton.visible = !ControlsHandler.usingExternalInputDevice;
+				}
+				// Also force a quick layout refresh next frame so bounds and cameras are correct
+				lastW = -1; lastH = -1; // triggers layout() path in update
+			}
+
 	override function onSongLoaded(e) {
+				// Entering a new song: reset pause and any locks
+				_isPaused = false;
+				healthDrainLockActive = false;
 			// reset progression each song (apply configured initial charge)
 			notesHitCounter = computeInitialChargePoints();
 		  draining = false;
 				// expose drain flag to other HUD modules (shared singleton)
 				MHE_SharedState.drainActive = false;
+			// reset start/end haptic guards
+			_hapticStartFired = false;
+			_hapticEndFired = false;
 			// reset progress trackers
 			if (notesPerFull <= 0) notesPerFull = 1;
 			_lastProgress = (notesHitCounter / notesPerFull);
@@ -189,19 +403,29 @@ class MikuVoltagePanel extends ScriptedModule {
 			_hasReachedFullOnce = (_lastProgress >= 1.0 - 1e-9);
 			drainGlowPhase = 0.0;
 			_lastPercentInt = -1; _lastRealStr = null; _lastTheoStr = null;
+			// reset conflict-avoidance timers
+			_timeSec = 0.0; _lastNoteHapticTimeSec = -999.0;
 			// ensure visual style is normal at song start
 			this.endDrainVisualStyleSwap();
+			// Preload both the normal and drain note styles to avoid stutters on first swap
+			preloadStylesForSong();
 			// resample the color from the icon if possible
 			recalcSegmentColorFromIcon();
 			if (this.active) ensureBuilt();
 	}
 
 	override function onSongRetry(e) {
+			// Reset pause and locks on quick restart
+			_isPaused = false;
+			healthDrainLockActive = false;
 		// Also reset on quick restarts
 		notesHitCounter = computeInitialChargePoints();
 		draining = false;
 				// expose drain flag to other HUD modules (shared singleton)
 				MHE_SharedState.drainActive = false;
+			// reset start/end haptic guards
+			_hapticStartFired = false;
+			_hapticEndFired = false;
 			// reset trackers
 			if (notesPerFull <= 0) notesPerFull = 1;
 			_lastProgress = (notesHitCounter / notesPerFull);
@@ -210,6 +434,8 @@ class MikuVoltagePanel extends ScriptedModule {
 			_hasReachedFullOnce = (_lastProgress >= 1.0 - 1e-9);
 			drainGlowPhase = 0.0;
 			_lastPercentInt = -1; _lastRealStr = null; _lastTheoStr = null;
+			// reset conflict-avoidance timers
+			_timeSec = 0.0; _lastNoteHapticTimeSec = -999.0;
 			this.endDrainVisualStyleSwap();
 		updateSegmentsFill();
 	}
@@ -217,10 +443,20 @@ class MikuVoltagePanel extends ScriptedModule {
 		override function onUpdate(e) {
 			if (!this.active) return;
 			if (PlayState.instance == null) return;
-				// If the PlayState changed (reload/reset), reattach the panel to the new state.
-				if (panel != null && builtState != PlayState.instance) {
-					cleanup();
-				}
+			// If the PlayState changed (reload/reset), reattach the panel to the new state immediately,
+			// even if we're currently flagged as paused.
+			if (builtState != PlayState.instance) {
+				if (panel != null) cleanup();
+				ensureBuilt();
+			}
+			// Freeze all logic/visuals while paused and hide tap button to prevent interaction
+			if (_isPaused) {
+				if (tapButton != null) tapButton.visible = false;
+				return;
+			}
+			// advance local time for conflict-avoidance timing
+			_timeSec += FlxG.elapsed;
+				// ensure visuals exist (no-op if already built)
 				ensureBuilt();
 			if (panel != null) {
 				var w = FlxG.width;
@@ -229,6 +465,16 @@ class MikuVoltagePanel extends ScriptedModule {
 				if (w != lastW || h != lastH || ds != lastDownscroll) {
 						layout();
 						layoutSegments();
+						// Cover-fit vignette to screen and center it, preserving aspect ratio
+						if (screenVignette != null && vignetteOrigW > 0 && vignetteOrigH > 0) {
+							var scale = Math.max(w / vignetteOrigW, h / vignetteOrigH);
+							var newW = Std.int(vignetteOrigW * scale);
+							var newH = Std.int(vignetteOrigH * scale);
+							screenVignette.setGraphicSize(newW, newH);
+							screenVignette.updateHitbox();
+							screenVignette.x = Std.int((w - newW) * 0.5);
+							screenVignette.y = Std.int((h - newH) * 0.5);
+						}
 					lastW = w; lastH = h; lastDownscroll = ds;
 				}
 			}
@@ -240,14 +486,16 @@ class MikuVoltagePanel extends ScriptedModule {
 						// Consider complete if internal is at or above 100% (within courtesy window)
 						var isComplete:Bool = (notesHitCounter >= notesPerFull - 1e-6);
 						var tapPressed:Bool = (tapButton != null && !ControlsHandler.usingExternalInputDevice && tapButton.justPressed);
-						if (isComplete && ((FlxG.keys != null && FlxG.keys.justPressed != null && FlxG.keys.justPressed.SHIFT) || tapPressed)) {
+						if (!_isPaused && isComplete && ((FlxG.keys != null && FlxG.keys.justPressed != null && FlxG.keys.justPressed.SHIFT) || tapPressed)) {
 							// 2) Al usar la carga cuando está completa (entre 100% y 110%), empezar a bajar desde 100%
 							notesHitCounter = notesPerFull;
 							draining = true;
+							_hapticEndFired = false; // reset guard for this drain cycle
 							// set drain flag for other HUD modules (e.g., show "protected")
 							MHE_SharedState.drainActive = true;
-							// Mobile haptic: small tap on activation (respects engine haptics prefs)
-							triggerHapticStart();
+							// Play synchronized start cue (sound + optional haptic with offset)
+							_hapticStartFired = false; // reset guard for this activation
+							playStartCueSynced();
 							// Start health floor lock to prevent health loss
 							if (healthImmunityDuringDrain && PlayState.instance != null) {
 								healthDrainLockActive = true;
@@ -255,6 +503,8 @@ class MikuVoltagePanel extends ScriptedModule {
 							}
 							// Swap player's note style for drain visuals
 							this.startDrainVisualStyleSwap();
+							// Show vignette instantly or with a very fast fade
+							showVignetteActive(vignetteFastFadeSec <= 0);
 						}
 					}
 					// Drain logic: linearly reduce over configured duration
@@ -268,7 +518,14 @@ class MikuVoltagePanel extends ScriptedModule {
 						if (courtesyEnabled && prevDrain > notesPerFull + 1e-6 && notesHitCounter <= notesPerFull + 1e-6) {
 							notesHitCounter = notesPerFull - getPointsPerSegment() * courtesySegments;
 						}
-						if (notesHitCounter <= 0) { notesHitCounter = 0; draining = false; }
+						if (notesHitCounter <= 0) {
+							// Exhausted: clamp, end drain and play end cue (SFX + optional haptic) once
+							notesHitCounter = 0;
+							draining = false;
+							// Hide vignette instantly on end
+							hideVignetteInstant();
+							playEndCueSynced();
+						}
 						updateSegmentsFill();
 					}
 					// Enforce health immunity floor while draining
@@ -279,14 +536,16 @@ class MikuVoltagePanel extends ScriptedModule {
 							if (ps.health > healthFloorDuringDrain) healthFloorDuringDrain = ps.health;
 							if (ps.health < healthFloorDuringDrain) ps.health = healthFloorDuringDrain;
 						}
-						// Turn off lock and revert style when draining ends
+							// Turn off lock and revert style when draining ends
 						if (!draining) {
 							healthDrainLockActive = false;
 							this.endDrainVisualStyleSwap();
+							// Ensure vignette is hidden instantly on any end path
+							hideVignetteInstant();
+								// Clap system removed; no timers to cancel.
 							// clear drain flag when ending
 							MHE_SharedState.drainActive = false;
-							// Mobile haptic: small tap on end
-							triggerHapticEnd();
+								// End haptic is handled in playEndCueSynced() to align with audio; avoid double-firing here.
 						}
 					}
 
@@ -302,29 +561,38 @@ class MikuVoltagePanel extends ScriptedModule {
 							var pAlpha = panelGlowMinAlpha + wave * (panelGlowMaxAlpha - panelGlowMinAlpha);
 							panelGlow.visible = true;
 							panelGlow.alpha = pAlpha;
+							// Optional: breathing vignette (disabled by default)
+							if (vignetteBreathing && screenVignette != null) {
+								var vgAlpha = vignetteMinAlpha + wave * (vignetteMaxAlpha - vignetteMinAlpha);
+								vgAlpha *= vignetteIntensity;
+								if (vgAlpha < 0) vgAlpha = 0; if (vgAlpha > 1) vgAlpha = 1;
+								screenVignette.visible = true;
+								screenVignette.alpha = vgAlpha;
+							}
 						} else {
 							panelGlow.visible = false;
 							panelGlow.alpha = 0.0;
+							if (screenVignette != null) { screenVignette.visible = false; screenVignette.alpha = 0.0; }
 						}
 					}
-						// Segment breathing glow follows the currently draining (last visible filled) segment
-					if (segGlow != null) {
-							if (draining && notesPerFull > 0 && segmentSprites != null && segmentSprites.length > 0) {
-								var idx = _lastFilled - 1; // last actually visible filled segment
-							if (idx >= 0 && idx < segmentSprites.length) {
-								var ref = segmentSprites[idx];
-								segGlow.visible = true;
-								segGlow.x = ref.x;
-								segGlow.y = ref.y;
-								var wave2 = (Math.sin(drainGlowPhase) * 0.5) + 0.5; // reuse phase
-								segGlow.alpha = segmentGlowMinAlpha + wave2 * (segmentGlowMaxAlpha - segmentGlowMinAlpha);
-								segGlow.color = segmentColor; // theme-colored glow
-							} else {
-								segGlow.visible = false; segGlow.alpha = 0.0;
-							}
+						// Segment breathing glow: overlay the whole panel (matches atlas pieces)
+					if (segGlow != null && panel != null) {
+						if (draining) {
+							segGlow.visible = true;
+							segGlow.x = panel.x;
+							segGlow.y = panel.y;
+							var wave2 = (Math.sin(drainGlowPhase) * 0.5) + 0.5; // reuse phase
+							segGlow.alpha = segmentGlowMinAlpha + wave2 * (segmentGlowMaxAlpha - segmentGlowMinAlpha);
+							segGlow.color = segmentColor; // theme-colored glow
 						} else {
 							segGlow.visible = false; segGlow.alpha = 0.0;
 						}
+					}
+
+					// Run any deferred refresh once per frame, near the end of update
+					if (_refreshPending && PlayState.instance != null) {
+						_refreshPending = false;
+						PlayState.instance.refresh();
 					}
 					// Update percent debug texts
 					if (showPercentDebug) {
@@ -365,6 +633,8 @@ class MikuVoltagePanel extends ScriptedModule {
 			// Update tick fade-out
 			updateTickFX();
 
+			// (clap system removed)
+
 			// Shortly after the swap, if any cover stayed on "start" or without an animation,
 			// force a looping animation to avoid frozen frame 0
 			if (_coverResyncTime > 0) {
@@ -383,7 +653,8 @@ class MikuVoltagePanel extends ScriptedModule {
 									var getter = ReflectUtil.getField(a, "get_curAnim");
 									if (getter != null) cur = getter();
 								}
-								var curName:String = (cur != null && Reflect.hasField(cur, "name")) ? Std.string(Reflect.field(cur, "name")) : null;
+								var curName:String = null;
+								if (cur != null && ReflectUtil.hasField(cur, "name")) curName = Std.string(ReflectUtil.getField(cur, "name"));
 								var needsLoop:Bool = (curName == null);
 								if (!needsLoop && curName != null) {
 									var lower = curName.toLowerCase();
@@ -405,7 +676,8 @@ class MikuVoltagePanel extends ScriptedModule {
 									var ggetter = ReflectUtil.getField(ga, "get_curAnim");
 									if (ggetter != null) gcur = ggetter();
 								}
-								var gname:String = (gcur != null && Reflect.hasField(gcur, "name")) ? Std.string(Reflect.field(gcur, "name")) : null;
+								var gname:String = null;
+								if (gcur != null && ReflectUtil.hasField(gcur, "name")) gname = Std.string(ReflectUtil.getField(gcur, "name"));
 								var gNeeds:Bool = (gname == null);
 								if (!gNeeds && gname != null) {
 									var lowerG = gname.toLowerCase();
@@ -433,6 +705,17 @@ class MikuVoltagePanel extends ScriptedModule {
 			tk.alpha -= tickFadeSpeed * dt;
 			if (tk.alpha <= 0) { tk.alpha = 0; tk.visible = false; }
 		}
+		// Fade the aura alongside
+		if (tickAura != null && tickAura.visible) {
+			var a = tickAura.alpha - tickFadeSpeed * dt;
+			if (a <= 0) { a = 0; tickAura.visible = false; }
+			tickAura.alpha = a;
+		}
+	}
+
+	// Beat hook (no clap scheduling)
+	override function onBeatHit(event) {
+		super.onBeatHit(event);
 	}
 
 	// Haptics helpers
@@ -449,6 +732,142 @@ class MikuVoltagePanel extends ScriptedModule {
 		if (HapticUtil != null && HapticUtil.hapticsAvailable) {
 			// Pass both ALL(2) and NOTES_ONLY(1) so it vibrates regardless of the user mode.
 			HapticUtil.vibrate(0, hapticsEndDuration, hapticsEndAmplitude, hapticsSharpness, [2, 1]);
+		}
+	}
+
+	// Mute note haptics for a duration so indicator vibration feels prioritized
+	function muteNotesFor(totalSeconds:Float):Void {
+		if (totalSeconds <= 0) return;
+		if (HapticUtil == null) return;
+		// Engage mute and bump epoch to disambiguate overlapping windows
+		HapticUtil.noteHapticsMuted = true;
+		HapticUtil.noteMuteEpoch = HapticUtil.noteMuteEpoch + 1;
+		var epochCopy = HapticUtil.noteMuteEpoch;
+		new FlxTimer().start(totalSeconds, function(_) {
+			// Only clear if epoch still matches (no newer mute started)
+			if (HapticUtil.noteMuteEpoch == epochCopy) {
+				HapticUtil.noteHapticsMuted = false;
+			}
+		});
+	}
+
+	// Additionally, force global haptics mode to NONE during our vibration window to avoid any engine-originated overlap.
+	function engageGlobalHapticsMuteFor(duration:Float, startDelay:Float = 0.0):Void {
+		if (duration <= 0) return;
+		var doMute = function(_) {
+			_savedHapticsMode = Std.int(Preferences.hapticsMode);
+			_hapticsModeEpoch = _hapticsModeEpoch + 1;
+			var epochCopy = _hapticsModeEpoch;
+			// Set to NONE (0) so any other HapticUtil.vibrate calls are ignored by engine layer
+			Preferences.hapticsMode = 0;
+			new FlxTimer().start(duration, function(__) {
+				if (_hapticsModeEpoch == epochCopy) {
+					Preferences.hapticsMode = _savedHapticsMode;
+				}
+			});
+		};
+		if (startDelay <= 0) doMute(null); else new FlxTimer().start(startDelay, doMute);
+	}
+
+	// Compute a safe extra delay to avoid clashing with note-hit haptics
+	function computeConflictSafeDelay(baseDelay:Float):Float {
+		var delay = baseDelay;
+		var since = _timeSec - _lastNoteHapticTimeSec;
+		if (since >= 0 && since <= hapticsConflictWindowSec) {
+			delay += hapticsConflictPushSec;
+		}
+		if (delay < 0) delay = 0;
+		return delay;
+	}
+
+	// Play the configured end-of-drain SFX safely.
+	function playEndSfx():Void {
+		var s:Dynamic = null;
+		try { s = FlxG.sound.play(Paths.sound(endSfxKey), endSfxVolume, false); } catch (e:Dynamic) {}
+		if (s == null) {
+			// Fallback to shared library if missing in preload
+			try { s = FlxG.sound.play(Paths.sound(endSfxKey, 'shared'), endSfxVolume, false); } catch (e2:Dynamic) {}
+		}
+	}
+
+	function playStartSfx():Void {
+		var s:Dynamic = null;
+		try { s = FlxG.sound.play(Paths.sound(startSfxKey), startSfxVolume, false); } catch (e:Dynamic) {}
+		if (s == null) {
+			// Fallback to shared library if missing in preload
+			try { s = FlxG.sound.play(Paths.sound(startSfxKey, 'shared'), startSfxVolume, false); } catch (e2:Dynamic) {}
+		}
+	}
+
+	function playFullSfx():Void {
+		var s:Dynamic = null;
+		try { s = FlxG.sound.play(Paths.sound(fullSfxKey), fullSfxVolume, false); } catch (e:Dynamic) {}
+		if (s == null) {
+			try { s = FlxG.sound.play(Paths.sound(fullSfxKey, 'shared'), fullSfxVolume, false); } catch (e2:Dynamic) {}
+		}
+	}
+
+	// (clap SFX removed)
+
+	// Unified start cue: optionally lead/lag haptics relative to the sound on mobile for better perceived sync.
+	function playStartCueSynced():Void {
+		if (_hapticStartFired) { playStartSfx(); return; }
+		_hapticStartFired = true;
+		if (hapticsStartOffsetSec < 0) {
+			// Vibrate first now, delay sound by -offset (priority to indicator)
+			triggerHapticStart();
+			var delay = -hapticsStartOffsetSec;
+			new FlxTimer().start(delay, function(_) playStartSfx());
+			// Mute notes only while our haptic runs (no pre-mute)
+			this.muteNotesFor(hapticsStartDuration + 0.02);
+			this.engageGlobalHapticsMuteFor(hapticsStartDuration + 0.02, 0);
+		} else if (hapticsStartOffsetSec > 0) {
+			// Play sound now, vibrate after configured offset (no extra push)
+			playStartSfx();
+			var hDelay = hapticsStartOffsetSec;
+			new FlxTimer().start(hDelay, function(_) {
+				triggerHapticStart();
+				this.engageGlobalHapticsMuteFor(hapticsStartDuration + 0.02, 0);
+			});
+			// Start mute when our haptic begins
+			new FlxTimer().start(hDelay, function(_) this.muteNotesFor(hapticsStartDuration + 0.02));
+		} else {
+			// No offset: play sound and vibrate immediately (indicator priority)
+			playStartSfx();
+			triggerHapticStart();
+			this.muteNotesFor(hapticsStartDuration + 0.02);
+			this.engageGlobalHapticsMuteFor(hapticsStartDuration + 0.02, 0);
+		}
+	}
+
+	// Unified end cue: optionally lead/lag haptics relative to the sound on mobile for better perceived sync.
+	function playEndCueSynced():Void {
+		if (_hapticEndFired) { playEndSfx(); return; }
+		_hapticEndFired = true;
+		if (hapticsEndOffsetSec < 0) {
+			// Vibrate first now, delay sound by -offset
+			triggerHapticEnd();
+			var delay = -hapticsEndOffsetSec;
+			new FlxTimer().start(delay, function(_) playEndSfx());
+			// Mute notes only while our haptic runs
+			this.muteNotesFor(hapticsEndDuration + 0.02);
+			this.engageGlobalHapticsMuteFor(hapticsEndDuration + 0.02, 0);
+		} else if (hapticsEndOffsetSec > 0) {
+			// Play sound now, vibrate after configured offset
+			playEndSfx();
+			var hDelay = hapticsEndOffsetSec;
+			new FlxTimer().start(hDelay, function(_) {
+				triggerHapticEnd();
+				this.engageGlobalHapticsMuteFor(hapticsEndDuration + 0.02, 0);
+			});
+			// Start mute when our haptic begins
+			new FlxTimer().start(hDelay, function(_) this.muteNotesFor(hapticsEndDuration + 0.02));
+		} else {
+			// No offset, trigger both immediately
+			playEndSfx();
+			triggerHapticEnd();
+			this.muteNotesFor(hapticsEndDuration + 0.02);
+			this.engageGlobalHapticsMuteFor(hapticsEndDuration + 0.02, 0);
 		}
 	}
 
@@ -604,79 +1023,99 @@ class MikuVoltagePanel extends ScriptedModule {
 	function applyNoteStyleToPlayer(styleObj:Dynamic) {
 		var ps = PlayState.instance; if (ps == null) return;
 		var str:Dynamic = ps.playerStrumline; if (str == null) return;
+		// Cache a readable style id (if available) to tag rebuilt FX and avoid redundant rebuilds on re-activation
+		var styleId:String = null;
+		if (ReflectUtil.hasField(styleObj, "id")) {
+			var sid = ReflectUtil.getField(styleObj, "id");
+			if (sid != null) styleId = Std.string(sid);
+		}
+		// Cache sprite groups locally to reduce repeated dynamic lookups
+		var receptors = (str.strumlineNotes != null) ? str.strumlineNotes.members : null;
+		var notesArr = (str.notes != null) ? str.notes.members : null;
+		var holdsArr = (str.holdNotes != null) ? str.holdNotes.members : null;
+		var splashesArr = (str.noteSplashes != null) ? str.noteSplashes.members : null;
+		var coversArr = (str.noteHoldCovers != null) ? str.noteHoldCovers.members : null;
+
 		// 1) Re-skin receptors (use the direction by index to avoid enum/dynamic issues)
-		if (str.strumlineNotes != null && str.strumlineNotes.members != null) {
+		if (receptors != null) {
 			var i = 0;
-			for (rec in str.strumlineNotes.members) {
+			for (rec in receptors) {
 				if (rec == null) { i++; continue; }
-				// Re-apply frames first
 				styleObj.applyStrumlineFrames(rec);
-				// Choose direction reliably from static DIRECTIONS
 				var dir = null;
 				if (Strumline.DIRECTIONS != null && i >= 0 && i < Strumline.DIRECTIONS.length) dir = Strumline.DIRECTIONS[i];
 				else dir = rec.direction;
 				styleObj.applyStrumlineAnimations(rec, dir);
-				// Scale/offsets
 				var s = styleObj.getStrumlineScale();
 				rec.scale.set(s, s);
 				rec.updateHitbox();
 				styleObj.applyStrumlineOffsets(rec);
-				// Reset to a clean animation so we don't keep a stale frame
 				rec.playStatic();
 				i++;
 			}
 		}
 		// 2) Re-skin any currently spawned notes (and force the proper direction animation)
-		if (str.notes != null && str.notes.members != null) {
-			for (n in str.notes.members) {
+		if (notesArr != null) {
+			for (n in notesArr) {
 				if (n == null) continue;
 				n.setupNoteGraphic(styleObj);
-				// Re-apply the correct scroll animation for this note's direction
-				n.direction = n.direction;
+				n.direction = n.direction; // refresh correct scroll anim
 			}
 		}
 		// 3) Re-skin any currently spawned sustains
-		if (str.holdNotes != null && str.holdNotes.members != null) {
-			for (hn in str.holdNotes.members) {
+		if (holdsArr != null) {
+			for (hn in holdsArr) {
 				if (hn == null) continue;
 				hn.setupHoldNoteGraphic(styleObj);
 				// Immediately fix orientation, clipping and Y placement to avoid downscroll shifts
 				realignSustain(hn, str);
 				// If there's a live cover attached, rebuild it too
 				if (hn.cover != null) {
-					styleObj.buildHoldCoverSprite(hn.cover);
-					// And ensure it enters its sustain loop
-					ensureHoldCoverLoop(hn.cover);
-					if (hn.cover.glow != null) ensureHoldCoverGlowLoop(hn.cover.glow);
+					// Skip rebuild if cover already matches this style (when known)
+					var cov = hn.cover;
+					var tag = ReflectUtil.hasField(cov, "__vpStyleId") ? Std.string(ReflectUtil.getField(cov, "__vpStyleId")) : null;
+					if (styleId == null || tag != styleId) {
+						styleObj.buildHoldCoverSprite(cov);
+						if (styleId != null) ReflectUtil.setField(cov, "__vpStyleId", styleId);
+					}
+					ensureHoldCoverLoop(cov);
+					if (cov.glow != null) ensureHoldCoverGlowLoop(cov.glow);
 				}
 			}
 		}
 		// 4) Rebuild pooled NoteSplashes and HoldCovers so future effects use the new style
-		if (str.noteSplashes != null && str.noteSplashes.members != null) {
-			for (ns in str.noteSplashes.members) {
+		if (splashesArr != null) {
+			for (ns in splashesArr) {
 				if (ns == null) continue;
 				// If it's alive, save the animation to resume it after the rebuild
 				var wasAlive:Bool = (ns.alive == true && ns.visible == true);
 				var curName:String = null;
 				if (ns.animation != null && ns.animation.curAnim != null) curName = ns.animation.curAnim.name;
-				styleObj.buildSplashSprite(ns);
-				// Avoid a "frozen splash": if it was alive, resume the current animation so it autokills after finishing
+				// Skip redundant rebuild if already built for this style (when id is known)
+				var sTag = ReflectUtil.hasField(ns, "__vpStyleId") ? Std.string(ReflectUtil.getField(ns, "__vpStyleId")) : null;
+				if (styleId == null || sTag != styleId) {
+					styleObj.buildSplashSprite(ns);
+					if (styleId != null) ReflectUtil.setField(ns, "__vpStyleId", styleId);
+				}
 				if (wasAlive && curName != null && ns.animation != null) ns.animation.play(curName, true);
 			}
 		}
-		if (str.noteHoldCovers != null && str.noteHoldCovers.members != null) {
-			for (cov in str.noteHoldCovers.members) {
+		if (coversArr != null) {
+			for (cov in coversArr) {
 				if (cov == null) continue;
-				// Rebuild with the new style
-				styleObj.buildHoldCoverSprite(cov);
-				// Force a stable loop via animation or, if missing, create it by prefix
+				// Skip rebuild if already matching our style (when id is known)
+				var cTag = ReflectUtil.hasField(cov, "__vpStyleId") ? Std.string(ReflectUtil.getField(cov, "__vpStyleId")) : null;
+				if (styleId == null || cTag != styleId) {
+					styleObj.buildHoldCoverSprite(cov);
+					if (styleId != null) ReflectUtil.setField(cov, "__vpStyleId", styleId);
+				}
 				ensureHoldCoverLoop(cov);
 				if (cov.glow != null) ensureHoldCoverGlowLoop(cov.glow);
 			}
 		}
 		// Ensure z-index sorted after graphic updates
-		str.refresh();
-		ps.refresh();
+		if (ReflectUtil.hasField(str, "refresh") && str.refresh != null) str.refresh();
+		if (PlayState.instance != null && PlayState.instance.refresh != null) ps.refresh();
 	}
 
 	// While draining, ensure newly incoming notes get re-skinned to the drain style immediately.
@@ -686,6 +1125,7 @@ class MikuVoltagePanel extends ScriptedModule {
 		var str:Dynamic = ps.playerStrumline; if (str == null) return;
 		var self = this;
 		_incomingHookFunc = function(note:NoteSprite) {
+			if (self._isPaused) return; // don't reskin during pause
 			if (!_incomingHookActive) return;
 			var st:Dynamic = self._drainStyleObj;
 			if (st == null) return;
@@ -799,11 +1239,11 @@ class MikuVoltagePanel extends ScriptedModule {
 				if (getter != null) cur = getter();
 			}
 			if (cur != null) {
-								// Ensure loop and a positive framerate
-				if (Reflect.hasField(cur, "looped")) Reflect.setField(cur, "looped", true);
-				if (Reflect.hasField(cur, "frameRate")) {
-					var fr = Reflect.field(cur, "frameRate");
-					if (fr == null || Std.int(fr) <= 0) Reflect.setField(cur, "frameRate", defaultRate);
+				// Ensure loop and a positive framerate
+				if (ReflectUtil.hasField(cur, "looped")) ReflectUtil.setField(cur, "looped", true);
+				if (ReflectUtil.hasField(cur, "frameRate")) {
+					var fr = ReflectUtil.getField(cur, "frameRate");
+					if (fr == null || Std.int(fr) <= 0) ReflectUtil.setField(cur, "frameRate", defaultRate);
 				}
 				return true;
 			}
@@ -830,10 +1270,10 @@ class MikuVoltagePanel extends ScriptedModule {
 				if (getter != null) cur = getter();
 			}
 			if (cur != null) {
-				if (Reflect.hasField(cur, "looped")) Reflect.setField(cur, "looped", true);
-				if (Reflect.hasField(cur, "frameRate")) {
-					var fr = Reflect.field(cur, "frameRate");
-					if (fr == null || Std.int(fr) <= 0) Reflect.setField(cur, "frameRate", defaultRate);
+				if (ReflectUtil.hasField(cur, "looped")) ReflectUtil.setField(cur, "looped", true);
+				if (ReflectUtil.hasField(cur, "frameRate")) {
+					var fr = ReflectUtil.getField(cur, "frameRate");
+					if (fr == null || Std.int(fr) <= 0) ReflectUtil.setField(cur, "frameRate", defaultRate);
 				}
 				return true;
 			}
@@ -898,7 +1338,7 @@ class MikuVoltagePanel extends ScriptedModule {
 				if (v != null && Std.isOfType != null && Std.isOfType(v, Array)) {
 					for (item in v) if (item != null) out.push(item);
 					pushed = true;
-				} else if (v != null && Reflect.hasField(v, "length")) {
+				} else if (v != null && ReflectUtil.hasField(v, "length")) {
 					// Fallback: treat anything con length as iterable
 					for (item in v) if (item != null) out.push(item);
 					pushed = true;
@@ -911,6 +1351,7 @@ class MikuVoltagePanel extends ScriptedModule {
 
 	// Count only player's judged note hits and apply score multiplier while draining.
 		override function onNoteHit(event:HitNoteScriptEvent) {
+			if (_isPaused) return; // freeze gauge/FX updates while paused
 			// While draining, multiply positive score gains by a configurable factor.
 			// Include bad/shit hits too (score x2), but keep gauge penalty behavior intact.
 			var j = event.judgement;
@@ -932,13 +1373,15 @@ class MikuVoltagePanel extends ScriptedModule {
 			else if (!draining && j == 'good') notesHitCounter += pointsForEventCount(goodHitsPerSegment);
 			else if (j == 'bad') notesHitCounter -= pointsForEventCount(badEventsPerSegment);
 			else if (j == 'shit') notesHitCounter -= pointsForEventCount(shitEventsPerSegment);
+			// Detect crossing into FULL once (from below) regardless of courtesy
+			var eps = 1e-6;
+			var full:Float = notesPerFull;
+			var crossedFull:Bool = (!draining && prev < full - eps && notesHitCounter >= full - eps);
 			// Courtesy buffer behaviors
 			if (courtesyEnabled) {
-				var eps = 1e-6;
-				var full:Float = notesPerFull;
 				var internalMax:Float = getInternalMax();
 				// 1) Al llegar al 100%, pasa al instante a 110%
-				if (prev < full - eps && notesHitCounter >= full - eps) {
+				if (crossedFull) {
 					notesHitCounter = internalMax;
 				}
 				// 3) Al pasar de 110% a 100% (o cruzar hacia <=100%), cae directo a 90%
@@ -951,7 +1394,13 @@ class MikuVoltagePanel extends ScriptedModule {
 			var maxP = courtesyEnabled ? getInternalMax() : notesPerFull;
 			if (notesHitCounter < 0) notesHitCounter = 0.0;
 			if (notesHitCounter > maxP) notesHitCounter = maxP;
+			// Si se cruzó a FULL, reproducir cue (fuera del bloque de cortesía para cubrir ambos casos)
+			if (crossedFull) playFullSfx();
 			updateSegmentsFill();
+			// Record time for conflict avoidance if likely haptic fired (Sick/Good/Bad/Shit)
+			if (j == 'sick' || j == 'good' || j == 'bad' || j == 'shit') {
+				_lastNoteHapticTimeSec = _timeSec;
+			}
 			// Flash: success on Sick/Good (only if not draining), failure on Bad/Shit always
 			if (!draining && (j == 'sick' || j == 'good')) triggerNextTick(); else if (j == 'bad' || j == 'shit') triggerFailTick();
 		}
@@ -966,7 +1415,10 @@ class MikuVoltagePanel extends ScriptedModule {
 		if (idx < 0 || idx >= tickSprites.length) return;
 		var tk = tickSprites[idx];
 		if (tk == null) return;
-		tk.visible = true; tk.alpha = tickMaxAlpha; tk.color = tickColor;
+		// play the success frame for this piece and show aura
+		if (tk.animation != null) tk.animation.play("hit", true);
+		tk.visible = true; tk.alpha = tickMaxAlpha;
+		if (tickAura != null) { tickAura.visible = true; tickAura.alpha = tickMaxAlpha; }
 	}
 
 	// Failure tick behavior
@@ -982,7 +1434,8 @@ class MikuVoltagePanel extends ScriptedModule {
 			for (i in 0...numSegments) {
 				if (i < 0 || i >= tickSprites.length) continue;
 				var t = tickSprites[i]; if (t == null) continue;
-				t.visible = true; t.alpha = tickMaxAlpha * failTickFullAlpha; t.color = failTickColor;
+				if (t.animation != null) t.animation.play("miss", true);
+				t.visible = true; t.alpha = tickMaxAlpha * failTickFullAlpha;
 			}
 			return;
 		}
@@ -991,11 +1444,13 @@ class MikuVoltagePanel extends ScriptedModule {
 		if (idx < 0 || idx >= tickSprites.length) return;
 		var tk = tickSprites[idx];
 		if (tk == null) return;
-		tk.visible = true; tk.alpha = tickMaxAlpha; tk.color = failTickColor;
+		if (tk.animation != null) tk.animation.play("miss", true);
+		tk.visible = true; tk.alpha = tickMaxAlpha;
 	}
 
 		// Decrement on true misses as well
 		override function onNoteMiss(event:NoteScriptEvent) {
+			if (_isPaused) return; // freeze gauge updates while paused
 			if (!this.active) return;
 			// Segmentos: cada MISS resta pointsPerSegment / missEventsPerSegment
 			var prev:Float = notesHitCounter;
@@ -1025,6 +1480,7 @@ class MikuVoltagePanel extends ScriptedModule {
 
 		// Optionally also decrement on ghost misses (pressing with no note)
 		override function onNoteGhostMiss(event:GhostMissNoteScriptEvent) {
+			if (_isPaused) return; // freeze gauge updates while paused
 			if (!this.active) return;
 			// Segmentos: cada GHOST MISS resta pointsPerSegment / ghostEventsPerSegment
 			var prev:Float = notesHitCounter;
@@ -1053,11 +1509,27 @@ class MikuVoltagePanel extends ScriptedModule {
 		if (panel != null) return;
 		if (PlayState.instance == null) return;
 
-		// Create sprites (border first so it renders below the panel)
+		// Load atlas once
+		atlasFramesVP = Paths.getSparrowAtlas(atlasKeyVP);
+
+		// Create sprites (background + stroke from atlas)
 		panelBorder = new FlxSprite();
 		panel = new FlxSprite();
-		panelBorder.makeGraphic(4, 4, FlxColor.BLACK);
-		panel.makeGraphic(4, 4, panelColor);
+		panelBgNote = new FlxSprite();
+		chargeSprite = new FlxSprite();
+		// assign frames
+		if (atlasFramesVP != null) {
+			panel.frames = atlasFramesVP; panel.animation.addByPrefix("idle", "vp background", 0, false); panel.animation.play("idle");
+			panelBorder.frames = atlasFramesVP; panelBorder.animation.addByPrefix("idle", "vp stroke", 0, false); panelBorder.animation.play("idle");
+			panelBgNote.frames = atlasFramesVP; panelBgNote.animation.addByPrefix("idle", "vp music note bg", 0, false); panelBgNote.animation.play("idle");
+			// charge frames: build single-frame animations for each step
+			chargeSprite.frames = atlasFramesVP;
+			for (i in 0...10) {
+				var suf = lpad(Std.string(i), "0", 4);
+				chargeSprite.animation.addByPrefix("c" + i, "vp charge" + suf, 0, false);
+			}
+			chargeSprite.animation.play("c0"); chargeSprite.visible = false;
+		}
 		panel.alpha = panelAlpha;
 		panel.scrollFactor.set();
 		var hudCam = (PlayState.instance.camHUD != null) ? PlayState.instance.camHUD : FlxG.camera;
@@ -1066,58 +1538,87 @@ class MikuVoltagePanel extends ScriptedModule {
 		panelBorder.cameras = [hudCam];
 		panel.antialiasing = true;
 		panelBorder.antialiasing = true;
-		panelBorder.zIndex = 739; // Just under the panel
-		panel.zIndex = 740; // Under HatsuneHealthBar pieces (800+) but above stage elements
-		PlayState.instance.add(panelBorder);
+		panel.zIndex = zPanel; // background
+		panelBgNote.scrollFactor.set(); panelBgNote.cameras = [hudCam]; panelBgNote.antialiasing = true; panelBgNote.zIndex = zNote;
+		panelBorder.zIndex = zBorder; // stroke on top of fill
+		chargeSprite.scrollFactor.set(); chargeSprite.cameras = [hudCam]; chargeSprite.antialiasing = true; chargeSprite.zIndex = zCharge;
 		PlayState.instance.add(panel);
+		PlayState.instance.add(panelBgNote);
+		PlayState.instance.add(chargeSprite);
+		PlayState.instance.add(panelBorder);
 
-		// Panel glow overlay (added after panel so it renders above it but below segments)
+		// Panel glow overlay (above background/note, below charge)
 		panelGlow = new FlxSprite();
 		panelGlow.makeGraphic(4, 4, FlxColor.WHITE);
 		panelGlow.alpha = 0.0; panelGlow.visible = false;
 		panelGlow.scrollFactor.set();
 		panelGlow.cameras = [hudCam];
 		panelGlow.antialiasing = true;
-		panelGlow.zIndex = 740; // same layer as panel, added later -> on top of panel
+		panelGlow.zIndex = zPanelGlow;
 		PlayState.instance.add(panelGlow);
 
-		// Create segments, above the panel but below other HUD (keep tight order)
-		segmentSprites = [];
-		for (i in 0...numSegments) {
-			var seg = new FlxSprite();
-			seg.makeGraphic(2, 2, segmentColor);
-			seg.scrollFactor.set();
-			seg.cameras = [hudCam];
-			seg.antialiasing = true;
-			seg.alpha = panelAlpha; // match background opacity
-			seg.zIndex = 741; // above panel
-			PlayState.instance.add(seg);
-			segmentSprites.push(seg);
+		// Full-screen vignette overlay (drawn on HUD camera, above most HUD but below popups if needed)
+		if (vignetteEnabled) {
+			screenVignette = new FlxSprite();
+			var g = null;
+			try { g = Paths.image(vignetteImageKey); } catch (e:Dynamic) { g = null; }
+			if (g != null) screenVignette.loadGraphic(g); else screenVignette.makeGraphic(4, 4, FlxColor.TRANSPARENT);
+			// Record original size for cover-fit scaling later
+			vignetteOrigW = Std.int(screenVignette.width);
+			vignetteOrigH = Std.int(screenVignette.height);
+			screenVignette.alpha = 0.0; screenVignette.visible = false;
+			screenVignette.scrollFactor.set();
+			screenVignette.cameras = [hudCam];
+			screenVignette.antialiasing = true;
+			// Keep the vignette above this module's HUD pieces
+			screenVignette.zIndex = zBorder + 100; // above our top sprite
+			PlayState.instance.add(screenVignette);
 		}
 
-		// Segment breathing glow sprite (on top of segments but below tick flashes)
+		// Segment breathing glow sprite (overlay panel)
 		segGlow = new FlxSprite();
 		segGlow.makeGraphic(2, 2, FlxColor.WHITE);
 		segGlow.scrollFactor.set();
 		segGlow.cameras = [hudCam];
 		segGlow.antialiasing = true;
 		segGlow.alpha = 0.0; segGlow.visible = false;
-		segGlow.zIndex = 742; // below tick flashes
+		segGlow.zIndex = zPanelGlow + 1; // justo sobre el panelGlow, por debajo de ticks
 		PlayState.instance.add(segGlow);
-		// Create tick overlay sprites (white flash) above segments
+		// Create tick overlay sprites (atlas-based) above charge
 		tickSprites = [];
 		for (i in 0...numSegments) {
 			var tick = new FlxSprite();
-			tick.makeGraphic(2, 2, FlxColor.WHITE);
+			if (atlasFramesVP != null) {
+				tick.frames = atlasFramesVP;
+				// single-frame animations per index to avoid frame-index writes in hscript
+				var sfx = i;
+				var suf = lpad(Std.string(sfx), "0", 4);
+				tick.animation.addByPrefix("hit", "vp charge hit" + suf, 0, false);
+				tick.animation.addByPrefix("miss", "vp charge hit miss" + suf, 0, false);
+				tick.animation.play("hit");
+			}
 			tick.scrollFactor.set();
 			tick.cameras = [hudCam];
 			tick.antialiasing = true;
 			tick.alpha = 0.0;
 			tick.visible = false;
-			tick.zIndex = 743; // above segment glow
+			tick.zIndex = zTick; // above glow/fill, below stroke
 			PlayState.instance.add(tick);
 			tickSprites.push(tick);
 		}
+		// Tick aura (single) above charge, below stroke
+		tickAura = new FlxSprite();
+		if (atlasFramesVP != null) {
+			tickAura.frames = atlasFramesVP;
+			tickAura.animation.addByPrefix("idle", "vp charge hit aura", 0, false);
+			tickAura.animation.play("idle");
+		}
+		tickAura.scrollFactor.set();
+		tickAura.cameras = [hudCam];
+		tickAura.antialiasing = true;
+		tickAura.alpha = 0.0; tickAura.visible = false;
+		tickAura.zIndex = zAura; // behind tick overlays
+		PlayState.instance.add(tickAura);
 
 		// Create an invisible engine-managed touch button over the panel for mobile/touch
 		if (tapButton == null) {
@@ -1129,7 +1630,7 @@ class MikuVoltagePanel extends ScriptedModule {
 			tapButton.cameras = [hudCam2];
 			tapButton.alpha = 0; // invisible, but visible flag will remain true for input
 			tapButton.limitToBounds = true;
-			tapButton.zIndex = 744;
+			tapButton.zIndex = zTapButton;
 			PlayState.instance.add(tapButton);
 		}
 
@@ -1145,7 +1646,7 @@ class MikuVoltagePanel extends ScriptedModule {
 				percentTextVisual.setFormat(null, sz, FlxColor.WHITE, "left");
 				percentTextVisual.setBorderStyle(FlxTextBorderStyle.OUTLINE, FlxColor.BLACK, 1.0);
 				percentTextVisual.text = "vis: 0%";
-				percentTextVisual.zIndex = 745;
+				percentTextVisual.zIndex = zBorder;
 				PlayState.instance.add(percentTextVisual);
 			}
 			if (percentTextReal == null) {
@@ -1156,7 +1657,7 @@ class MikuVoltagePanel extends ScriptedModule {
 				percentTextReal.setFormat(null, sz, FlxColor.CYAN, "left");
 				percentTextReal.setBorderStyle(FlxTextBorderStyle.OUTLINE, FlxColor.BLACK, 1.0);
 				percentTextReal.text = "real: 0.00%";
-				percentTextReal.zIndex = 745;
+				percentTextReal.zIndex = zBorder;
 				PlayState.instance.add(percentTextReal);
 			}
 			if (percentTextTheo == null) {
@@ -1167,7 +1668,7 @@ class MikuVoltagePanel extends ScriptedModule {
 				percentTextTheo.setFormat(null, sz, FlxColor.fromRGB(144, 238, 144), "left"); // light green
 				percentTextTheo.setBorderStyle(FlxTextBorderStyle.OUTLINE, FlxColor.BLACK, 1.0);
 				percentTextTheo.text = "teor: 0.00%";
-				percentTextTheo.zIndex = 745;
+				percentTextTheo.zIndex = zBorder;
 				PlayState.instance.add(percentTextTheo);
 			}
 		}
@@ -1177,134 +1678,26 @@ class MikuVoltagePanel extends ScriptedModule {
 		PlayState.instance.refresh();
 		lastW = FlxG.width; lastH = FlxG.height; lastDownscroll = Preferences.downscroll;
 			builtState = PlayState.instance;
-	}
-
-	/**
-	 * Computes size and position based on screen height and downscroll state.
-	 */
-	function layout() {
-		if (panel == null) return;
-		// Scale with screen height to preserve perceived size across aspect ratios.
-		var h = FlxG.height;
-			var scale = h / 720.0; // 720p reference
-			var side = scaleSizeWithHeight ? Std.int(baseSize * scale) : baseSize;
-		if (side < 8) side = 8; // safety cap
-
-		// Rebuild the graphic only if size changed to avoid GPU churn.
-		if (panel.width != side || panel.height != side) panel.makeGraphic(side, side, panelColor);
-		// Keep panelGlow the same size and position as the panel (overlay)
-		if (panelGlow != null && (Std.int(panelGlow.width) != side || Std.int(panelGlow.height) != side)) panelGlow.makeGraphic(side, side, FlxColor.WHITE);
-		// Border size (scaled thickness)
-		var t = Std.int(borderThickness * (scaleOffsetsWithHeight ? scale : 1.0));
-		if (t < 1) t = 1;
-		var bw = side + (t * 2);
-		var bh = side + (t * 2);
-		if (panelBorder.width != bw || panelBorder.height != bh) panelBorder.makeGraphic(bw, bh, FlxColor.BLACK);
-
-			// Position: bottom-left for normal (upscroll), top-left for downscroll.
-			var sOff = scaleOffsetsWithHeight ? scale : 1.0;
-			var x = Std.int((baseX * (scaleOffsetsWithHeight ? scale : 1.0)) + (barOffsetX * sOff));
-			var top = Std.int(topMargin * sOff);
-			var bottom = Std.int(bottomMargin * sOff);
-			var yAnchor = Preferences.downscroll ? top : (h - side - bottom);
-			var y = Std.int(yAnchor + (barOffsetY * sOff)); // Positive offset moves down regardless of scroll, like HatsuneHealthBar
-
-				panel.x = x;
-				panel.y = y;
-				panelBorder.x = x - t;
-				panelBorder.y = y - t;
-				if (panelGlow != null) { panelGlow.x = x; panelGlow.y = y; }
-			panel.visible = true;
-				panelBorder.visible = true;
-			// Keep the touch button aligned/sized with the panel and respect external inputs
-			if (tapButton != null) {
-				if (Std.int(tapButton.width) != side || Std.int(tapButton.height) != side) tapButton.makeSolidColor(side, side, 0x00000000);
-				tapButton.x = panel.x;
-				tapButton.y = panel.y;
-				// Hide when using external input device to avoid conflicts
-				tapButton.visible = !ControlsHandler.usingExternalInputDevice;
-			}
-			// Position debug texts next to the square
-			if (showPercentDebug) {
-				var rightPad = Std.int(8 * sOff);
-				var sz = Std.int(18 * (scaleOffsetsWithHeight ? scale : 1.0)); if (sz < 8) sz = 8;
-				var baseX = panelBorder.x + panelBorder.width + rightPad;
-				var lineGap = Std.int(2 * sOff);
-				// Ensure sizes (in case of resolution change)
-				if (percentTextVisual != null) { percentTextVisual.visible = true; percentTextVisual.setFormat(null, sz, FlxColor.WHITE, "left"); percentTextVisual.setBorderStyle(FlxTextBorderStyle.OUTLINE, FlxColor.BLACK, 1.0); }
-				if (percentTextReal != null) { percentTextReal.visible = true; percentTextReal.setFormat(null, sz, FlxColor.CYAN, "left"); percentTextReal.setBorderStyle(FlxTextBorderStyle.OUTLINE, FlxColor.BLACK, 1.0); }
-				if (percentTextTheo != null) { percentTextTheo.visible = true; percentTextTheo.setFormat(null, sz, FlxColor.fromRGB(144, 238, 144), "left"); percentTextTheo.setBorderStyle(FlxTextBorderStyle.OUTLINE, FlxColor.BLACK, 1.0); }
-				// Compute vertical positions stacked: visual, real, theoretical
-				var totalH = 0;
-				if (percentTextVisual != null) totalH += Std.int(percentTextVisual.height);
-				if (percentTextReal != null) totalH += Std.int(percentTextReal.height) + lineGap;
-				if (percentTextTheo != null) totalH += Std.int(percentTextTheo.height) + lineGap;
-				// Center stack vertically next to panel
-				var startY = Std.int(panel.y + (side / 2) - (totalH / 2));
-				var curY = startY;
-				if (percentTextVisual != null) { percentTextVisual.x = baseX; percentTextVisual.y = curY; curY += Std.int(percentTextVisual.height) + lineGap; }
-				if (percentTextReal != null) { percentTextReal.x = baseX; percentTextReal.y = curY; curY += Std.int(percentTextReal.height) + lineGap; }
-				if (percentTextTheo != null) { percentTextTheo.x = baseX; percentTextTheo.y = curY; }
-			} else {
-				// Fully tear down debug texts when disabled to remove any footprint
-				if (percentTextVisual != null || percentTextReal != null || percentTextTheo != null) {
-					destroyDebugTexts();
-					_lastPercentInt = -1; _lastRealStr = null; _lastTheoStr = null;
-				}
-			}
-			// Make sure render order updates if the engine rebuilds or re-sorts.
-			if (PlayState.instance != null) PlayState.instance.refresh();
-	}
-
-	/**
-	 * Size and position the 10 segment bars inside the square.
-	 */
-	function layoutSegments() {
-		if (segmentSprites == null || panel == null) return;
-		var h = FlxG.height;
-		var scale = h / 720.0;
-		var side = Std.int((scaleSizeWithHeight ? baseSize * scale : baseSize));
-		if (side < 8) side = 8;
-		var sGap = Std.int(segmentGap * (scaleSegmentsWithHeight ? scale : 1.0));
-		var innerW = side; // fill spans full width
-		var innerH = side; // stack vertically inside square
-		var totalGaps = (numSegments - 1) * sGap;
-		var segH = Std.int((innerH - totalGaps) / numSegments);
-		if (segH < 1) segH = 1;
-		// Recompute color (in case icons changed) and apply to all segments
-		recalcSegmentColorFromIcon();
-		for (i in 0...segmentSprites.length) {
-			var seg = segmentSprites[i];
-			if (seg == null) continue;
-			// rebuild if size changed (width spans full inner width)
-			if (Std.int(seg.width) != innerW || Std.int(seg.height) != segH) seg.makeGraphic(innerW, segH, segmentColor);
-			seg.color = segmentColor;
-			// position bottom-to-top: i=0 bottom segment
-			var x = Std.int(panel.x);
-			var y = Std.int(panel.y + innerH - segH - i * (segH + sGap));
-			seg.x = x; seg.y = y;
-
-			// Align tick overlay bounds and position
-			if (tickSprites != null && i < tickSprites.length) {
-				var tk = tickSprites[i];
-				if (tk != null) {
-					if (Std.int(tk.width) != innerW || Std.int(tk.height) != segH) tk.makeGraphic(innerW, segH, FlxColor.WHITE);
-					tk.x = x; tk.y = y;
-				}
-			}
+		// Ensure vignette is cover-fit and centered on initial build
+		var w0 = FlxG.width; var h0 = FlxG.height;
+		if (screenVignette != null && vignetteOrigW > 0 && vignetteOrigH > 0) {
+			var sc = Math.max(w0 / vignetteOrigW, h0 / vignetteOrigH);
+			var nw = Std.int(vignetteOrigW * sc);
+			var nh = Std.int(vignetteOrigH * sc);
+			screenVignette.setGraphicSize(nw, nh);
+			screenVignette.updateHitbox();
+			screenVignette.x = Std.int((w0 - nw) * 0.5);
+			screenVignette.y = Std.int((h0 - nh) * 0.5);
 		}
-		// Ensure segGlow matches a segment tile size
-		if (segGlow != null) {
-			if (Std.int(segGlow.width) != innerW || Std.int(segGlow.height) != segH) segGlow.makeGraphic(innerW, segH, FlxColor.WHITE);
-		}
-		updateSegmentsFill();
 	}
+
+
 
 	/**
 	 * Visually toggle which segments are filled based on notesHitCounter.
 	 */
 	function updateSegmentsFill() {
-		if (segmentSprites == null) return;
+		if (notesPerFull <= 0) notesPerFull = 1;
 		if (notesPerFull <= 0) notesPerFull = 1;
 		var progress:Float = notesHitCounter / notesPerFull;
 		if (progress < 0) progress = 0; if (progress > 1) progress = 1;
@@ -1333,19 +1726,20 @@ class MikuVoltagePanel extends ScriptedModule {
 		// (evita que el primer segmento "se quede pegado" por decimales cerca de 0%).
 		var visualPercentInt:Int = Std.int(Math.round(progress * 100.0));
 		if (visualPercentInt <= 0) filled = 0;
-		// Early out if nothing changes; still update lastProgress for correct direction detection.
-		if (filled == _lastFilled) {
-			_lastProgress = progress;
-			return;
+		// Update charge atlas sprite to the matching step (0 => hidden)
+		if (chargeSprite != null) {
+			if (filled <= 0) {
+				chargeSprite.visible = false;
+			} else {
+				var idx = filled - 1; if (idx < 0) idx = 0; if (idx > 9) idx = 9;
+				var animName = "c" + idx;
+				if (chargeSprite.animation != null) chargeSprite.animation.play(animName, true);
+				chargeSprite.visible = true;
+			}
 		}
-		for (i in 0...segmentSprites.length) {
-			var seg = segmentSprites[i]; if (seg == null) continue;
-			// with i=0 bottom, show bottom-most 'filled' segments
-			seg.visible = (i < filled);
-		}
-		_lastProgress = progress;
-		_lastFilled = filled;
-		if (PlayState.instance != null) PlayState.instance.refresh();
+	_lastProgress = progress;
+	_lastFilled = filled;
+	_refreshPending = true;
 	}
 
 	/**
@@ -1398,23 +1792,33 @@ class MikuVoltagePanel extends ScriptedModule {
 	}
 
 	function cleanup() {
+			// Clap system removed; nothing additional to cancel here.
 			if (panel != null && PlayState.instance != null) {
 				PlayState.instance.remove(panel, true);
 			}
 			if (panelBorder != null && PlayState.instance != null) {
 				PlayState.instance.remove(panelBorder, true);
 			}
+			if (panelBgNote != null && PlayState.instance != null) {
+				PlayState.instance.remove(panelBgNote, true);
+			}
 			if (panelGlow != null && PlayState.instance != null) {
 				PlayState.instance.remove(panelGlow, true);
 			}
-			if (segmentSprites != null && PlayState.instance != null) {
-				for (s in segmentSprites) if (s != null) PlayState.instance.remove(s, true);
+			if (screenVignette != null && PlayState.instance != null) {
+				PlayState.instance.remove(screenVignette, true);
+			}
+			if (chargeSprite != null && PlayState.instance != null) {
+				PlayState.instance.remove(chargeSprite, true);
 			}
 			if (segGlow != null && PlayState.instance != null) {
 				PlayState.instance.remove(segGlow, true);
 			}
 			if (tickSprites != null && PlayState.instance != null) {
 				for (t in tickSprites) if (t != null) PlayState.instance.remove(t, true);
+			}
+			if (tickAura != null && PlayState.instance != null) {
+				PlayState.instance.remove(tickAura, true);
 			}
 			if (tapButton != null && PlayState.instance != null) {
 				PlayState.instance.remove(tapButton, true);
@@ -1424,24 +1828,66 @@ class MikuVoltagePanel extends ScriptedModule {
 			if (percentTextTheo != null && PlayState.instance != null) { PlayState.instance.remove(percentTextTheo, true); }
 			if (panel != null) panel.destroy();
 			if (panelBorder != null) panelBorder.destroy();
+			if (panelBgNote != null && panelBgNote.destroy != null) panelBgNote.destroy();
 			if (panelGlow != null) panelGlow.destroy();
-			if (segmentSprites != null) { for (s in segmentSprites) if (s != null && s.destroy != null) s.destroy(); }
+			if (_vignetteTween != null) {
+				try { _vignetteTween.cancel(); } catch (e:Dynamic) {}
+				_vignetteTween = null;
+			}
+			if (screenVignette != null && screenVignette.destroy != null) screenVignette.destroy();
+			if (chargeSprite != null && chargeSprite.destroy != null) chargeSprite.destroy();
 			if (segGlow != null && segGlow.destroy != null) segGlow.destroy();
 			if (tickSprites != null) { for (t in tickSprites) if (t != null && t.destroy != null) t.destroy(); }
+			if (tickAura != null && tickAura.destroy != null) tickAura.destroy();
 			if (tapButton != null && tapButton.destroy != null) tapButton.destroy();
 			if (percentTextVisual != null && percentTextVisual.destroy != null) percentTextVisual.destroy();
 			if (percentTextReal != null && percentTextReal.destroy != null) percentTextReal.destroy();
 			if (percentTextTheo != null && percentTextTheo.destroy != null) percentTextTheo.destroy();
 			panel = null;
 			panelBorder = null;
+			panelBgNote = null;
 			panelGlow = null;
-			segmentSprites = null;
+			screenVignette = null;
+			chargeSprite = null;
 			segGlow = null;
 			tickSprites = null;
+			tickAura = null;
+			atlasFramesVP = null;
 			tapButton = null;
 			percentTextVisual = null;
 			percentTextReal = null;
 			percentTextTheo = null;
+	}
+
+	function showVignetteActive(instant:Bool) {
+		if (!vignetteEnabled || screenVignette == null) return;
+		// Ensure sized & centered in case this is the first activation after a res change
+		var w = FlxG.width; var h = FlxG.height;
+		if (vignetteOrigW > 0 && vignetteOrigH > 0) {
+			var sc = Math.max(w / vignetteOrigW, h / vignetteOrigH);
+			var nw = Std.int(vignetteOrigW * sc);
+			var nh = Std.int(vignetteOrigH * sc);
+			screenVignette.setGraphicSize(nw, nh); screenVignette.updateHitbox();
+			screenVignette.x = Std.int((w - nw) * 0.5); screenVignette.y = Std.int((h - nh) * 0.5);
+		}
+		if (_vignetteTween != null) { try { _vignetteTween.cancel(); } catch (e:Dynamic) {} _vignetteTween = null; }
+		screenVignette.visible = true;
+		var targetAlpha:Float = vignetteStaticAlpha * vignetteIntensity;
+		if (targetAlpha < 0) targetAlpha = 0; if (targetAlpha > 1) targetAlpha = 1;
+		if (instant || vignetteFastFadeSec <= 0) {
+			screenVignette.alpha = targetAlpha;
+		} else {
+			screenVignette.alpha = 0.0;
+			try { _vignetteTween = FlxTween.tween(screenVignette, { alpha: targetAlpha }, vignetteFastFadeSec, { ease: FlxEase.quadOut } ); } catch (e:Dynamic) {
+				screenVignette.alpha = targetAlpha; // fallback
+			}
+		}
+	}
+
+	function hideVignetteInstant() {
+		if (!vignetteEnabled || screenVignette == null) return;
+		if (_vignetteTween != null) { try { _vignetteTween.cancel(); } catch (e:Dynamic) {} _vignetteTween = null; }
+		screenVignette.alpha = 0.0; screenVignette.visible = false;
 	}
 
 	// Explicitly destroy debug text UI and detach from state
@@ -1477,6 +1923,65 @@ class MikuVoltagePanel extends ScriptedModule {
 		var p = (pad == null || pad.length <= 0) ? "0" : pad;
 		while (out.length < len) out = p + out;
 		return out;
+	}
+
+	// Preload NoteStyle assets (notes, splashes, hold covers, and receptor frames) to avoid runtime spikes.
+	function preloadNoteStyleAssets(styleObj:Dynamic):Void {
+	if (styleObj == null) return;
+	// Wrap each block to avoid one failure stopping other assets.
+	try {
+		// Notes
+		var tmpNote = new NoteSprite(styleObj, 0);
+		// Do not add to state; just ensure frames/animations are built.
+		tmpNote.destroy();
+	} catch (e:Dynamic) {
+		trace('[VP] Note preload failed: ' + e);
+	}
+	try {
+		// Note splashes
+		var tmpSplash = new NoteSplash(styleObj);
+		tmpSplash.destroy();
+	} catch (e:Dynamic) {
+		trace('[VP] Splash preload failed: ' + e);
+	}
+	try {
+		// Hold cover (loads glow sheets for all directions)
+		var tmpCover = new NoteHoldCover(styleObj);
+		tmpCover.destroy();
+	} catch (e:Dynamic) {
+		trace('[VP] Hold cover preload failed: ' + e);
+	}
+	try {
+			// Receptor frames/animations (one direction is enough to force atlas load)
+			// Pass 0 (LEFT) instead of NoteDirection.LEFT to avoid importing enum abstracts in hscript
+			var tmpReceptor = new StrumlineNote(styleObj, true, 0);
+		tmpReceptor.destroy();
+	} catch (e:Dynamic) {
+		trace('[VP] Receptor preload failed: ' + e);
+	}
+	}
+
+	// Determine the normal/drain style IDs and preload both (deduped).
+	function preloadStylesForSong():Void {
+	var normalId:String = null;
+	var detected = detectCurrentPlayerNoteStyle();
+	if (detected != null) normalId = Std.string(detected);
+
+	// Build a small unique list of ids to preload
+	var ids:Array<String> = [];
+	if (normalId != null && normalId.length > 0) ids.push(normalId);
+	if (styleDuringDrain != null && styleDuringDrain.length > 0) {
+		var already:Bool = false;
+		for (x in ids) if (x == styleDuringDrain) { already = true; break; }
+		if (!already) ids.push(styleDuringDrain);
+	}
+	// Always ensure at least one (default) to avoid NPEs
+	if (ids.length == 0) ids.push("funkin");
+
+	for (id in ids) {
+		var sty = fetchNoteStyleObj(id);
+		preloadNoteStyleAssets(sty);
+	}
 	}
 
 }

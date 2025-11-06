@@ -34,7 +34,8 @@
       ]
     },
     "stage": "TechnoClubStage",
-    "noteStyle": "funkin",
+    "noteStyle": "hatsunenormal",
+    "vpStyle": "hatsunevp",
     "ratings": {
       "easy": 1,
       "hard": 4,
