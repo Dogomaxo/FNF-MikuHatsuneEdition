@@ -54,6 +54,23 @@ class MikuVoltagePanel extends ScriptedModule {
 	var tickScaleRel:Float = 1.00;  var tickOffsetX:Int = 0;  var tickOffsetY:Int = 0;
 	var auraScaleRel:Float = 1.15;  var auraOffsetX:Int = 3;  var auraOffsetY:Int = 3;
 	var glowScaleRel:Float = 1.00;  var glowOffsetX:Int = 0;  var glowOffsetY:Int = 0;
+	// Ajustes independientes para la nota cargada (puede diferir del BG)
+	// Por defecto se escala por ALTURA del panel para evitar que quede muy chica por ancho recortado.
+	var chargedNoteScaleRel:Float = 1.15; var chargedNoteOffsetX:Int = 0; var chargedNoteOffsetY:Int = 0;
+	// Escala y offset extra específicos para el loop POST (sus frames pueden tener distinta caja)
+	var chargedNotePostScaleRel:Float = 0.85;
+	var chargedNotePostOffsetX:Int = 1; var chargedNotePostOffsetY:Int = 1.1;
+
+	// FX de subida/bajada de segmento (independiente del fill)
+	// Por defecto comparten valores, pero puedes separarlos con los knobs de UP/DOWN.
+	var chargeFxScaleRel:Float = 1.034; var chargeFxOffsetX:Int = 1; var chargeFxOffsetY:Int = 2.3; // valor común por compatibilidad
+	// Opcionales por-dirección (si los quieres distintos). Inicialmente igual que los comunes.
+	var chargeFxUpScaleRel:Float = 1.056; var chargeFxUpOffsetX:Int = 1.5; var chargeFxUpOffsetY:Int = 1.9;
+	var chargeFxDownScaleRel:Float = 0.993; var chargeFxDownOffsetX:Int = 0.397; var chargeFxDownOffsetY:Int = 0.6;
+
+	// Nuevo flag: desactiva completamente cualquier glow/aliento durante la descarga.
+	// Si es false, no se crean sprites de glow y no se ejecuta la lógica de breathing.
+	var glowDuringDrainEnabled:Bool = false;
 
 	// Fondo (panel) y Borde (stroke) ajustes independientes
 	var bgScaleRel:Float = 1.05;    var bgOffsetX:Int = 0;    var bgOffsetY:Int = 0;
@@ -62,13 +79,14 @@ class MikuVoltagePanel extends ScriptedModule {
 	// Prioridades de dibujo (z-index): mayor = encima
 	// Sube el indicador al mismo rango que el HUD (alrededor de 800+) para que no lo tapen las flechas/strums.
 	var zPanel:Int = 3000;
-	var zNote:Int = 3001;
+	var zNote:Int = 3001; // 3001
 	var zPanelGlow:Int = 3002;
 	var zCharge:Int = 3003;
-	var zAura:Int = 3004; // aura por detrás de los ticks y por encima de la carga
-	var zTick:Int = 3005;
-	var zBorder:Int = 3006;
-	var zTapButton:Int = 3007;
+	var zFullCharge:Int = 3004; // overlay anim cuando está al 100%
+	var zAura:Int = 3005; // aura por detrás de los ticks y por encima de la carga / full charge
+	var zTick:Int = 3006;
+	var zBorder:Int = 3007;
+	var zTapButton:Int = 3008;
 
 	// Fill logic (visual uses atlas step frames)
 	var numSegments:Int = 10;
@@ -77,15 +95,15 @@ class MikuVoltagePanel extends ScriptedModule {
 	var scaleSegmentsWithHeight:Bool = true;
 
 	// Progress rules
-	var sickHitsPerSegment:Int = 14;
-	var goodHitsPerSegment:Int = 15;
+	var sickHitsPerSegment:Int = 15;
+	var goodHitsPerSegment:Int = 16;
 	var badEventsPerSegment:Int = 10;
 	var shitEventsPerSegment:Int = 8;
 	var missEventsPerSegment:Int = 7;
 	var ghostEventsPerSegment:Int = 5;
 
 	// Initial charge
-	var initialChargePercent:Float = 0.0;
+	var initialChargePercent:Float = 0.5;
 
 	/**
 	 * Computes size and position based on screen height and downscroll state.
@@ -102,7 +120,7 @@ class MikuVoltagePanel extends ScriptedModule {
 		// Resize atlas-based sprites to side y centrar con ajustes relativos
 		var bgS = Std.int(side * (bgScaleRel <= 0 ? 0.1 : bgScaleRel)); if (bgS < 1) bgS = 1;
 		panel.setGraphicSize(bgS, bgS); panel.updateHitbox();
-		if (panelGlow != null) { var gsz = Std.int(side * glowScaleRel); panelGlow.setGraphicSize(gsz, gsz); panelGlow.updateHitbox(); }
+		if (glowDuringDrainEnabled && panelGlow != null) { var gsz = Std.int(side * glowScaleRel); panelGlow.setGraphicSize(gsz, gsz); panelGlow.updateHitbox(); }
 		if (chargeSprite != null) { var csz = Std.int(side * chargeScaleRel); chargeSprite.setGraphicSize(csz, csz); chargeSprite.updateHitbox(); }
 		if (panelBgNote != null) {
 			var noteW = Std.int(side * noteScaleRel);
@@ -132,7 +150,7 @@ class MikuVoltagePanel extends ScriptedModule {
 		panelBorder.x = Std.int((_anchorX - t) + ((bwOrig - panelBorder.width) * 0.5) + borderOffsetX * sOff);
 		panelBorder.y = Std.int((_anchorY - t) + ((bhOrig - panelBorder.height) * 0.5) + borderOffsetY * sOff);
 		if (panelBgNote != null) { panelBgNote.x = Std.int(_anchorX + (side - panelBgNote.width) * 0.5 + noteOffsetX * sOff); panelBgNote.y = Std.int(_anchorY + (side - panelBgNote.height) * 0.5 + noteOffsetY * sOff); }
-		if (panelGlow != null) { panelGlow.x = Std.int(_anchorX + (side - panelGlow.width) * 0.5 + glowOffsetX * sOff); panelGlow.y = Std.int(_anchorY + (side - panelGlow.height) * 0.5 + glowOffsetY * sOff); }
+		if (glowDuringDrainEnabled && panelGlow != null) { panelGlow.x = Std.int(_anchorX + (side - panelGlow.width) * 0.5 + glowOffsetX * sOff); panelGlow.y = Std.int(_anchorY + (side - panelGlow.height) * 0.5 + glowOffsetY * sOff); }
 		if (chargeSprite != null) { chargeSprite.x = Std.int(_anchorX + (side - chargeSprite.width) * 0.5 + chargeOffsetX * sOff); chargeSprite.y = Std.int(_anchorY + (side - chargeSprite.height) * 0.5 + chargeOffsetY * sOff); }
 		if (tickAura != null) { tickAura.x = Std.int(_anchorX + (side - tickAura.width) * 0.5 + auraOffsetX * sOff); tickAura.y = Std.int(_anchorY + (side - tickAura.height) * 0.5 + auraOffsetY * sOff); }
 		// Keep the touch button aligned/sized with the panel and respect external inputs
@@ -160,8 +178,7 @@ class MikuVoltagePanel extends ScriptedModule {
 			if (percentTextReal != null) { percentTextReal.x = baseX; percentTextReal.y = curY; curY += Std.int(percentTextReal.height) + lineGap; }
 			if (percentTextTheo != null) { percentTextTheo.x = baseX; percentTextTheo.y = curY; }
 		}
-		// Make sure render order updates if the engine rebuilds or re-sorts.
-		if (PlayState.instance != null) PlayState.instance.refresh();
+		// No refresh here: layout only moves/resizes; z-order unchanged.
 	}
 
 	// Sizes and aligns atlas-driven pieces (charge, ticks, aura, glow) to the panel bounds
@@ -194,10 +211,53 @@ class MikuVoltagePanel extends ScriptedModule {
 			tickAura.y = Std.int(_anchorY + (side - tickAura.height) * 0.5 + auraOffsetY * sOff);
 		}
 		if (segGlow != null) {
-			var gsz = Std.int(side * glowScaleRel);
-			if (Std.int(segGlow.width) != gsz || Std.int(segGlow.height) != gsz) segGlow.makeGraphic(gsz, gsz, FlxColor.WHITE);
-			segGlow.x = Std.int(_anchorX + (side - segGlow.width) * 0.5 + glowOffsetX * sOff);
-			segGlow.y = Std.int(_anchorY + (side - segGlow.height) * 0.5 + glowOffsetY * sOff);
+			if (glowDuringDrainEnabled) {
+				var gsz = Std.int(side * glowScaleRel);
+				if (Std.int(segGlow.width) != gsz || Std.int(segGlow.height) != gsz) segGlow.makeGraphic(gsz, gsz, FlxColor.WHITE);
+				segGlow.x = Std.int(_anchorX + (side - segGlow.width) * 0.5 + glowOffsetX * sOff);
+				segGlow.y = Std.int(_anchorY + (side - segGlow.height) * 0.5 + glowOffsetY * sOff);
+			} else {
+				segGlow.visible = false; segGlow.alpha = 0.0;
+			}
+		}
+		// Full charge overlay en el mismo tamaño/posición que chargeSprite
+		if (fullChargeSprite != null) {
+			var fsz = Std.int(side * chargeScaleRel);
+			fullChargeSprite.setGraphicSize(fsz, fsz); fullChargeSprite.updateHitbox();
+			fullChargeSprite.x = Std.int(_anchorX + (side - fullChargeSprite.width) * 0.5 + chargeOffsetX * sOff);
+			fullChargeSprite.y = Std.int(_anchorY + (side - fullChargeSprite.height) * 0.5 + chargeOffsetY * sOff);
+		}
+		// FX de subida/bajada de segmento: tamaño/posición con escala/offset propios
+		if (chargeFxSprite != null) {
+			var mode = _chargeFxLastMode; // "up" o "down"
+			var xScaleRel = (mode == "down") ? chargeFxDownScaleRel : chargeFxUpScaleRel;
+			var xOffX = (mode == "down") ? chargeFxDownOffsetX : chargeFxUpOffsetX;
+			var xOffY = (mode == "down") ? chargeFxDownOffsetY : chargeFxUpOffsetY;
+			var xsz = Std.int(side * xScaleRel);
+			chargeFxSprite.setGraphicSize(xsz, xsz); chargeFxSprite.updateHitbox();
+			chargeFxSprite.x = Std.int(_anchorX + (side - chargeFxSprite.width) * 0.5 + xOffX * sOff);
+			chargeFxSprite.y = Std.int(_anchorY + (side - chargeFxSprite.height) * 0.5 + xOffY * sOff);
+		}
+		// Nota cargada: escala por ALTURA y offsets propios; POST puede tener offset distinto
+		if (musicNoteCharged != null) {
+			var usingPost = (musicNoteCharged.animation != null && musicNoteCharged.animation.curAnim != null && musicNoteCharged.animation.curAnim.name == "post");
+			var scaleRel = usingPost ? chargedNotePostScaleRel : chargedNoteScaleRel;
+			var nsz = Std.int(side * scaleRel);
+			musicNoteCharged.setGraphicSize(0, nsz); musicNoteCharged.updateHitbox();
+			var addX = chargedNoteOffsetX; var addY = chargedNoteOffsetY;
+			if (usingPost) {
+				addX += chargedNotePostOffsetX; addY += chargedNotePostOffsetY;
+			}
+			musicNoteCharged.x = Std.int(_anchorX + (side - musicNoteCharged.width) * 0.5 + addX * sOff);
+			musicNoteCharged.y = Std.int(_anchorY + (side - musicNoteCharged.height) * 0.5 + addY * sOff);
+		}
+		// Spark FX ocupa el área del panel
+		if (sparkSprite != null) {
+			var ssz = Std.int(side * 1.0);
+			sparkSprite.setGraphicSize(ssz, ssz); sparkSprite.updateHitbox();
+			// Posición por defecto centrada; cuando se dispare, se recoloca aleatoriamente
+			sparkSprite.x = Std.int(_anchorX + (side - sparkSprite.width) * 0.5);
+			sparkSprite.y = Std.int(_anchorY + (side - sparkSprite.height) * 0.5);
 		}
 	}
 	var panelBgNote:FlxSprite = null;           // "vp music note bg"
@@ -207,6 +267,13 @@ class MikuVoltagePanel extends ScriptedModule {
 	var atlasKeyVP:String = 'VoltagePowerASSETS/VP_GAUGE/MIKU/VP_Assets';
 	var panel:FlxSprite = null;                 // background square ("vp background")
 	var panelBorder:FlxSprite = null;           // stroke ("vp stroke")
+	var fullChargeSprite:FlxSprite = null;      // anim loop "vp full charge" por encima de chargeSprite
+	var musicNoteCharged:FlxSprite = null;      // anim único "vp music note charged", luego loop POST
+	var chargeFxSprite:FlxSprite = null;        // FX de segmento: "vp charge up" / "vp charge down"
+	var _chargeFxLastMode:String = "up";        // recuerda el último modo para layout ("up" o "down")
+	var sparkSprite:FlxSprite = null;           // sprite aleatorio A..E dentro del medidor
+	var fullChargeActive:Bool = false;          // estado visual activo
+	var lastSparkFrame:Int = -1;                // para evitar doble disparo en el mismo frame
 	// Anchor (top-left) of the gauge area without per-element offsets; others use this, not panel.x/y
 	var _anchorX:Int = 0;
 	var _anchorY:Int = 0;
@@ -336,6 +403,10 @@ class MikuVoltagePanel extends ScriptedModule {
 	// Debug UI
 	var showPercentDebug:Bool = false; // Toggle to show a small percentage text next to the square
 
+	// Prewarm guards (avoid redundant work each build/load)
+	var _animPrewarmed:Bool = false;
+	var _sfxPrewarmed:Bool = false;
+
 		public function new() {
 			// Priority: fairly early so it appears under score popups but above background HUD bits.
 			super("Hatsune Voltage Panel", 5);
@@ -407,8 +478,12 @@ class MikuVoltagePanel extends ScriptedModule {
 			_timeSec = 0.0; _lastNoteHapticTimeSec = -999.0;
 			// ensure visual style is normal at song start
 			this.endDrainVisualStyleSwap();
+			// force-hide vignette in case we were draining when the restart/load happened
+			hideVignetteInstant();
 			// Preload both the normal and drain note styles to avoid stutters on first swap
 			preloadStylesForSong();
+			// Prewarm key SFX so first-use (start/full/end) doesn't decode at runtime
+			prewarmAllSfx();
 			// resample the color from the icon if possible
 			recalcSegmentColorFromIcon();
 			if (this.active) ensureBuilt();
@@ -437,6 +512,10 @@ class MikuVoltagePanel extends ScriptedModule {
 			// reset conflict-avoidance timers
 			_timeSec = 0.0; _lastNoteHapticTimeSec = -999.0;
 			this.endDrainVisualStyleSwap();
+				// force-hide vignette on quick retry as well
+				hideVignetteInstant();
+			// Re-warm SFX on quick restarts (in case audio cache was purged)
+			prewarmAllSfx();
 		updateSegmentsFill();
 	}
 
@@ -490,12 +569,16 @@ class MikuVoltagePanel extends ScriptedModule {
 							// 2) Al usar la carga cuando está completa (entre 100% y 110%), empezar a bajar desde 100%
 							notesHitCounter = notesPerFull;
 							draining = true;
+							// Al activar la carga, cortar los FX de carga completa
+							stopFullChargeFX();
 							_hapticEndFired = false; // reset guard for this drain cycle
 							// set drain flag for other HUD modules (e.g., show "protected")
 							MHE_SharedState.drainActive = true;
 							// Play synchronized start cue (sound + optional haptic with offset)
 							_hapticStartFired = false; // reset guard for this activation
 							playStartCueSynced();
+							// Ocultar cualquier FX de carga up/down durante el proceso de drenado
+							if (chargeFxSprite != null) chargeFxSprite.visible = false;
 							// Start health floor lock to prevent health loss
 							if (healthImmunityDuringDrain && PlayState.instance != null) {
 								healthDrainLockActive = true;
@@ -522,6 +605,8 @@ class MikuVoltagePanel extends ScriptedModule {
 							// Exhausted: clamp, end drain and play end cue (SFX + optional haptic) once
 							notesHitCounter = 0;
 							draining = false;
+							// al terminar el drain, asegúrate de ocultar FX de full y vignette
+							stopFullChargeFX();
 							// Hide vignette instantly on end
 							hideVignetteInstant();
 							playEndCueSynced();
@@ -549,9 +634,9 @@ class MikuVoltagePanel extends ScriptedModule {
 						}
 					}
 
-					// Drain glow effect: breathing on panel and current segment
+					// Drain glow effect: breathing on panel and current segment (disabled if flag = false)
 					if (panelGlow != null) {
-						if (draining) {
+						if (draining && glowDuringDrainEnabled) {
 							// Speed up breathing when meter nearly empty
 							var nearEmpty = false;
 							if (notesPerFull > 0) nearEmpty = (notesHitCounter <= notesPerFull * panelGlowNearThreshold + 1e-6);
@@ -577,7 +662,7 @@ class MikuVoltagePanel extends ScriptedModule {
 					}
 						// Segment breathing glow: overlay the whole panel (matches atlas pieces)
 					if (segGlow != null && panel != null) {
-						if (draining) {
+						if (draining && glowDuringDrainEnabled) {
 							segGlow.visible = true;
 							segGlow.x = panel.x;
 							segGlow.y = panel.y;
@@ -589,11 +674,37 @@ class MikuVoltagePanel extends ScriptedModule {
 						}
 					}
 
-					// Run any deferred refresh once per frame, near the end of update
-					if (_refreshPending && PlayState.instance != null) {
-						_refreshPending = false;
-						PlayState.instance.refresh();
+					// Control de FX de FULL CHARGE durante update
+					if (fullChargeActive) {
+						// Si por alguna penalidad el medidor cayó de 100% y no estamos drenando, cortar FX
+						if (!draining && notesHitCounter < notesPerFull - 1e-6) {
+							stopFullChargeFX();
+						} else {
+							// Transición a POST del ícono musical al terminar la intro
+							if (musicNoteCharged != null && musicNoteCharged.visible && musicNoteCharged.animation != null && musicNoteCharged.animation.curAnim != null) {
+								if (musicNoteCharged.animation.curAnim.name == "charged" && musicNoteCharged.animation.curAnim.finished) {
+									musicNoteCharged.animation.play("post", true);
+									// Reajusta tamaño/posición para aplicar offsets y posible cambio de aspect
+									layoutSegments();
+								}
+							}
+							// Disparo de chispas aleatorias en frames 12 o 43 del loop de "vp full charge"
+							if (fullChargeSprite != null && fullChargeSprite.visible && fullChargeSprite.animation != null && fullChargeSprite.animation.curAnim != null) {
+								var cf = fullChargeSprite.animation.curAnim.curFrame;
+								if (cf != lastSparkFrame && (cf == 12 || cf == 43)) {
+									lastSparkFrame = cf;
+									triggerRandomSpark();
+								}
+							}
+							// Ocultar spark al terminar su anim
+							if (sparkSprite != null && sparkSprite.visible && sparkSprite.animation != null && sparkSprite.animation.curAnim != null && sparkSprite.animation.curAnim.finished) {
+								sparkSprite.visible = false;
+							}
+						}
 					}
+
+					// Run any deferred refresh once per frame, near the end of update
+					// No per-frame state refresh; avoid costly resorting each frame.
 					// Update percent debug texts
 					if (showPercentDebug) {
 						if (notesPerFull <= 0) notesPerFull = 1;
@@ -693,6 +804,11 @@ class MikuVoltagePanel extends ScriptedModule {
 							}
 						}
 					}
+				}
+
+				// Ocultar FX de up/down cuando su anim termina
+				if (chargeFxSprite != null && chargeFxSprite.visible && chargeFxSprite.animation != null && chargeFxSprite.animation.curAnim != null) {
+					if (chargeFxSprite.animation.curAnim.finished) chargeFxSprite.visible = false;
 				}
 			}
 		}
@@ -806,6 +922,103 @@ class MikuVoltagePanel extends ScriptedModule {
 			try { s = FlxG.sound.play(Paths.sound(fullSfxKey, 'shared'), fullSfxVolume, false); } catch (e2:Dynamic) {}
 		}
 	}
+
+	// === Prewarm helpers (audio/animation) ===
+	function prewarmSfxKey(key:String):Void {
+		if (key == null) return;
+		try {
+			var snd:Dynamic = FlxG.sound.play(Paths.sound(key), 0, false);
+			if (snd != null && snd.stop != null) snd.stop();
+		} catch (e:Dynamic) {
+			try {
+				var snd2:Dynamic = FlxG.sound.play(Paths.sound(key, 'shared'), 0, false);
+				if (snd2 != null && snd2.stop != null) snd2.stop();
+			} catch (e2:Dynamic) {}
+		}
+	}
+
+	function prewarmAllSfx():Void {
+		if (_sfxPrewarmed) return;
+		_sfxPrewarmed = true;
+		prewarmSfxKey(startSfxKey);
+		prewarmSfxKey(endSfxKey);
+		prewarmSfxKey(fullSfxKey);
+	}
+
+	function ensureAnimReady(owner:Dynamic, names:Array<String>):Void {
+		if (owner == null) return;
+		var anim = ReflectUtil.hasField(owner, "animation") ? ReflectUtil.getField(owner, "animation") : null;
+		if (anim == null) return;
+		var playFn = ReflectUtil.hasField(anim, "play") ? ReflectUtil.getField(anim, "play") : null;
+		var stopFn = ReflectUtil.hasField(anim, "stop") ? ReflectUtil.getField(anim, "stop") : null;
+		if (playFn == null) return;
+		for (nm in names) {
+			try {
+				playFn(nm, false);
+				// Touch current frame to ensure controller initializes
+				getAnimCurFrame(anim);
+				if (stopFn != null) stopFn();
+				break;
+			} catch (e:Dynamic) {}
+		}
+	}
+
+	function prewarmAnimations():Void {
+		if (_animPrewarmed) return;
+		_animPrewarmed = true;
+		// Full-charge overlay
+		if (fullChargeSprite != null) ensureAnimReady(fullChargeSprite, ["loop"]);
+		// Music note (charged then post)
+		if (musicNoteCharged != null) ensureAnimReady(musicNoteCharged, ["charged", "post"]);
+		// Segment FX up/down
+		if (chargeFxSprite != null) ensureAnimReady(chargeFxSprite, ["up", "down"]);
+		// Sparks A..E
+		if (sparkSprite != null) ensureAnimReady(sparkSprite, ["A", "B", "C", "D", "E"]);
+		// Charge steps c0..c9
+		if (chargeSprite != null) {
+			var names = [];
+			for (i in 0...10) names.push("c" + i);
+			ensureAnimReady(chargeSprite, names);
+		}
+	}
+
+	function triggerRandomSpark():Void {
+		if (sparkSprite == null) return;
+		// Elegir anim A..E
+		var idx = FlxG.random.int(0, 4);
+		var name = (idx == 0) ? "A" : (idx == 1) ? "B" : (idx == 2) ? "C" : (idx == 3) ? "D" : "E";
+		// Recolocar aleatoriamente dentro del panel
+		var h = FlxG.height;
+		var scale = h / 720.0;
+		var sideBase = scaleSizeWithHeight ? (baseSize * scale) : baseSize;
+		var side = Std.int(sideBase * (indicatorScale <= 0 ? 0.01 : indicatorScale)); if (side < 8) side = 8;
+		var minX = _anchorX; var minY = _anchorY;
+		var maxX = _anchorX + side - Std.int(sparkSprite.width);
+		var maxY = _anchorY + side - Std.int(sparkSprite.height);
+		if (maxX < minX) maxX = minX; if (maxY < minY) maxY = minY;
+		sparkSprite.x = FlxG.random.int(minX, maxX);
+		sparkSprite.y = FlxG.random.int(minY, maxY);
+		sparkSprite.visible = true;
+		sparkSprite.animation.play(name, false);
+	}
+
+		// === FULL CHARGE FX ===
+		function startFullChargeFX():Void {
+			fullChargeActive = true; lastSparkFrame = -1;
+			if (fullChargeSprite != null) { fullChargeSprite.visible = true; fullChargeSprite.animation.play("loop", true); }
+			if (musicNoteCharged != null) {
+				musicNoteCharged.visible = true; musicNoteCharged.animation.play("charged", false);
+			}
+			if (sparkSprite != null) { sparkSprite.visible = false; sparkSprite.alpha = 1.0; }
+			layoutSegments();
+		}
+
+		function stopFullChargeFX():Void {
+			fullChargeActive = false; lastSparkFrame = -1;
+			if (fullChargeSprite != null) { fullChargeSprite.visible = false; }
+			if (musicNoteCharged != null) { musicNoteCharged.visible = false; }
+			if (sparkSprite != null) { sparkSprite.visible = false; }
+		}
 
 	// (clap SFX removed)
 
@@ -1395,7 +1608,7 @@ class MikuVoltagePanel extends ScriptedModule {
 			if (notesHitCounter < 0) notesHitCounter = 0.0;
 			if (notesHitCounter > maxP) notesHitCounter = maxP;
 			// Si se cruzó a FULL, reproducir cue (fuera del bloque de cortesía para cubrir ambos casos)
-			if (crossedFull) playFullSfx();
+			if (crossedFull) { playFullSfx(); startFullChargeFX(); }
 			updateSegmentsFill();
 			// Record time for conflict avoidance if likely haptic fired (Sick/Good/Bad/Shit)
 			if (j == 'sick' || j == 'good' || j == 'bad' || j == 'shit') {
@@ -1545,17 +1758,64 @@ class MikuVoltagePanel extends ScriptedModule {
 		PlayState.instance.add(panel);
 		PlayState.instance.add(panelBgNote);
 		PlayState.instance.add(chargeSprite);
+		// Full charge overlay (encima de charge, por debajo de ticks/borde)
+		fullChargeSprite = new FlxSprite();
+		fullChargeSprite.scrollFactor.set();
+		fullChargeSprite.cameras = [hudCam];
+		fullChargeSprite.antialiasing = true;
+		fullChargeSprite.zIndex = zFullCharge;
+		fullChargeSprite.visible = false; fullChargeSprite.alpha = 1.0;
+		if (atlasFramesVP != null) {
+			fullChargeSprite.frames = atlasFramesVP;
+			// Todas las frames con prefijo "vp full charge"
+			fullChargeSprite.animation.addByPrefix("loop", "vp full charge", 24, true);
+		}
+		PlayState.instance.add(fullChargeSprite);
+
+		// Nota cargada (aparece al llegar a 100%, luego POST en loop)
+		musicNoteCharged = new FlxSprite();
+		musicNoteCharged.scrollFactor.set();
+		musicNoteCharged.cameras = [hudCam];
+		musicNoteCharged.antialiasing = true;
+		musicNoteCharged.zIndex = zFullCharge; // mismo plano que full charge
+		musicNoteCharged.visible = false; musicNoteCharged.alpha = 1.0;
+		if (atlasFramesVP != null) {
+			musicNoteCharged.frames = atlasFramesVP;
+			// Importante: utilizar un prefijo que EXCLUYA los frames POST. Sufijo '0' evita capturar
+			// nombres que comienzan con "vp music note charged POST".
+			musicNoteCharged.animation.addByPrefix("charged", "vp music note charged0", 24, false);
+			musicNoteCharged.animation.addByPrefix("post", "vp music note charged POST", 24, true);
+		}
+		PlayState.instance.add(musicNoteCharged);
+
+		// FX de subida/bajada de segmento (encima de charge, debajo de ticks)
+		chargeFxSprite = new FlxSprite();
+		chargeFxSprite.scrollFactor.set();
+		chargeFxSprite.cameras = [hudCam];
+		chargeFxSprite.antialiasing = true;
+		chargeFxSprite.zIndex = zFullCharge; // mismo plano que full charge overlay (sobre charge)
+		chargeFxSprite.visible = false; chargeFxSprite.alpha = 1.0;
+		if (atlasFramesVP != null) {
+			chargeFxSprite.frames = atlasFramesVP;
+			chargeFxSprite.animation.addByPrefix("up", "vp charge up", 24, false);
+			chargeFxSprite.animation.addByPrefix("down", "vp charge down", 24, false);
+		}
+		PlayState.instance.add(chargeFxSprite);
+
+		// Borde tras todo
 		PlayState.instance.add(panelBorder);
 
 		// Panel glow overlay (above background/note, below charge)
-		panelGlow = new FlxSprite();
-		panelGlow.makeGraphic(4, 4, FlxColor.WHITE);
-		panelGlow.alpha = 0.0; panelGlow.visible = false;
-		panelGlow.scrollFactor.set();
-		panelGlow.cameras = [hudCam];
-		panelGlow.antialiasing = true;
-		panelGlow.zIndex = zPanelGlow;
-		PlayState.instance.add(panelGlow);
+		if (glowDuringDrainEnabled) {
+			panelGlow = new FlxSprite();
+			panelGlow.makeGraphic(4, 4, FlxColor.WHITE);
+			panelGlow.alpha = 0.0; panelGlow.visible = false;
+			panelGlow.scrollFactor.set();
+			panelGlow.cameras = [hudCam];
+			panelGlow.antialiasing = true;
+			panelGlow.zIndex = zPanelGlow;
+			PlayState.instance.add(panelGlow);
+		}
 
 		// Full-screen vignette overlay (drawn on HUD camera, above most HUD but below popups if needed)
 		if (vignetteEnabled) {
@@ -1576,14 +1836,16 @@ class MikuVoltagePanel extends ScriptedModule {
 		}
 
 		// Segment breathing glow sprite (overlay panel)
-		segGlow = new FlxSprite();
-		segGlow.makeGraphic(2, 2, FlxColor.WHITE);
-		segGlow.scrollFactor.set();
-		segGlow.cameras = [hudCam];
-		segGlow.antialiasing = true;
-		segGlow.alpha = 0.0; segGlow.visible = false;
-		segGlow.zIndex = zPanelGlow + 1; // justo sobre el panelGlow, por debajo de ticks
-		PlayState.instance.add(segGlow);
+		if (glowDuringDrainEnabled) {
+			segGlow = new FlxSprite();
+			segGlow.makeGraphic(2, 2, FlxColor.WHITE);
+			segGlow.scrollFactor.set();
+			segGlow.cameras = [hudCam];
+			segGlow.antialiasing = true;
+			segGlow.alpha = 0.0; segGlow.visible = false;
+			segGlow.zIndex = zPanelGlow + 1; // justo sobre el panelGlow, por debajo de ticks
+			PlayState.instance.add(segGlow);
+		}
 		// Create tick overlay sprites (atlas-based) above charge
 		tickSprites = [];
 		for (i in 0...numSegments) {
@@ -1606,7 +1868,7 @@ class MikuVoltagePanel extends ScriptedModule {
 			PlayState.instance.add(tick);
 			tickSprites.push(tick);
 		}
-		// Tick aura (single) above charge, below stroke
+		// Tick aura (single) above charge/fullcharge, below stroke
 		tickAura = new FlxSprite();
 		if (atlasFramesVP != null) {
 			tickAura.frames = atlasFramesVP;
@@ -1619,6 +1881,23 @@ class MikuVoltagePanel extends ScriptedModule {
 		tickAura.alpha = 0.0; tickAura.visible = false;
 		tickAura.zIndex = zAura; // behind tick overlays
 		PlayState.instance.add(tickAura);
+
+		// Sparking FX (reutilizable, se muestra al azar en frames clave)
+		sparkSprite = new FlxSprite();
+		sparkSprite.scrollFactor.set();
+		sparkSprite.cameras = [hudCam];
+		sparkSprite.antialiasing = true;
+		sparkSprite.zIndex = zFullCharge; // por encima de charge
+		sparkSprite.visible = false; sparkSprite.alpha = 1.0;
+		if (atlasFramesVP != null) {
+			sparkSprite.frames = atlasFramesVP;
+			sparkSprite.animation.addByPrefix("A", "vp sparking A", 24, false);
+			sparkSprite.animation.addByPrefix("B", "vp sparking B", 24, false);
+			sparkSprite.animation.addByPrefix("C", "vp sparking C", 24, false);
+			sparkSprite.animation.addByPrefix("D", "vp sparking D", 24, false);
+			sparkSprite.animation.addByPrefix("E", "vp sparking E", 24, false);
+		}
+		PlayState.instance.add(sparkSprite);
 
 		// Create an invisible engine-managed touch button over the panel for mobile/touch
 		if (tapButton == null) {
@@ -1689,6 +1968,9 @@ class MikuVoltagePanel extends ScriptedModule {
 			screenVignette.x = Std.int((w0 - nw) * 0.5);
 			screenVignette.y = Std.int((h0 - nh) * 0.5);
 		}
+
+		// Light-touch animation prewarm to avoid first-time hitches (no visual changes)
+		prewarmAnimations();
 	}
 
 
@@ -1737,9 +2019,24 @@ class MikuVoltagePanel extends ScriptedModule {
 				chargeSprite.visible = true;
 			}
 		}
+			// Disparar FX de subida/bajada de segmento si cambió el conteo visible y no estamos drenando
+			if (chargeFxSprite != null && !draining) {
+				var delta = filled - _lastFilled;
+				if (delta > 0) {
+					_chargeFxLastMode = "up";
+					chargeFxSprite.visible = true; chargeFxSprite.alpha = 1.0;
+					chargeFxSprite.animation.play("up", true);
+					// Reposicionar/reescalar tras seleccionar anim para usar el frame correcto
+					layoutSegments();
+				} else if (delta < 0) {
+					_chargeFxLastMode = "down";
+					chargeFxSprite.visible = true; chargeFxSprite.alpha = 1.0;
+					chargeFxSprite.animation.play("down", true);
+					layoutSegments();
+				}
+			}
 	_lastProgress = progress;
 	_lastFilled = filled;
-	_refreshPending = true;
 	}
 
 	/**
@@ -1805,6 +2102,18 @@ class MikuVoltagePanel extends ScriptedModule {
 			if (panelGlow != null && PlayState.instance != null) {
 				PlayState.instance.remove(panelGlow, true);
 			}
+			if (fullChargeSprite != null && PlayState.instance != null) {
+				PlayState.instance.remove(fullChargeSprite, true);
+			}
+			if (chargeFxSprite != null && PlayState.instance != null) {
+				PlayState.instance.remove(chargeFxSprite, true);
+			}
+			if (musicNoteCharged != null && PlayState.instance != null) {
+				PlayState.instance.remove(musicNoteCharged, true);
+			}
+			if (sparkSprite != null && PlayState.instance != null) {
+				PlayState.instance.remove(sparkSprite, true);
+			}
 			if (screenVignette != null && PlayState.instance != null) {
 				PlayState.instance.remove(screenVignette, true);
 			}
@@ -1830,6 +2139,10 @@ class MikuVoltagePanel extends ScriptedModule {
 			if (panelBorder != null) panelBorder.destroy();
 			if (panelBgNote != null && panelBgNote.destroy != null) panelBgNote.destroy();
 			if (panelGlow != null) panelGlow.destroy();
+			if (fullChargeSprite != null && fullChargeSprite.destroy != null) fullChargeSprite.destroy();
+			if (chargeFxSprite != null && chargeFxSprite.destroy != null) chargeFxSprite.destroy();
+			if (musicNoteCharged != null && musicNoteCharged.destroy != null) musicNoteCharged.destroy();
+			if (sparkSprite != null && sparkSprite.destroy != null) sparkSprite.destroy();
 			if (_vignetteTween != null) {
 				try { _vignetteTween.cancel(); } catch (e:Dynamic) {}
 				_vignetteTween = null;
@@ -1847,6 +2160,10 @@ class MikuVoltagePanel extends ScriptedModule {
 			panelBorder = null;
 			panelBgNote = null;
 			panelGlow = null;
+			fullChargeSprite = null;
+			chargeFxSprite = null;
+			musicNoteCharged = null;
+			sparkSprite = null;
 			screenVignette = null;
 			chargeSprite = null;
 			segGlow = null;
