@@ -1,0 +1,117 @@
+{
+  "version": "1.0.2",
+  "name": "Testing Platform",
+  "props": [
+    {
+      "alpha": 1,
+      "angle": 0,
+      "animType": "sparrow",
+      "animations": [      ],
+      "assetPath": "stages/TestingPlatform/background",
+      "blend": "",
+      "color": "#FFFFFF",
+      "danceEvery": 0,
+      "flipX": false,
+      "flipY": false,
+      "isPixel": false,
+      "name": "background",
+      "position": [
+        113,
+        0
+      ],
+      "scale": 1.5,
+      "scroll": [
+        1,
+        1
+      ],
+      "startingAnimation": null,
+      "zIndex": 10
+    },
+    {
+      "alpha": 1,
+      "angle": 0,
+      "animType": "sparrow",
+      "animations": [      ],
+      "assetPath": "stages/TestingPlatform/platform",
+      "blend": "add",
+      "color": "#FFFFFF",
+      "danceEvery": 0,
+      "flipX": false,
+      "flipY": false,
+      "isPixel": false,
+      "name": "Platform",
+      "position": [
+        1771,
+        1300
+      ],
+      "scale": [
+	2.73,
+	2.84
+],
+      "scroll": [
+        1,
+        1
+      ],
+      "startingAnimation": null,
+      "zIndex": 10
+    }
+  ],
+  "characters": {
+    "bf": {
+      "alpha": 1,
+      "angle": 0,
+      "cameraOffsets": [
+        -200,
+        -108
+      ],
+      "position": [
+        3435.5,
+        1763
+      ],
+      "scale": 1,
+      "scroll": [
+        1,
+        1
+      ],
+      "zIndex": 300
+    },
+    "dad": {
+      "alpha": 1,
+      "angle": 0,
+      "cameraOffsets": [
+        88,
+        -285
+      ],
+      "position": [
+        2425,
+        1753
+      ],
+      "scale": 1,
+      "scroll": [
+        1,
+        1
+      ],
+      "zIndex": 200
+    },
+    "gf": {
+      "alpha": 1,
+      "angle": 0,
+      "cameraOffsets": [
+        -157,
+        -270
+      ],
+      "position": [
+        2917,
+        1610
+      ],
+      "scale": 1,
+      "scroll": [
+        1,
+        1
+      ],
+      "zIndex": 100
+    }
+  },
+  "cameraZoom": 0.43,
+  "directory": "shared"
+}

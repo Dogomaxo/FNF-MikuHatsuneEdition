@@ -1,0 +1,96 @@
+import funkin.play.event.SongEvent;
+import funkin.play.PlayState;
+import funkin.data.event.SongEventSchema;
+import funkin.Preferences;
+import funkin.Conductor;
+import flixel.FlxG;
+import flixel.FlxCamera;
+
+class CameraBoopSpawnEvent extends SongEvent
+{
+	public function new()
+	{
+		super('CameraBoopSpawn');
+	}
+
+	public override function getTitle()
+	{
+		return "Camera Boop Spawn";
+	}
+
+	public override function getEventSchema()
+	{
+		return [
+			{
+				name: 'intensity',
+				title: 'Intensity',
+				defaultValue: 1.0,
+				type: 'float',
+				step: 0.1
+			},
+			{
+				name: 'disableNormalBoop',
+				title: 'Disable Normal Boop',
+				defaultValue: false,
+				type: 'bool'
+			}
+		];
+	}
+
+	public override function handleEvent(data)
+	{
+		if (PlayState.instance == null) return;
+
+		var intensity = data.getFloat('intensity');
+		if (intensity == null) intensity = 1.0;
+
+		var disableNormalBoop = data.getBool('disableNormalBoop');
+		if (disableNormalBoop == null) disableNormalBoop = false;
+
+		var bopIntensity = (0.015 * intensity) + 1.0;
+		
+		PlayState.instance.cameraBopMultiplier = bopIntensity;
+		
+		var defaultBoopAmount = PlayState.instance.hudCameraZoomIntensity * PlayState.instance.defaultHUDCameraZoom;
+		var customBoopAmount = defaultBoopAmount * intensity;
+
+		// Check if default boop happened this frame (based on beat)
+		// We check if the current position is close to a beat that triggers a boop
+		var curBeatFloat = Conductor.instance.songPosition / Conductor.instance.crochet;
+		var nearestBeat = Math.round(curBeatFloat);
+		
+		var defaultBoopHappened = false;
+		
+		// Check if we are close to the nearest beat (within 0.5 beats)
+		if (Math.abs(curBeatFloat - nearestBeat) < 0.5)
+		{
+			if (Preferences.zoomCamera
+				&& FlxG.camera.zoom < (1.35 * FlxCamera.defaultZoom)
+				&& PlayState.instance.cameraZoomRate > 0
+				&& (nearestBeat + PlayState.instance.cameraZoomRateOffset) % PlayState.instance.cameraZoomRate == 0)
+			{
+				// If the nearest beat is less than or equal to the current beat, 
+				// it means the beatHit() function has likely already run for this beat.
+				if (nearestBeat <= Conductor.instance.currentBeat)
+				{
+					defaultBoopHappened = true;
+				}
+			}
+		}
+
+		// Apply custom boop (accounting for the lerp that happens in PlayState.update)
+		PlayState.instance.camHUD.zoom += customBoopAmount * 0.95;
+
+		// If default boop happened, remove it to give priority to the event
+		if (defaultBoopHappened)
+		{
+			PlayState.instance.camHUD.zoom -= defaultBoopAmount * 0.95;
+		}
+
+		if (disableNormalBoop)
+		{
+			// Disable the automatic camera boop on beat hit
+			PlayState.instance.cameraZoomRate = 0;
+		}
+	}
+}
