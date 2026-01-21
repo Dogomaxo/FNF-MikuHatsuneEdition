@@ -34,8 +34,8 @@ Use issues to report bugs or request features. This section provides guidelines 
 
 Make sure you're playing:
 
-- the latest version of the game (currently **v0.7.5**)
-- the latest version of the mod (currently **v0.0.1-pre.alpha**)
+- the latest version of the game (currently **v0.8.1**)
+- the latest version of the mod (currently **v0.0.1-pre.alpha** or **Develop Build**)
 - without any mod other than Miku's
 
 ## 1.2 Issue Types
