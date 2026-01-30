@@ -99,13 +99,13 @@
     },
     "countdownThree": {
       "data": {
-        "audioPath": "shared:gameplay/countdown/funkin/introTHREE"
+        "audioPath": "shared:gameplay/countdown/hatsunenormal/introTHREE"
       },
       "assetPath": null
     },
     "countdownTwo": {
       "data": {
-        "audioPath": "shared:gameplay/countdown/funkin/introTWO"
+        "audioPath": "shared:gameplay/countdown/hatsunenormal/introTWO"
       },
       "assetPath": "shared:ui/countdown/funkin/ready",
       "scale": 1.0,
@@ -113,7 +113,7 @@
     },
     "countdownOne": {
       "data": {
-        "audioPath": "shared:gameplay/countdown/funkin/introONE"
+        "audioPath": "shared:gameplay/countdown/hatsunenormal/introONE"
       },
       "assetPath": "shared:ui/countdown/funkin/set",
       "scale": 1.0,
@@ -121,7 +121,7 @@
     },
     "countdownGo": {
       "data": {
-        "audioPath": "shared:gameplay/countdown/funkin/introGO"
+        "audioPath": "shared:gameplay/countdown/hatsunenormal/introGO"
       },
       "assetPath": "shared:ui/countdown/funkin/go",
       "scale": 1.0,

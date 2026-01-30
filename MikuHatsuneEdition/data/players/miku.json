@@ -4,7 +4,7 @@
   "ownedChars": ["miku"],
   "showUnownedChars": false,
   "unlocked": true,
-  "freeplayStyle": "bf",
+  "freeplayStyle": "miku",
   "stickerPack": "standard-bf",
   "freeplayDJ": {
     "assetPath": "freeplay/freeplay-boyfriend",
