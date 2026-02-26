@@ -1,117 +1,72 @@
 {
-  "version": "1.0.2",
-  "name": "Testing Platform",
-  "props": [
-    {
-      "alpha": 1,
-      "angle": 0,
-      "animType": "sparrow",
-      "animations": [      ],
-      "assetPath": "stages/TestingPlatform/background",
-      "blend": "",
-      "color": "#FFFFFF",
-      "danceEvery": 0,
-      "flipX": false,
-      "flipY": false,
-      "isPixel": false,
-      "name": "background",
-      "position": [
-        113,
-        0
-      ],
-      "scale": 1.5,
-      "scroll": [
-        1,
-        1
-      ],
-      "startingAnimation": null,
-      "zIndex": 10
-    },
-    {
-      "alpha": 1,
-      "angle": 0,
-      "animType": "sparrow",
-      "animations": [      ],
-      "assetPath": "stages/TestingPlatform/platform",
-      "blend": "add",
-      "color": "#FFFFFF",
-      "danceEvery": 0,
-      "flipX": false,
-      "flipY": false,
-      "isPixel": false,
-      "name": "Platform",
-      "position": [
-        1771,
-        1300
-      ],
-      "scale": [
-	2.73,
-	2.84
-],
-      "scroll": [
-        1,
-        1
-      ],
-      "startingAnimation": null,
-      "zIndex": 10
-    }
-  ],
-  "characters": {
-    "bf": {
-      "alpha": 1,
-      "angle": 0,
-      "cameraOffsets": [
-        -200,
-        -108
-      ],
-      "position": [
-        3435.5,
-        1763
-      ],
-      "scale": 1,
-      "scroll": [
-        1,
-        1
-      ],
-      "zIndex": 300
-    },
-    "dad": {
-      "alpha": 1,
-      "angle": 0,
-      "cameraOffsets": [
-        88,
-        -285
-      ],
-      "position": [
-        2425,
-        1753
-      ],
-      "scale": 1,
-      "scroll": [
-        1,
-        1
-      ],
-      "zIndex": 200
-    },
-    "gf": {
-      "alpha": 1,
-      "angle": 0,
-      "cameraOffsets": [
-        -157,
-        -270
-      ],
-      "position": [
-        2917,
-        1610
-      ],
-      "scale": 1,
-      "scroll": [
-        1,
-        1
-      ],
-      "zIndex": 100
-    }
+ "version": "1.0.2",
+ "name": "Testing Platform",
+ "props": [
+  {
+   "assetPath": "stages/TestingPlatform/Background",
+   "atlasSettings": null,
+   "name": "Background",
+   "position": [-2955, -75],
+   "scale": 1,
+   "startingAnimation": null,
+   "zIndex": 10
   },
-  "cameraZoom": 0.43,
-  "directory": "shared"
+  {
+   "assetPath": "stages/TestingPlatform/Background",
+   "atlasSettings": null,
+   "name": "Background1",
+   "position": [875, -75],
+   "scale": 1,
+   "startingAnimation": null,
+   "zIndex": 10
+  },
+  {
+   "angle": 180,
+   "assetPath": "stages/TestingPlatform/Background",
+   "atlasSettings": null,
+   "name": "Background2",
+   "position": [-2955, -2235],
+   "scale": 1,
+   "startingAnimation": null,
+   "zIndex": 10
+  },
+  {
+   "angle": 180,
+   "assetPath": "stages/TestingPlatform/Background",
+   "atlasSettings": null,
+   "name": "Background3",
+   "position": [874, -2234],
+   "scale": 1,
+   "startingAnimation": null,
+   "zIndex": 10
+  },
+  {
+   "assetPath": "stages/TestingPlatform/platform",
+   "atlasSettings": null,
+   "name": "Platform",
+   "position": [-206, 55],
+   "scale": 1.1,
+   "startingAnimation": null,
+   "zIndex": 20
+  }
+ ],
+ "characters": {
+  "bf": {
+   "cameraOffsets": [-100, -100],
+   "position": [1495, 413],
+   "zIndex": 300
+  },
+  "dad": {
+   "cameraOffsets": [150, -100],
+   "position": [362, 406],
+   "zIndex": 200
+  },
+  "gf": {
+   "alpha": 0,
+   "cameraOffsets": [0, 0],
+   "position": [965, 245],
+   "zIndex": 100
+  }
+ },
+ "cameraZoom": 0.4
 }

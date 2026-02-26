@@ -8,14 +8,6 @@
   "stickerPack": "standard-bf",
   "freeplayDJ": {
     "assetPath": "freeplay/freeplay-boyfriend",
-    "scriptClass": "BoyfriendFreeplayDJ",
-    "cartoon": {
-      "soundClickFrame": 80,
-      "soundCartoonFrame": 85,
-      "loopBlinkFrame": 112,
-      "loopFrame": 166,
-      "channelChangeFrame": 60
-    },
     "fistPump": {
       "introStartFrame": 0,
       "introEndFrame": 4,

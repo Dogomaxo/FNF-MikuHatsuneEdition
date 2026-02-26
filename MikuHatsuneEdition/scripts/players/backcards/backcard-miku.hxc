@@ -26,45 +26,38 @@ class MikuCard extends BackingCard
   {
     super.applyExitMovers(exitMovers, exitMoversCharSel);
     if (exitMovers == null || exitMoversCharSel == null) return;
-    exitMovers.set([moreWays],
-      {
-        x: FlxG.width * 2,
-        speed: 0.4,
-      });
-    exitMovers.set([funnyScroll],
-      {
-        x: -funnyScroll.width * 2,
-        y: funnyScroll.y,
-        speed: 0.4,
-        wait: 0
-      });
-    exitMovers.set([txtNuts],
-      {
-        x: FlxG.width * 2,
-        speed: 0.4,
-      });
-    exitMovers.set([funnyScroll2],
-      {
-        x: -funnyScroll2.width * 2,
-        speed: 0.5,
-      });
-    exitMovers.set([moreWays2],
-      {
-        x: FlxG.width * 2,
-        speed: 0.4
-      });
-    exitMovers.set([funnyScroll3],
-      {
-        x: -funnyScroll3.width * 2,
-        speed: 0.3
-      });
+    exitMovers.set([moreWays], {
+      x: FlxG.width * 2,
+      speed: 0.4,
+    });
+    exitMovers.set([funnyScroll], {
+      x: -funnyScroll.width * 2,
+      y: funnyScroll.y,
+      speed: 0.4,
+      wait: 0
+    });
+    exitMovers.set([txtNuts], {
+      x: FlxG.width * 2,
+      speed: 0.4,
+    });
+    exitMovers.set([funnyScroll2], {
+      x: -funnyScroll2.width * 2,
+      speed: 0.5,
+    });
+    exitMovers.set([moreWays2], {
+      x: FlxG.width * 2,
+      speed: 0.4
+    });
+    exitMovers.set([funnyScroll3], {
+      x: -funnyScroll3.width * 2,
+      speed: 0.3
+    });
 
-    exitMoversCharSel.set([moreWays, funnyScroll, txtNuts, funnyScroll2, moreWays2, funnyScroll3],
-      {
-        y: -60,
-        speed: 0.8,
-        wait: 0.1
-      });
+    exitMoversCharSel.set([moreWays, funnyScroll, txtNuts, funnyScroll2, moreWays2, funnyScroll3], {
+      y: -60,
+      speed: 0.8,
+      wait: 0.1
+    });
   }
 
   public override function enterCharSel():Void
@@ -231,20 +224,22 @@ class MikuCard extends BackingCard
   /**
    * Called when a capsule is selected.
    */
-  public function onCapsuleSelected(event:CapsuleScriptEvent):Void {
+  public function onCapsuleSelected(event:CapsuleScriptEvent):Void
+  {
     super.onCapsuleSelected(event);
 
     var curLevelId:String = event.capsule.freeplayData?.levelId;
 
-    if(curLevelId == '' && curLevelId != prevLevelId){
-      moreWays.updateText('NEW');
-      funnyScroll.updateText('NEW NEW');
-      txtNuts.updateText('NEW');
-      funnyScroll2.updateText('NEW NEW');
-      moreWays2.updateText('NEW');
-      funnyScroll3.updateText('NEW NEW');
+    if (curLevelId == 'sserafim' && curLevelId != prevLevelId)
+    {
+      moreWays.updateText('SPECIAL');
+      funnyScroll.updateText('SPECIAL SPECIAL');
+      txtNuts.updateText('SPECIAL');
+      funnyScroll2.updateText('SPECIAL SPECIAL');
+      moreWays2.updateText('SPECIAL');
+      funnyScroll3.updateText('SPECIAL SPECIAL');
     }
-    else if(prevLevelId == '' && curLevelId != prevLevelId)
+    else if (prevLevelId == 'sserafim' && curLevelId != prevLevelId)
     {
       var player = PlayerRegistry.instance.fetchEntry(this.currentCharacter);
 
@@ -258,5 +253,4 @@ class MikuCard extends BackingCard
 
     prevLevelId = curLevelId;
   }
-
 }
