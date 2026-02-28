@@ -81,7 +81,7 @@ class HatsuneInGameHud extends Module {
 	var iconBaseWidth = -1;
 	var iconBaseHeight = -1;
 	var iconOffsetX = 35; // horizontal offset from bar (positive -> moves icon left if logic subtracts width)
-	var iconOffsetY = -30;  // vertical offset applied after auto-centering relative to bar
+	var iconOffsetY = -10;  // vertical offset applied after auto-centering relative to bar
 	var iconFollowBar = true; // if false, icon ignores barOffsetX/Y (use iconOffsetX/Y only)
 	// Bop strength (in pixels to grow on beat); lower = gentler bop
 	var bopStrength = 9;
