@@ -25,18 +25,18 @@
       "instrumental": "",
       "altInstrumentals": [      ],
       "opponentVocals": [
+        "bf-car"
       ],
       "playerVocals": [
         "miku"
       ]
     },
-    "stage": "mainStage",
+    "stage": "TestingPlatform",
     "noteStyle": "hatsunenormal",
-    "vpStyle": "hatsunevp",
     "ratings": {
       "easy": 0,
-      "normal": 9,
-      "hard": 9
+      "normal": 7,
+      "hard": 7
     },
     "album": "allismusiccover",
     "previewStart": 3000,

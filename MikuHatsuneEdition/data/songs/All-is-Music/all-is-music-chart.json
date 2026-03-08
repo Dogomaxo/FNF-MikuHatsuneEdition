@@ -13,16 +13,6 @@
       "v": {
 	"char": 0
 }
-    },
-    {
-      "t": 3750,
-      "e": "ZoomCamera",
-      "v": {
-	"duration": 7,
-	"ease": "cubeInOut",
-	"zoom": 0.6,
-	"mode": "stage"
-}
     }
   ],
   "notes": {
