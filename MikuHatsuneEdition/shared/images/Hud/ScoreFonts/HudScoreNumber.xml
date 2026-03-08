@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Created with Funkin Packer v0.1.3 https://neeeoo.github.io/funkin-packer/
+-->
+<TextureAtlas imagePath="HudScoreNumber.png" width="388" height="461">
+	<SubTexture name="digital 0" x="194" y="154" width="97" height="153" frameX="-0" frameY="-0" frameWidth="97" frameHeight="153"/>
+	<SubTexture name="digital 1" x="0" y="310" width="36" height="151" frameX="-0" frameY="-0" frameWidth="36" frameHeight="151"/>
+	<SubTexture name="digital 2" x="0" y="0" width="97" height="155" frameX="-0" frameY="-0" frameWidth="97" frameHeight="155"/>
+	<SubTexture name="digital 3" x="193" y="0" width="98" height="154" frameX="-0" frameY="-0" frameWidth="98" frameHeight="154"/>
+	<SubTexture name="digital 4" x="291" y="306" width="96" height="150" frameX="-0" frameY="-0" frameWidth="96" frameHeight="150"/>
+	<SubTexture name="digital 5" x="291" y="0" width="97" height="153" frameX="-0" frameY="-0" frameWidth="97" frameHeight="153"/>
+	<SubTexture name="digital 6" x="97" y="0" width="96" height="155" frameX="-0" frameY="-0" frameWidth="96" frameHeight="155"/>
+	<SubTexture name="digital 7" x="97" y="155" width="97" height="154" frameX="-0" frameY="-0" frameWidth="97" frameHeight="154"/>
+	<SubTexture name="digital 8" x="0" y="155" width="97" height="155" frameX="-0" frameY="-0" frameWidth="97" frameHeight="155"/>
+	<SubTexture name="digital 9" x="291" y="153" width="97" height="153" frameX="-0" frameY="-0" frameWidth="97" frameHeight="153"/>
+</TextureAtlas>

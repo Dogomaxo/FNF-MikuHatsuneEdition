@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Created with Funkin Packer v0.1.3 https://neeeoo.github.io/funkin-packer/
+-->
+<TextureAtlas imagePath="IN-GAME_HUD_ASSETS.png" width="2033" height="559">
+	<SubTexture name="CT BOTTOM HUD" x="0" y="0" width="1958" height="243" frameX="-0" frameY="-0" frameWidth="1958" frameHeight="243"/>
+	<SubTexture name="CT BOTTOM HUD EX" x="1958" y="0" width="75" height="155" frameX="-0" frameY="-0" frameWidth="75" frameHeight="155"/>
+	<SubTexture name="CT ICON SONG" x="1996" y="222" width="30" height="42" frameX="-0" frameY="-0" frameWidth="30" frameHeight="42"/>
+	<SubTexture name="CT TOP HUD" x="0" y="243" width="1935" height="67" frameX="-0" frameY="-0" frameWidth="1935" frameHeight="67"/>
+	<SubTexture name="CT TOP HUD EX" x="1958" y="155" width="75" height="67" frameX="-0" frameY="-0" frameWidth="75" frameHeight="67"/>
+	<SubTexture name="ICON SONG" x="1958" y="222" width="38" height="38" frameX="-0" frameY="-0" frameWidth="38" frameHeight="38"/>
+	<SubTexture name="PLAYER HUD" x="0" y="310" width="1148" height="245" frameX="-0" frameY="-0" frameWidth="1148" frameHeight="245"/>
+	<SubTexture name="PLAYER HUD HEALTH" x="1148" y="310" width="809" height="142" frameX="-0" frameY="-0" frameWidth="810" frameHeight="142"/>
+	<SubTexture name="PLAYER HUD SCORE" x="1148" y="452" width="786" height="107" frameX="-1" frameY="-1" frameWidth="791" frameHeight="108"/>
+</TextureAtlas>
