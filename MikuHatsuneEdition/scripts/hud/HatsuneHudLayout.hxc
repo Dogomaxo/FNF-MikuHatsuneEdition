@@ -1,0 +1,181 @@
+import funkin.Preferences;
+import flixel.FlxG;
+#if mobile
+import funkin.mobile.input.ControlsHandler;
+import funkin.mobile.ui.FunkinHitbox.FunkinHitboxControlSchemes;
+#end
+
+class HatsuneHudLayout {
+	// -------------------------------------------------------------------------
+	// Assets
+	// These are the exact frame names pulled from IN-GAME_HUD_ASSETS.xml.
+	// If you change the atlas XML names, update them here.
+	// -------------------------------------------------------------------------
+	public static inline var HUD_ATLAS_KEY:String = "Hud/IN-GAME_HUD_ASSETS";
+	public static inline var BOTTOM_HUD_FRAME:String = "PLAYER HUD";
+	public static inline var HEALTH_HUD_FRAME:String = "PLAYER HUD HEALTH";
+	public static inline var TOP_HUD_FRAME:String = "PLAYER HUD SCORE";
+	public static inline var SONG_ICON_FRAME:String = "ICON SONG";
+
+	// -------------------------------------------------------------------------
+	// Draw Order
+	// Higher values render on top of lower values.
+	// Only touch these if sprites overlap in the wrong order.
+	// -------------------------------------------------------------------------
+	public static inline var PLAYER_HUD_Z:Int = 798;
+	public static inline var HEALTH_HUD_Z:Int = 1002;
+	public static inline var SCORE_HUD_Z:Int = 798;
+	public static inline var SONG_ICON_Z:Int = 799;
+	public static inline var HP_BOX_Z:Int = 800;
+	public static inline var METER_BACK_Z:Int = 801;
+	public static inline var METER_Z:Int = 802;
+	public static inline var BORDER_Z:Int = 803;
+	public static inline var PROTECTED_TEXT_Z:Int = 804;
+	public static inline var PLAYER_ICON_Z:Int = 9999;
+
+	// -------------------------------------------------------------------------
+	// Responsive Base
+	// The helper scales most offsets against this reference resolution.
+	// Increase/decrease the min and max values if the HUD feels too small or too
+	// large on unusual aspect ratios.
+	// -------------------------------------------------------------------------
+	public static inline var BASE_SCREEN_W:Float = 960;
+	public static inline var BASE_SCREEN_H:Float = 540;
+	public static inline var MIN_UI_SCALE:Float = 0.85;
+	public static inline var MAX_UI_SCALE:Float = 1.5;
+
+	// -------------------------------------------------------------------------
+	// Core Health Bar Anchor
+	// These values control the real gameplay health meter, not the decorative
+	// sprite shell. The decorative sprites can now move independently.
+	// -------------------------------------------------------------------------
+	public static inline var BAR_BASE_X:Float = 125;
+	public static inline var BAR_OFFSET_X:Float = 0;
+	public static inline var BAR_OFFSET_Y:Float = 0;
+	public static inline var BAR_DOWN_Y:Float = 52;
+	public static inline var BAR_UP_MARGIN:Float = 43;
+	public static inline var BAR_UP_LIFT:Float = 6;
+
+	// -------------------------------------------------------------------------
+	// Player Icon
+	// This is the regular gameplay iconP1. It still follows the actual health bar.
+	// X/Y values here are local offsets from the meter anchor, not screen-space.
+	// SCALE controls the base size of the icon before any beat bump is applied.
+	// -------------------------------------------------------------------------
+	public static inline var ICON_SCALE:Float = 0.61;
+	public static inline var ICON_OFFSET_X:Float = -43;
+	public static inline var ICON_OFFSET_Y:Float = -624;
+	public static inline var ICON_FINAL_Y_SHIFT:Float = -8;
+
+	// -------------------------------------------------------------------------
+	// Bottom HUD Shell: PLAYER HUD
+	// This is the big decorative sprite at the bottom-left of the screen.
+	// - WIDTH_RATIO controls its overall scale relative to screen width.
+	// - X / MARGIN_Y are the base screen-space placement values.
+	// - OFFSET_X / OFFSET_Y are extra scaled nudges for fine tuning.
+	// -------------------------------------------------------------------------
+	public static inline var BOTTOM_HUD_WIDTH_RATIO:Float = 0.60;
+	public static inline var BOTTOM_HUD_X:Float = 0;
+	public static inline var BOTTOM_HUD_MARGIN_Y:Float = 0;
+	public static inline var BOTTOM_HUD_OFFSET_X:Float = 0;
+	public static inline var BOTTOM_HUD_OFFSET_Y:Float = 0;
+
+	// -------------------------------------------------------------------------
+	// Health HUD Overlay: PLAYER HUD HEALTH
+	// This sprite is fully independent from the bottom shell now.
+	// - WIDTH_RATIO is based on screen width, not bottom HUD width.
+	// - X defines the horizontal margin from the chosen side.
+	// - MARGIN_Y defines the vertical margin from the chosen side.
+	// - ANCHOR_RIGHT / ANCHOR_BOTTOM switch the side used for placement.
+	// - OFFSET_X / OFFSET_Y are scaled fine-tuning nudges.
+	// -------------------------------------------------------------------------
+	public static inline var HEALTH_HUD_WIDTH_RATIO:Float = 0.423;
+	public static inline var HEALTH_HUD_ANCHOR_RIGHT:Bool = false;
+	public static inline var HEALTH_HUD_ANCHOR_BOTTOM:Bool = false;
+	public static inline var HEALTH_HUD_X:Float = -17.0;
+	public static inline var HEALTH_HUD_MARGIN_Y:Float = 0;
+	public static inline var HEALTH_HUD_OFFSET_X:Float = 1;
+	public static inline var HEALTH_HUD_OFFSET_Y:Float = -3;
+
+	// Legacy tuning values kept for compatibility with the current script state.
+	// These no longer drive the main placement logic, but are left here so older
+	// experiments or future code changes do not break unexpectedly.
+	public static inline var HEALTH_HUD_WIDTH_PAD:Float = 48;
+	public static inline var HEALTH_HUD_OFFSET_Y_RATIO:Float = 0.98;
+
+	// -------------------------------------------------------------------------
+	// Score HUD Shell: PLAYER HUD SCORE
+	// This is the decorative panel behind the score text.
+	// It is normally anchored to the top-right corner.
+	// - WIDTH_RATIO controls its width relative to screen width.
+	// - TOP_HUD_X defines the horizontal margin from the chosen side.
+	// - TOP_HUD_MARGIN_Y is the top margin.
+	// - TOP_HUD_ANCHOR_RIGHT switches left/right anchoring.
+	// - OFFSET_X / OFFSET_Y are scaled fine adjustments.
+	// -------------------------------------------------------------------------
+	public static inline var TOP_HUD_WIDTH_RATIO:Float = 0.36;
+	public static inline var TOP_HUD_ANCHOR_RIGHT:Bool = true;
+	public static inline var TOP_HUD_X:Float = 10;
+	public static inline var TOP_HUD_MARGIN_Y:Float = 0;
+	public static inline var TOP_HUD_OFFSET_X:Float = 0;
+	public static inline var TOP_HUD_OFFSET_Y:Float = 0;
+
+	// Score text tuning inside PLAYER HUD SCORE.
+	public static inline var SCORE_SCALE_MULTIPLIER:Float = 1.5;
+	public static inline var SCORE_MARGIN_LEFT:Float = 40;
+	public static inline var SCORE_MARGIN_RIGHT:Float = 16;
+	public static inline var SCORE_MARGIN_TOP:Float = 12;
+	public static inline var SCORE_MARGIN_BOTTOM:Float = 12;
+	public static inline var SCORE_HUD_TEXT_PAD:Float = 54;
+	public static inline var SCORE_HUD_MIN_WIDTH:Float = 210;
+	public static inline var SCORE_HUD_RIGHT_INSET:Float = 20;
+	public static inline var SCORE_HUD_Y_OFFSET:Float = 5;
+
+	// -------------------------------------------------------------------------
+	// Song Icon: ICON SONG
+	// This icon has its own screen-space placement and scales with uiScale.
+	// - X / MARGIN_Y define the base position.
+	// - OFFSET_X / OFFSET_Y provide scaled fine tuning.
+	// -------------------------------------------------------------------------
+	public static inline var SONG_ICON_BASE_SIZE:Float = 28;
+	public static inline var SONG_ICON_X:Float = 14;
+	public static inline var SONG_ICON_MARGIN_Y:Float = 10;
+	public static inline var SONG_ICON_OFFSET_X:Float = 0;
+	public static inline var SONG_ICON_OFFSET_Y:Float = 0;
+
+	// -------------------------------------------------------------------------
+	// Misc HUD Text
+	// Small helper offsets for text rendered over the bar.
+	// -------------------------------------------------------------------------
+	public static inline var PROTECTED_TEXT_Y_NUDGE:Float = 1.5;
+
+	public static function isDownscroll():Bool {
+		return #if mobile (Preferences.controlsScheme == FunkinHitboxControlSchemes.Arrows && !ControlsHandler.hasExternalInputDevice)
+			|| #end Preferences.downscroll;
+	}
+
+	public static function getUiScale():Float {
+		// Scale against the base resolution, then clamp so extreme aspect ratios
+		// do not make the HUD absurdly tiny or huge.
+		var scaleX = FlxG.width / BASE_SCREEN_W;
+		var scaleY = FlxG.height / BASE_SCREEN_H;
+		var scale = Math.min(scaleX, scaleY);
+		if (scale < MIN_UI_SCALE) scale = MIN_UI_SCALE;
+		if (scale > MAX_UI_SCALE) scale = MAX_UI_SCALE;
+		return scale;
+	}
+
+	public static function getBarAnchor(barOffsetX:Float, barOffsetY:Float) {
+		// This returns the anchor for the real gameplay health bar only.
+		// Decorative sprites use their own independent positioning values above.
+		var uiScale = getUiScale();
+		var downscroll = isDownscroll();
+		var baseY = downscroll ? Std.int(BAR_DOWN_Y * uiScale) : Std.int(FlxG.height - BAR_UP_MARGIN - (BAR_UP_LIFT * uiScale));
+		return {
+			x: BAR_BASE_X + barOffsetX,
+			y: baseY + barOffsetY,
+			uiScale: uiScale,
+			downscroll: downscroll
+		};
+	}
+}

@@ -1,0 +1,90 @@
+import funkin.play.stage.Stage;
+
+class CityNightStage extends Stage
+{
+	var platform = null;
+	var platformPropName:String = 'Platform';
+	var platformFrameNames:Array<String> = [
+		'loop1',
+		'loop2',
+		'loop3',
+		'loop4',
+		'loop5',
+		'loop6',
+		'loop7',
+		'loop8',
+		'loop9',
+		'loop10',
+		'loop11',
+		'loop12',
+		'loop13',
+		'loop14',
+		'loop15'
+	];
+
+	function new()
+	{
+		super('CityNight');
+	}
+
+	override function buildStage():Void
+	{
+		platform = null;
+		super.buildStage();
+		cachePlatform();
+		playPlatformFrame(0);
+	}
+
+	override function onDestroy(event:ScriptEvent):Void
+	{
+		platform = null;
+		super.onDestroy(event);
+	}
+
+	override function onBeatHit(event:SongTimeScriptEvent):Void
+	{
+		super.onBeatHit(event);
+
+		if (event.beat < 0)
+		{
+			return;
+		}
+
+		cachePlatform();
+		playPlatformFrame(event.beat % platformFrameNames.length);
+	}
+
+	function cachePlatform():Void
+	{
+		if (platform != null && platform.animation != null)
+		{
+			return;
+		}
+
+		platform = null;
+
+		var platformProp = getNamedProp(platformPropName);
+		if (platformProp != null && platformProp.animation != null)
+		{
+			platform = platformProp;
+		}
+	}
+
+	function playPlatformFrame(frameIndex:Int):Void
+	{
+		cachePlatform();
+
+		if (platform == null)
+		{
+			return;
+		}
+
+		if (platform.animation == null)
+		{
+			platform = null;
+			return;
+		}
+
+		platform.playAnimation(platformFrameNames[frameIndex], true);
+	}
+}

@@ -1,0 +1,913 @@
+import funkin.modding.module.Module;
+import funkin.play.PlayState;
+import funkin.Conductor;
+import funkin.Paths;
+import funkin.Preferences;
+import haxe.ds.StringMap;
+import flixel.FlxG;
+import flixel.FlxSprite;
+import flixel.graphics.frames.FlxFrame;
+import flixel.graphics.frames.FlxAtlasFrames;
+import flixel.tweens.FlxTween;
+import flixel.util.FlxColor;
+import flixel.text.FlxText;
+import flixel.text.FlxTextBorderStyle;
+import flixel.text.FlxBitmapText;
+import HatsuneHudLayout;
+import MHE_SharedState;
+
+/**
+ * Unified Hatsune gameplay HUD.
+ * Combines the custom health bar and score layout into a single module.
+ */
+class HatsuneDisplaySTATE extends Module {
+	var hudBuilt:Bool = false;
+	var trackedState = null;
+	var hudAtlasKey:String = HatsuneHudLayout.HUD_ATLAS_KEY;
+	var hudAtlasFrames:FlxAtlasFrames;
+	var hudAtlasFrameCache = new StringMap();
+	var playerHudFrameName:String = HatsuneHudLayout.BOTTOM_HUD_FRAME;
+	var healthHudFrameName:String = HatsuneHudLayout.HEALTH_HUD_FRAME;
+	var scoreHudFrameName:String = HatsuneHudLayout.TOP_HUD_FRAME;
+	var songHudIconFrameName:String = HatsuneHudLayout.SONG_ICON_FRAME;
+
+	var playerHudArt:FlxSprite;
+	var healthHudArt:FlxSprite;
+	var scoreHudArt:FlxSprite;
+	var songHudIcon:FlxSprite;
+
+	var hpBox:FlxSprite;
+	var meterBack:FlxSprite;
+	var meter:FlxSprite;
+	var borderTop:FlxSprite;
+	var borderBottom:FlxSprite;
+	var borderLeft:FlxSprite;
+	var borderRight:FlxSprite;
+	var protectedText:FlxText;
+
+	var originalHealthBarVisible:Null<Bool> = null;
+	var originalHealthBarBGVisible:Null<Bool> = null;
+	var originalIconP1Visible:Null<Bool> = null;
+	var originalIconP1AutoUpdate:Null<Bool> = null;
+	var originalIconP1SizeX:Float = Math.NaN;
+	var originalIconP1SizeY:Float = Math.NaN;
+	var originalIconP2Visible:Null<Bool> = null;
+	var originalIconP2AutoUpdate:Null<Bool> = null;
+	var originalIconFlipX:Null<Bool> = null;
+
+	var originalScoreX:Float = Math.NaN;
+	var originalScoreY:Float = Math.NaN;
+	var originalScoreScaleX:Float = Math.NaN;
+	var originalScoreScaleY:Float = Math.NaN;
+	var originalScoreAlignment = null;
+
+	var meterW = 360;
+	var meterH = 15;
+	var boxW = 370;
+	var boxH = 30;
+
+	var baseX = HatsuneHudLayout.BAR_BASE_X;
+	var barOffsetX = HatsuneHudLayout.BAR_OFFSET_X;
+	var barOffsetY = HatsuneHudLayout.BAR_OFFSET_Y;
+
+	var meterEmptyBack = FlxColor.fromRGB(32, 24, 24);
+	var meterDangerBack = FlxColor.fromRGB(53, 24, 24);
+	var flashMod = 54;
+	var dangerRedFactor = 2.4;
+	var dangerDimFactor = 1.2;
+	var dangerBlend = 0.25;
+
+	var baseBarColor = FlxColor.WHITE;
+	var flashColor = FlxColor.WHITE;
+	var dangerFlashColor = FlxColor.WHITE;
+
+	var barTween;
+	var backTween;
+	var dangerFadeCountdown = 0.0;
+	var dangerFadeDuration = 0.0;
+
+	var iconBaseWidth = -1;
+	var iconBaseHeight = -1;
+	var iconAnchorWidth = -1;
+	var iconBaseScale:Float = HatsuneHudLayout.ICON_SCALE;
+	var iconOffsetX = HatsuneHudLayout.ICON_OFFSET_X;
+	var iconOffsetY = HatsuneHudLayout.ICON_OFFSET_Y;
+	var iconFollowBar = true;
+	var dampenStrength = 0.0;
+	var iconFixedCenterX = -1.0;
+	var lastIconSampleKey:String = null;
+
+	var scoreScaleMultiplier:Float = HatsuneHudLayout.SCORE_SCALE_MULTIPLIER;
+	var scoreAnchorHorizontal:String = "RIGHT";
+	var scoreMarginLeft:Float = HatsuneHudLayout.SCORE_MARGIN_LEFT;
+	var scoreMarginRight:Float = HatsuneHudLayout.SCORE_MARGIN_RIGHT;
+	var scoreMarginTop:Float = HatsuneHudLayout.SCORE_MARGIN_TOP;
+	var scoreMarginBottom:Float = HatsuneHudLayout.SCORE_MARGIN_BOTTOM;
+	var lastScoreScreenW:Int = -1;
+	var lastScoreScreenH:Int = -1;
+	var lastScoreWidth:Float = Math.NaN;
+	var lastScoreHeight:Float = Math.NaN;
+	var lastDownscroll:Null<Bool> = null;
+
+	var lastFillW:Float = Math.NaN;
+	var lastDrainActive:Null<Bool> = null;
+	var lastDecorDownscroll:Null<Bool> = null;
+	var lastHealthHudWidth:Int = -1;
+	var lastPlayerHudWidth:Int = -1;
+	var lastScoreHudWidth:Int = -1;
+	var lastSongIconSize:Int = -1;
+
+	public function new() {
+		super("Hatsune Display HUD", 1);
+		this.active = false;
+	}
+
+	public function restoreDisplayState() {
+		restoreVanilla();
+	}
+
+	override function onUpdate(event) {
+		super.onUpdate(event);
+
+		var ps = PlayState.instance;
+		if (ps == null) return;
+
+		if (trackedState != null && trackedState != ps) {
+			cleanupSprites(trackedState);
+			clearTracking();
+		}
+
+		ensureBuilt(ps);
+		if (!hudBuilt) return;
+
+		enforceIconState(ps);
+		if ((playerHudArt != null && playerHudArt.frame == null) || (healthHudArt != null && healthHudArt.frame == null) || (scoreHudArt != null && scoreHudArt.frame == null)
+			|| (songHudIcon != null && songHudIcon.frame == null)) refreshDecorFrames(false);
+		layoutHud(ps);
+		applyScoreLayout(ps.scoreText, false);
+		layoutScoreHud(ps.scoreText);
+		updateDangerFade();
+	}
+
+	override function onBeatHit(event) {
+		super.onBeatHit(event);
+		if (!this.active || !hudBuilt || PlayState.instance == null) return;
+
+		refreshBarColors(false);
+
+		if (!Preferences.flashingLights) {
+			if (meter != null) meter.color = baseBarColor;
+			if (meterBack != null) meterBack.color = meterEmptyBack;
+			return;
+		}
+
+		var crochetMs = (Conductor.instance != null ? Conductor.instance.beatLengthMs : 500);
+		var crochetSec = crochetMs / 1000.0;
+		var isDanger = (PlayState.instance.health <= 0.4);
+
+		if (backTween != null) {
+			backTween.cancel();
+			backTween = null;
+		}
+
+		if (isDanger) {
+			if (meterBack != null) meterBack.color = meterDangerBack;
+			dangerFadeCountdown = crochetSec * 0.25;
+			dangerFadeDuration = crochetSec * 0.5;
+		} else {
+			dangerFadeCountdown = 0;
+			if (meterBack != null) meterBack.color = meterEmptyBack;
+		}
+
+		if (barTween != null) barTween.cancel();
+		if (meter != null) {
+			meter.color = isDanger ? dangerFlashColor : flashColor;
+			barTween = FlxTween.color(meter, crochetSec, meter.color, baseBarColor);
+		}
+
+	}
+
+	override function onSongLoaded(event) {
+		super.onSongLoaded(event);
+		resetRuntimeCache();
+		refreshDecorFrames(true);
+		if (this.active && PlayState.instance != null) {
+			enforceIconState(PlayState.instance);
+			refreshBarColors(true);
+		}
+	}
+
+	override function onSongRetry(event) {
+		super.onSongRetry(event);
+		resetRuntimeCache();
+		refreshDecorFrames(true);
+		if (this.active && PlayState.instance != null) {
+			enforceIconState(PlayState.instance);
+			refreshBarColors(true);
+		}
+	}
+
+	override function onResume(event) {
+		super.onResume(event);
+
+		var ps = PlayState.instance;
+		if (!this.active || ps == null) return;
+
+		if (ps.healthBar != null) ps.healthBar.visible = false;
+		if (ps.healthBarBG != null) ps.healthBarBG.visible = false;
+		if (ps.iconP2 != null) {
+			ps.iconP2.visible = false;
+			ps.iconP2.autoUpdate = false;
+		}
+
+		enforceIconState(ps);
+		refreshDecorFrames(false);
+		layoutHud(ps);
+		applyScoreLayout(ps.scoreText, true);
+		layoutScoreHud(ps.scoreText);
+	}
+
+	function reloadHudAtlas():FlxAtlasFrames {
+		hudAtlasFrames = Paths.getSparrowAtlas(hudAtlasKey);
+		hudAtlasFrameCache = new StringMap();
+		if (hudAtlasFrames != null && hudAtlasFrames.frames != null) {
+			for (frame in hudAtlasFrames.frames) {
+				if (frame != null && frame.name != null) hudAtlasFrameCache.set(frame.name, frame);
+			}
+		}
+		return hudAtlasFrames;
+	}
+
+	function createAtlasSprite(frameName:String, zIndex:Int, cam):FlxSprite {
+		if (hudAtlasFrames == null) reloadHudAtlas();
+		if (hudAtlasFrames == null) return null;
+
+		var spr = new FlxSprite();
+		spr.scrollFactor.set();
+		spr.cameras = [cam];
+		spr.zIndex = zIndex;
+		spr.origin.set(0, 0);
+		if (!applyAtlasFrame(spr, frameName, false)) return null;
+		return spr;
+	}
+
+	function applyAtlasFrame(sprite:FlxSprite, frameName:String, forceReload:Bool):Bool {
+		if (sprite == null) return false;
+		if (forceReload || hudAtlasFrames == null) reloadHudAtlas();
+		if (hudAtlasFrames == null) return false;
+
+		var selectedFrame = findAtlasFrame(frameName);
+		if (selectedFrame == null && !forceReload) {
+			reloadHudAtlas();
+			selectedFrame = findAtlasFrame(frameName);
+		}
+		if (selectedFrame == null) return false;
+
+		sprite.frames = hudAtlasFrames;
+		sprite.frame = selectedFrame;
+		sprite.visible = true;
+		sprite.updateHitbox();
+		return true;
+	}
+
+	function refreshDecorFrames(forceReload:Bool) {
+		if (forceReload) reloadHudAtlas();
+		applyAtlasFrame(playerHudArt, playerHudFrameName, false);
+		applyAtlasFrame(healthHudArt, healthHudFrameName, false);
+		applyAtlasFrame(scoreHudArt, scoreHudFrameName, false);
+		applyAtlasFrame(songHudIcon, songHudIconFrameName, false);
+	}
+
+	function findAtlasFrame(frameName:String):FlxFrame {
+		if (hudAtlasFrameCache == null) return null;
+		return hudAtlasFrameCache.get(frameName);
+	}
+
+	override function onStateChangeBegin(event) {
+		super.onStateChangeBegin(event);
+		restoreVanilla();
+	}
+
+	override function onDestroy(event) {
+		super.onDestroy(event);
+		restoreVanilla();
+	}
+
+	function ensureBuilt(ps) {
+		if (hudBuilt) return;
+		if (ps.healthBar == null || ps.scoreText == null) return;
+
+		captureVanillaState(ps);
+		cleanupSprites(ps);
+		resetRuntimeCache();
+
+		if (ps.healthBar != null) ps.healthBar.visible = false;
+		if (ps.healthBarBG != null) ps.healthBarBG.visible = false;
+		if (ps.iconP2 != null) {
+			ps.iconP2.visible = false;
+			ps.iconP2.autoUpdate = false;
+		}
+
+		enforceIconState(ps);
+
+		playerHudArt = createAtlasSprite(playerHudFrameName, HatsuneHudLayout.PLAYER_HUD_Z, ps.camHUD);
+		healthHudArt = createAtlasSprite(healthHudFrameName, HatsuneHudLayout.HEALTH_HUD_Z, ps.camHUD);
+		scoreHudArt = createAtlasSprite(scoreHudFrameName, HatsuneHudLayout.SCORE_HUD_Z, ps.camHUD);
+		songHudIcon = createAtlasSprite(songHudIconFrameName, HatsuneHudLayout.SONG_ICON_Z, ps.camHUD);
+
+		hpBox = new FlxSprite();
+		hpBox.makeGraphic(boxW, boxH, FlxColor.TRANSPARENT);
+		hpBox.scrollFactor.set();
+		hpBox.cameras = [ps.camHUD];
+		hpBox.visible = false;
+		hpBox.zIndex = HatsuneHudLayout.HP_BOX_Z;
+
+		meterBack = new FlxSprite();
+		meterBack.makeGraphic(meterW, meterH, FlxColor.WHITE);
+		meterBack.scrollFactor.set();
+		meterBack.cameras = [ps.camHUD];
+		meterBack.zIndex = HatsuneHudLayout.METER_BACK_Z;
+		meterBack.origin.set(0, 0);
+		meterBack.color = meterEmptyBack;
+
+		meter = new FlxSprite();
+		meter.makeGraphic(1, meterH, FlxColor.WHITE);
+		meter.scrollFactor.set();
+		meter.cameras = [ps.camHUD];
+		meter.zIndex = HatsuneHudLayout.METER_Z;
+		meter.origin.set(0, 0);
+
+		protectedText = new FlxText(0, 0, meterW, "protected", 14);
+		protectedText.scrollFactor.set();
+		protectedText.cameras = [ps.camHUD];
+		protectedText.alignment = "center";
+		protectedText.color = FlxColor.WHITE;
+		protectedText.borderStyle = FlxTextBorderStyle.OUTLINE;
+		protectedText.borderSize = 2;
+		protectedText.borderColor = FlxColor.BLACK;
+		protectedText.alpha = 0.95;
+		protectedText.zIndex = HatsuneHudLayout.PROTECTED_TEXT_Z;
+		protectedText.visible = false;
+
+		borderTop = new FlxSprite();
+		borderTop.makeGraphic(boxW, 5, FlxColor.BLACK);
+		borderTop.scrollFactor.set();
+		borderTop.cameras = [ps.camHUD];
+		borderTop.zIndex = HatsuneHudLayout.BORDER_Z;
+		borderTop.origin.set(0, 0);
+
+		borderBottom = new FlxSprite();
+		borderBottom.makeGraphic(boxW, 5, FlxColor.BLACK);
+		borderBottom.scrollFactor.set();
+		borderBottom.cameras = [ps.camHUD];
+		borderBottom.zIndex = HatsuneHudLayout.BORDER_Z;
+		borderBottom.origin.set(0, 0);
+
+		borderLeft = new FlxSprite();
+		borderLeft.makeGraphic(5, meterH, FlxColor.BLACK);
+		borderLeft.scrollFactor.set();
+		borderLeft.cameras = [ps.camHUD];
+		borderLeft.zIndex = HatsuneHudLayout.BORDER_Z;
+		borderLeft.origin.set(0, 0);
+
+		borderRight = new FlxSprite();
+		borderRight.makeGraphic(5, meterH, FlxColor.BLACK);
+		borderRight.scrollFactor.set();
+		borderRight.cameras = [ps.camHUD];
+		borderRight.zIndex = HatsuneHudLayout.BORDER_Z;
+		borderRight.origin.set(0, 0);
+
+		if (playerHudArt != null) ps.add(playerHudArt);
+		if (healthHudArt != null) ps.add(healthHudArt);
+		if (scoreHudArt != null) ps.add(scoreHudArt);
+		if (songHudIcon != null) ps.add(songHudIcon);
+		ps.add(hpBox);
+		ps.add(meterBack);
+		ps.add(meter);
+		ps.add(protectedText);
+
+		refreshBarColors(true);
+		applyScoreLayout(ps.scoreText, true);
+		layoutScoreHud(ps.scoreText);
+		layoutHud(ps);
+		ps.refresh();
+
+		hudBuilt = true;
+	}
+
+	function captureVanillaState(ps) {
+		if (trackedState == ps) return;
+
+		trackedState = ps;
+		originalHealthBarVisible = (ps.healthBar != null) ? ps.healthBar.visible : null;
+		originalHealthBarBGVisible = (ps.healthBarBG != null) ? ps.healthBarBG.visible : null;
+
+		if (ps.iconP1 != null) {
+			originalIconP1Visible = ps.iconP1.visible;
+			originalIconP1AutoUpdate = ps.iconP1.autoUpdate;
+			if (ps.iconP1.size != null) {
+				originalIconP1SizeX = ps.iconP1.size.x;
+				originalIconP1SizeY = ps.iconP1.size.y;
+			}
+			originalIconFlipX = ps.iconP1.flipX;
+		}
+
+		if (ps.iconP2 != null) {
+			originalIconP2Visible = ps.iconP2.visible;
+			originalIconP2AutoUpdate = ps.iconP2.autoUpdate;
+		}
+
+		storeOriginalScoreState(ps.scoreText);
+	}
+
+	function storeOriginalScoreState(txt:FlxBitmapText) {
+		if (txt == null) return;
+		originalScoreX = txt.x;
+		originalScoreY = txt.y;
+		originalScoreScaleX = txt.scale.x;
+		originalScoreScaleY = txt.scale.y;
+		originalScoreAlignment = txt.alignment;
+	}
+
+	function restoreVanilla() {
+		var ps = (trackedState != null) ? trackedState : PlayState.instance;
+
+		if (ps != null) {
+			if (ps.healthBar != null && originalHealthBarVisible != null) ps.healthBar.visible = originalHealthBarVisible;
+			if (ps.healthBarBG != null && originalHealthBarBGVisible != null) ps.healthBarBG.visible = originalHealthBarBGVisible;
+
+			if (ps.iconP1 != null) {
+				if (originalIconFlipX != null) ps.iconP1.flipX = originalIconFlipX;
+				if (originalIconP1Visible != null) ps.iconP1.visible = originalIconP1Visible;
+				if (originalIconP1AutoUpdate != null) ps.iconP1.autoUpdate = originalIconP1AutoUpdate;
+				if (ps.iconP1.size != null && !Math.isNaN(originalIconP1SizeX) && !Math.isNaN(originalIconP1SizeY)) {
+					ps.iconP1.size.set(originalIconP1SizeX, originalIconP1SizeY);
+					if (ps.iconP1.snapToTargetSize != null) ps.iconP1.snapToTargetSize();
+				}
+			}
+
+			if (ps.iconP2 != null) {
+				if (originalIconP2Visible != null) ps.iconP2.visible = originalIconP2Visible;
+				if (originalIconP2AutoUpdate != null) ps.iconP2.autoUpdate = originalIconP2AutoUpdate;
+			}
+
+			restoreScoreState(ps.scoreText);
+		}
+
+		cleanupSprites(ps);
+		clearTracking();
+	}
+
+	function restoreScoreState(txt:FlxBitmapText) {
+		if (txt == null) return;
+		if (!Math.isNaN(originalScoreX)) txt.x = originalScoreX;
+		if (!Math.isNaN(originalScoreY)) txt.y = originalScoreY;
+		if (!Math.isNaN(originalScoreScaleX)) txt.scale.x = originalScoreScaleX;
+		if (!Math.isNaN(originalScoreScaleY)) txt.scale.y = originalScoreScaleY;
+		if (originalScoreAlignment != null) txt.alignment = originalScoreAlignment;
+	}
+
+	function clearTracking() {
+		hudBuilt = false;
+		trackedState = null;
+		originalHealthBarVisible = null;
+		originalHealthBarBGVisible = null;
+		originalIconP1Visible = null;
+		originalIconP1AutoUpdate = null;
+		originalIconP1SizeX = Math.NaN;
+		originalIconP1SizeY = Math.NaN;
+		originalIconP2Visible = null;
+		originalIconP2AutoUpdate = null;
+		originalIconFlipX = null;
+		originalScoreX = Math.NaN;
+		originalScoreY = Math.NaN;
+		originalScoreScaleX = Math.NaN;
+		originalScoreScaleY = Math.NaN;
+		originalScoreAlignment = null;
+		resetRuntimeCache();
+	}
+
+	function resetRuntimeCache() {
+		iconBaseWidth = -1;
+		iconBaseHeight = -1;
+		iconAnchorWidth = -1;
+		iconFixedCenterX = -1.0;
+		lastIconSampleKey = null;
+		lastScoreScreenW = -1;
+		lastScoreScreenH = -1;
+		lastScoreWidth = Math.NaN;
+		lastScoreHeight = Math.NaN;
+		lastDownscroll = null;
+		lastFillW = Math.NaN;
+		lastDrainActive = null;
+		lastDecorDownscroll = null;
+		lastHealthHudWidth = -1;
+		lastPlayerHudWidth = -1;
+		lastScoreHudWidth = -1;
+		lastSongIconSize = -1;
+		dangerFadeCountdown = 0;
+		dangerFadeDuration = 0;
+	}
+
+	function updateSpriteWidth(sprite:FlxSprite, targetWidth:Int, cacheWidth:Int):Int {
+		if (sprite == null) return cacheWidth;
+		if (targetWidth != cacheWidth) {
+			sprite.setGraphicSize(targetWidth, 0);
+			sprite.updateHitbox();
+			return targetWidth;
+		}
+		return cacheWidth;
+	}
+
+	function updateSpriteSquare(sprite:FlxSprite, targetSize:Int, cacheSize:Int):Int {
+		if (sprite == null) return cacheSize;
+		if (targetSize != cacheSize) {
+			sprite.setGraphicSize(targetSize, 0);
+			sprite.updateHitbox();
+			return targetSize;
+		}
+		return cacheSize;
+	}
+
+	function enforceIconState(ps) {
+		if (ps.iconP1 == null) return;
+
+		var icon = ps.iconP1;
+		icon.visible = true;
+		icon.autoUpdate = true;
+		icon.flipX = false;
+
+		if (iconBaseScale != HatsuneHudLayout.ICON_SCALE) {
+			iconBaseScale = HatsuneHudLayout.ICON_SCALE;
+			iconAnchorWidth = -1;
+			iconFixedCenterX = -1.0;
+			iconBaseWidth = -1;
+			iconBaseHeight = -1;
+		}
+
+		if (iconBaseScale <= 0) iconBaseScale = 1.0;
+		if (icon.size != null && (Math.abs(icon.size.x - iconBaseScale) > 0.001 || Math.abs(icon.size.y - iconBaseScale) > 0.001)) {
+			icon.size.set(iconBaseScale, iconBaseScale);
+			if (icon.snapToTargetSize != null) icon.snapToTargetSize();
+		}
+
+		if (icon.width > 0 && icon.height > 0) icon.centerOrigin();
+		if (icon.width > 0 && iconBaseWidth <= 0) iconBaseWidth = Std.int(icon.width);
+		if (icon.height > 0 && iconBaseHeight <= 0) iconBaseHeight = Std.int(icon.height);
+	}
+
+	function layoutHud(ps) {
+		if (hpBox == null || meterBack == null || meter == null) return;
+
+		var layout = HatsuneHudLayout.getBarAnchor(barOffsetX, barOffsetY);
+		var uiScale = layout.uiScale;
+		var downscroll = layout.downscroll;
+		var barX = layout.x;
+		var yPos = layout.y;
+
+		hpBox.x = barX - 5;
+		hpBox.y = yPos - 5;
+
+		meterBack.x = barX;
+		meterBack.y = yPos;
+		if (ps.healthBar != null) ps.healthBar.visible = false;
+		if (ps.healthBarBG != null) ps.healthBarBG.visible = false;
+
+		var ratio = Math.max(0, Math.min(1, ps.health / 2));
+		var fillW = Math.max(1, meterW * ratio);
+		meter.setPosition(barX, yPos);
+		if (fillW != lastFillW) {
+			meter.scale.x = fillW;
+			meter.updateHitbox();
+			lastFillW = fillW;
+		}
+
+		layoutDecorHud(barX, yPos, uiScale, downscroll);
+
+		if (borderTop != null) {
+			borderTop.x = barX - 5;
+			borderTop.y = yPos - 5;
+		}
+		if (borderBottom != null) {
+			borderBottom.x = barX - 5;
+			borderBottom.y = yPos + meterH;
+		}
+		if (borderLeft != null) {
+			borderLeft.x = barX - 5;
+			borderLeft.y = yPos;
+		}
+		if (borderRight != null) {
+			borderRight.x = barX + meterW;
+			borderRight.y = yPos;
+		}
+
+		updateProtectedText(yPos);
+		layoutIcon(ps, yPos);
+		layoutSongIcon(downscroll, uiScale);
+	}
+
+	function syncVanillaHealthBar(ps, iconTargetX:Float, iconTargetY:Float) {
+		if (ps == null || ps.healthBar == null || ps.iconP1 == null) return;
+
+		var vanillaPositionOffset = 26;
+		var iconRatio = 1 - (ps.healthBar.value / 2);
+		var derivedBarX = iconTargetX - (ps.healthBar.width * iconRatio - vanillaPositionOffset);
+		var derivedBarY = iconTargetY + (ps.iconP1.height * 0.5);
+
+		ps.healthBar.x = derivedBarX;
+		ps.healthBar.y = derivedBarY;
+		ps.healthBar.visible = false;
+
+		if (ps.healthBarBG != null) {
+			ps.healthBarBG.x = derivedBarX - 5;
+			ps.healthBarBG.y = derivedBarY - 5;
+			ps.healthBarBG.visible = false;
+		}
+	}
+
+	function layoutDecorHud(meterX:Float, yPos:Float, uiScale:Float, downscroll:Bool) {
+		var screenW = FlxG.width;
+		var screenH = FlxG.height;
+		var bottomHudBaseY = screenH - HatsuneHudLayout.BOTTOM_HUD_MARGIN_Y + (HatsuneHudLayout.BOTTOM_HUD_OFFSET_Y * uiScale);
+		var healthHudMarginY = HatsuneHudLayout.HEALTH_HUD_MARGIN_Y + (HatsuneHudLayout.HEALTH_HUD_OFFSET_Y * uiScale);
+
+		if (healthHudArt != null) {
+			var targetHealthWidth = Std.int(screenW * HatsuneHudLayout.HEALTH_HUD_WIDTH_RATIO);
+			lastHealthHudWidth = updateSpriteWidth(healthHudArt, targetHealthWidth, lastHealthHudWidth);
+			healthHudArt.flipY = downscroll;
+			var healthHudMarginX = HatsuneHudLayout.HEALTH_HUD_X + (HatsuneHudLayout.HEALTH_HUD_OFFSET_X * uiScale);
+			healthHudArt.x = HatsuneHudLayout.HEALTH_HUD_ANCHOR_RIGHT
+				? Std.int(screenW - healthHudArt.width - healthHudMarginX)
+				: Std.int(healthHudMarginX);
+			healthHudArt.y = HatsuneHudLayout.HEALTH_HUD_ANCHOR_BOTTOM
+				? Std.int(screenH - healthHudArt.height - healthHudMarginY)
+				: Std.int(healthHudMarginY);
+		}
+
+		if (playerHudArt != null) {
+			var targetHudWidth = Std.int(screenW * HatsuneHudLayout.BOTTOM_HUD_WIDTH_RATIO);
+			lastPlayerHudWidth = updateSpriteWidth(playerHudArt, targetHudWidth, lastPlayerHudWidth);
+			playerHudArt.flipY = downscroll;
+			playerHudArt.x = Std.int(HatsuneHudLayout.BOTTOM_HUD_X + (HatsuneHudLayout.BOTTOM_HUD_OFFSET_X * uiScale));
+			playerHudArt.y = Std.int(bottomHudBaseY - playerHudArt.height);
+		}
+
+		if (playerHudArt != null && healthHudArt != null) {
+			hpBox.x = playerHudArt.x;
+			hpBox.y = playerHudArt.y;
+			hpBox.visible = false;
+		}
+
+		if (lastDecorDownscroll != downscroll) {
+			if (scoreHudArt != null) scoreHudArt.flipY = downscroll;
+			if (songHudIcon != null) songHudIcon.flipY = downscroll;
+			lastDecorDownscroll = downscroll;
+		}
+	}
+
+	function updateProtectedText(yPos:Float) {
+		if (protectedText == null) return;
+
+		var drainActive:Bool = MHE_SharedState.drainActive;
+		if (lastDrainActive != drainActive) {
+			protectedText.visible = drainActive;
+			lastDrainActive = drainActive;
+		}
+
+		if (!drainActive) return;
+
+		protectedText.width = meterW;
+		if (protectedText.text != "PROTECTED") {
+			protectedText.text = "PROTECTED";
+			protectedText.updateHitbox();
+		}
+		protectedText.x = (healthHudArt != null) ? healthHudArt.x : baseX + barOffsetX;
+		protectedText.width = (healthHudArt != null) ? healthHudArt.width : meterW;
+		protectedText.y = Std.int(yPos + (meterH - protectedText.height) * 0.5 + HatsuneHudLayout.PROTECTED_TEXT_Y_NUDGE);
+	}
+
+	function layoutIcon(ps, yPos:Float) {
+		if (ps.iconP1 == null) return;
+
+		var icon = ps.iconP1;
+		var anchorWidth = (iconBaseWidth > 0) ? iconBaseWidth : Std.int(icon.width);
+		var barAdjX = iconFollowBar ? barOffsetX : 0;
+		if (iconFixedCenterX < 0 || iconAnchorWidth != anchorWidth) {
+			iconFixedCenterX = (baseX + barAdjX - anchorWidth + iconOffsetX) + (anchorWidth * 0.5);
+			iconAnchorWidth = anchorWidth;
+		}
+
+		if (icon.width > 0 && icon.height > 0) icon.centerOrigin();
+		var targetIconX = iconFixedCenterX - (icon.width * 0.5);
+		icon.x = targetIconX;
+
+		var downscroll = HatsuneHudLayout.isDownscroll();
+		var finalYPos = iconFollowBar ? (yPos + iconOffsetY) : ((downscroll ? 70 : (FlxG.height - 43)) + iconOffsetY);
+		var targetIconY = finalYPos - (icon.height * 0.5) + (meterH * 0.5) + HatsuneHudLayout.ICON_FINAL_Y_SHIFT;
+		icon.y = targetIconY;
+		syncVanillaHealthBar(ps, targetIconX, targetIconY);
+		icon.zIndex = HatsuneHudLayout.PLAYER_ICON_Z;
+		icon.cameras = [ps.camHUD];
+	}
+
+	function applyScoreLayout(txt:FlxBitmapText, force:Bool) {
+		if (txt == null) return;
+
+		if (txt.scale.x != scoreScaleMultiplier || txt.scale.y != scoreScaleMultiplier) {
+			txt.scale.x = scoreScaleMultiplier;
+			txt.scale.y = scoreScaleMultiplier;
+			force = true;
+		}
+
+		var screenW = FlxG.width;
+		var screenH = FlxG.height;
+		var down = HatsuneHudLayout.isDownscroll();
+		var textW = txt.width;
+		var textH = txt.height;
+
+		if (force || screenW != lastScoreScreenW || textW != lastScoreWidth) {
+			if (scoreAnchorHorizontal == "LEFT") {
+				txt.x = scoreMarginLeft;
+				if (txt.alignment != "left") txt.alignment = "left";
+			} else {
+				var newX = screenW - textW - scoreMarginRight;
+				if (newX < scoreMarginLeft) newX = scoreMarginLeft;
+				txt.x = newX;
+				if (txt.alignment != "right") txt.alignment = "right";
+			}
+		}
+
+		if (force || down != lastDownscroll || screenH != lastScoreScreenH || textH != lastScoreHeight) {
+			txt.y = down ? (screenH - textH - scoreMarginBottom) : scoreMarginTop;
+		}
+
+		lastScoreScreenW = screenW;
+		lastScoreScreenH = screenH;
+		lastScoreWidth = textW;
+		lastScoreHeight = textH;
+		lastDownscroll = down;
+	}
+
+	function layoutScoreHud(txt:FlxBitmapText) {
+		if (txt == null || scoreHudArt == null) return;
+
+		var uiScale = HatsuneHudLayout.getUiScale();
+		var targetWidth = Std.int(FlxG.width * HatsuneHudLayout.TOP_HUD_WIDTH_RATIO);
+		lastScoreHudWidth = updateSpriteWidth(scoreHudArt, targetWidth, lastScoreHudWidth);
+
+		var scoreHudMarginX = HatsuneHudLayout.TOP_HUD_X + (HatsuneHudLayout.TOP_HUD_OFFSET_X * uiScale);
+		scoreHudArt.x = HatsuneHudLayout.TOP_HUD_ANCHOR_RIGHT
+			? Std.int(FlxG.width - scoreHudArt.width - scoreHudMarginX)
+			: Std.int(scoreHudMarginX);
+		scoreHudArt.y = Std.int(HatsuneHudLayout.TOP_HUD_MARGIN_Y + (HatsuneHudLayout.TOP_HUD_OFFSET_Y * uiScale));
+
+		var rightInset = Std.int(HatsuneHudLayout.SCORE_HUD_RIGHT_INSET * uiScale);
+		txt.x = Std.int((scoreHudArt.x + scoreHudArt.width) - txt.width - rightInset);
+		txt.y = Std.int(scoreHudArt.y + (scoreHudArt.height - txt.height) * 0.5 - (HatsuneHudLayout.SCORE_HUD_Y_OFFSET * uiScale));
+	}
+
+	function layoutSongIcon(downscroll:Bool, uiScale:Float) {
+		if (songHudIcon == null) return;
+
+		var targetSize = Std.int(HatsuneHudLayout.SONG_ICON_BASE_SIZE * uiScale);
+		lastSongIconSize = updateSpriteSquare(songHudIcon, targetSize, lastSongIconSize);
+		songHudIcon.x = Std.int((HatsuneHudLayout.SONG_ICON_X * uiScale) + (HatsuneHudLayout.SONG_ICON_OFFSET_X * uiScale));
+		songHudIcon.y = downscroll
+			? Std.int(FlxG.height - songHudIcon.height - (HatsuneHudLayout.SONG_ICON_MARGIN_Y * uiScale) + (HatsuneHudLayout.SONG_ICON_OFFSET_Y * uiScale))
+			: Std.int((HatsuneHudLayout.SONG_ICON_MARGIN_Y * uiScale) + 4 + (HatsuneHudLayout.SONG_ICON_OFFSET_Y * uiScale));
+	}
+
+	function updateDangerFade() {
+		if (dangerFadeCountdown <= 0) return;
+
+		dangerFadeCountdown -= FlxG.elapsed;
+		if (dangerFadeCountdown <= 0) {
+			if (backTween != null) backTween.cancel();
+			if (meterBack != null) backTween = FlxTween.color(meterBack, dangerFadeDuration, meterBack.color, meterEmptyBack);
+			dangerFadeCountdown = 0;
+		}
+	}
+
+	function refreshBarColors(force:Bool) {
+		var icon = (PlayState.instance != null) ? PlayState.instance.iconP1 : null;
+		var sampleKey = buildIconSampleKey(icon);
+		if (!force && sampleKey == lastIconSampleKey) return;
+
+		var color = findIconColour(icon);
+		baseBarColor = color;
+
+		var r = clamp8(((color >> 16) & 0xFF) + flashMod);
+		var g = clamp8(((color >> 8) & 0xFF) + flashMod);
+		var b = clamp8((color & 0xFF) + flashMod);
+		flashColor = FlxColor.fromRGB(r, g, b);
+
+		var baseR = ((color >> 16) & 0xFF);
+		var baseG = ((color >> 8) & 0xFF);
+		var baseB = (color & 0xFF);
+		var r2 = clamp8(baseR + Std.int(flashMod * dangerRedFactor));
+		var g2 = clamp8(baseG - Std.int(flashMod * dangerDimFactor));
+		var b2 = clamp8(baseB - Std.int(flashMod * dangerDimFactor));
+		var dbR = ((meterDangerBack >> 16) & 0xFF);
+		var dbG = ((meterDangerBack >> 8) & 0xFF);
+		var dbB = (meterDangerBack & 0xFF);
+		r2 = clamp8(Std.int(r2 * (1 - dangerBlend) + dbR * dangerBlend));
+		g2 = clamp8(Std.int(g2 * (1 - dangerBlend) + dbG * dangerBlend));
+		b2 = clamp8(Std.int(b2 * (1 - dangerBlend) + dbB * dangerBlend));
+		dangerFlashColor = FlxColor.fromRGB(r2, g2, b2);
+
+		if (meter != null) meter.color = baseBarColor;
+		lastIconSampleKey = sampleKey;
+	}
+
+	function buildIconSampleKey(icon) {
+		if (icon == null) return "";
+
+		var key = "" + icon.characterId + ":" + Std.int(icon.width) + "x" + Std.int(icon.height);
+		if (icon.graphic != null && icon.graphic.key != null) key += ":" + icon.graphic.key;
+		return key;
+	}
+
+	function clamp8(v) {
+		if (v < 0) return 0;
+		if (v > 255) return 255;
+		return v;
+	}
+
+	function findIconColour(icon) {
+		if (icon == null || icon.pixels == null) return FlxColor.WHITE;
+
+		var iconColour = 0xFFFFFFFF;
+		var colorArray = [];
+		var lightest = 0;
+
+		var ypos = 0;
+		var xpos = 0;
+		var iw = Std.int(icon.width);
+		var ih = Std.int(icon.height);
+		if (iw <= 0 || ih <= 0) return FlxColor.WHITE;
+
+		for (i in 0...30) {
+			var sx = xpos;
+			var sy = ypos;
+			if (sx >= iw) sx = iw - 1;
+			if (sy >= ih) sy = ih - 1;
+			if (sx < 0) sx = 0;
+			if (sy < 0) sy = 0;
+
+			iconColour = icon.pixels.getPixel(sx, sy);
+			if (iconColour != 0 && iconColour != 0xFFFFFF && !colorArray.contains(iconColour)) {
+				colorArray.push(iconColour);
+			}
+
+			if (ypos < 50) ypos += 5;
+			xpos += 5;
+		}
+
+		if (colorArray.length > 0) {
+			for (c in colorArray) {
+				if (c > lightest) {
+					iconColour = c;
+					lightest = c;
+				}
+			}
+			return FlxColor.fromString(FlxColor.toHexString(iconColour, false));
+		}
+
+		return FlxColor.WHITE;
+	}
+
+	function cleanupSprites(stateRef) {
+		removeAndDestroy(stateRef, playerHudArt);
+		removeAndDestroy(stateRef, healthHudArt);
+		removeAndDestroy(stateRef, scoreHudArt);
+		removeAndDestroy(stateRef, songHudIcon);
+		removeAndDestroy(stateRef, hpBox);
+		removeAndDestroy(stateRef, meterBack);
+		removeAndDestroy(stateRef, meter);
+		removeAndDestroy(stateRef, protectedText);
+		removeAndDestroy(stateRef, borderTop);
+		removeAndDestroy(stateRef, borderBottom);
+		removeAndDestroy(stateRef, borderLeft);
+		removeAndDestroy(stateRef, borderRight);
+
+		playerHudArt = null;
+		healthHudArt = null;
+		scoreHudArt = null;
+		songHudIcon = null;
+		hudAtlasFrames = null;
+		hpBox = null;
+		meterBack = null;
+		meter = null;
+		protectedText = null;
+		borderTop = null;
+		borderBottom = null;
+		borderLeft = null;
+		borderRight = null;
+	}
+
+	function removeAndDestroy(stateRef, spr) {
+		if (spr == null) return;
+		if (stateRef != null) stateRef.remove(spr, true);
+		if (spr.destroy != null) spr.destroy();
+	}
+}

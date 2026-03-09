@@ -4,132 +4,123 @@ import funkin.modding.module.Module;
 import funkin.util.ReflectUtil;
 import funkin.audio.FunkinSound;
 import funkin.Paths;
-import flixel.util.FlxTimer;
 import flixel.FlxG;
 
 class MikuFreeplayRandomBGM extends Module
 {
-    var playedRandomPreview:Bool = false;
-    var pendingStart:Bool = false;
+    var replaceCooldown:Float = 0.0;
 
-    // Cached constants to avoid rebuilding strings each frame
+    // Cached constants to avoid rebuilding strings each frame.
+    var DEFAULT_RANDOM_KEY:String = 'freeplayRandom';
     var MUSIC_KEY:String = 'freeplayRandom-vocaloid';
+    var DEFAULT_RANDOM_LABEL:String = null;
     var MUSIC_LABEL:String = null;
     var FREEPLAY_CLASSNAME:String = 'funkin.ui.freeplay.FreeplayState';
+    var MIKU_CHARACTER_ID:String = 'miku';
     var DEBUG:Bool = false;
 
     public function new()
     {
         // Use a unique identifier to avoid clashes with other mods
         super('HatsuneFreeplayRandomBGM');
-        // Paths.music("key/key") -> final resolved label used by the engine
+        // Paths.music("key/key") -> final resolved label used by the engine.
+        DEFAULT_RANDOM_LABEL = Paths.music(DEFAULT_RANDOM_KEY + '/' + DEFAULT_RANDOM_KEY);
         MUSIC_LABEL = Paths.music(MUSIC_KEY + '/' + MUSIC_KEY);
     }
 
     override function onStateChangeEnd(event)
     {
         super.onStateChangeEnd(event);
-        playedRandomPreview = false;
-        pendingStart = false;
+        resetRuntimeState();
     }
 
     override function onSubStateCloseEnd(event)
     {
         super.onSubStateCloseEnd(event);
-        playedRandomPreview = false;
-        pendingStart = false;
+        resetRuntimeState();
     }
 
     override function onUpdate(event:UpdateScriptEvent)
     {
         super.onUpdate(event);
 
-        // Only act inside FreeplayState substate.
-        if (ReflectUtil.getClassNameOf(FlxG.state.subState) == FREEPLAY_CLASSNAME)
+        if (replaceCooldown > 0)
         {
-            var fp = FlxG.state.subState; // FreeplayState instance
+            replaceCooldown -= FlxG.elapsed;
+            if (replaceCooldown < 0) replaceCooldown = 0;
+        }
 
-            // Only for Miku's Freeplay and when hovering the Random capsule (index 0)
-            if (fp.currentCharacterId == 'miku')
-            {
-                // Wait until the DJ intro has finished and Freeplay is interactable
-                if (fp.controls.active && fp.curSelected == 0)
-                {
-                    // If custom preview is not already playing, start it.
-                    var isCustomPlaying = false;
-                    if (FlxG.sound.music != null)
-                    {
-                        var currentLabel = ReflectUtil.getField(FlxG.sound.music, '_label');
-                        isCustomPlaying = (currentLabel == MUSIC_LABEL);
-                    }
+        var fp = getFreeplayState();
+        if (fp == null)
+        {
+            resetRuntimeState();
+            return;
+        }
 
-                    if (!isCustomPlaying && !pendingStart)
-                    {
-                        new FlxTimer().start(0.05, _ -> {
-                            var started = FunkinSound.playMusic(MUSIC_KEY, {
-                                startingVolume: 0.0,
-                                overrideExisting: true,
-                                restartTrack: false,
-                                mapTimeChanges: false,
-                                loop: true,
-                                onLoad: function() {
-                                    if (FlxG.sound.music != null) {
-                                        FlxG.sound.music.fadeIn(1.5, 0, 0.6);
-                                    }
-                                }
-                            });
-                            if (DEBUG) trace('[MikuFreeplayRandomBGM] playMusic returned: ' + started);
-                        });
+        var hoveringRandom = isMikuRandomHovered(fp);
+        if (!hoveringRandom)
+        {
+            resetRuntimeState();
+            return;
+        }
 
-                        // Verify shortly after in case the engine overrides right after our call.
-                        new FlxTimer().start(0.2, _2 -> {
-                            var stillCustom = false;
-                            if (FlxG.sound.music != null)
-                            {
-                                var curLabel = ReflectUtil.getField(FlxG.sound.music, '_label');
-                                stillCustom = (curLabel == MUSIC_LABEL);
-                            }
-                            if (!stillCustom && fp.controls.active && fp.curSelected == 0)
-                            {
-                                FunkinSound.playMusic(MUSIC_KEY, {
-                                    startingVolume: 0.0,
-                                    overrideExisting: true,
-                                    restartTrack: false,
-                                    mapTimeChanges: false,
-                                    loop: true,
-                                    onLoad: function() {
-                                        if (FlxG.sound.music != null) {
-                                            FlxG.sound.music.fadeIn(1.5, 0, 0.6);
-                                        }
-                                    }
-                                });
-                            }
-                            pendingStart = false;
-                        });
-                        pendingStart = true;
-                        playedRandomPreview = true;
-                    }
-                    else if (isCustomPlaying)
-                    {
-                        playedRandomPreview = true;
-                        pendingStart = false;
-                    }
-                }
-                else
-                {
-                    // Left Random capsule; allow replay next time
-                    playedRandomPreview = false;
-                    pendingStart = false;
+        var currentLabel = getCurrentMusicLabel();
+        if (currentLabel == MUSIC_LABEL)
+        {
+            return;
+        }
+
+        // Freeplay can queue the stock Random preview after rapid selection changes.
+        // Replace it whenever it comes back, but throttle the swap to avoid spam.
+        if (currentLabel == DEFAULT_RANDOM_LABEL && replaceCooldown <= 0)
+        {
+            playCustomRandomPreview();
+            replaceCooldown = 0.12;
+        }
+    }
+
+    function getFreeplayState()
+    {
+        var subState = (FlxG.state != null) ? FlxG.state.subState : null;
+        if (subState == null) return null;
+        if (ReflectUtil.getClassNameOf(subState) != FREEPLAY_CLASSNAME) return null;
+        return subState;
+    }
+
+    function isMikuRandomHovered(fp):Bool
+    {
+        if (fp == null) return false;
+        if (fp.currentCharacterId != MIKU_CHARACTER_ID) return false;
+        if (fp.controls == null || !fp.controls.active) return false;
+        return fp.curSelected == 0;
+    }
+
+    function getCurrentMusicLabel():String
+    {
+        if (FlxG.sound.music == null) return null;
+        return ReflectUtil.getField(FlxG.sound.music, '_label');
+    }
+
+    function playCustomRandomPreview():Void
+    {
+        var started = FunkinSound.playMusic(MUSIC_KEY, {
+            startingVolume: 0.0,
+            overrideExisting: true,
+            restartTrack: false,
+            mapTimeChanges: false,
+            loop: true,
+            onLoad: function() {
+                if (FlxG.sound.music != null) {
+                    FlxG.sound.music.fadeIn(1.5, 0, 0.6);
                 }
             }
-            else
-            {
-                playedRandomPreview = false;
-            }
-        }
-        else
-        {
-            playedRandomPreview = false;
-        }
+        });
+
+        if (DEBUG) trace('[MikuFreeplayRandomBGM] playMusic returned: ' + started);
+    }
+
+    function resetRuntimeState():Void
+    {
+        replaceCooldown = 0.0;
     }
 }

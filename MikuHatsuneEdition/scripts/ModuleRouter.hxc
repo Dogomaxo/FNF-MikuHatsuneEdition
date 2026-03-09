@@ -1,6 +1,7 @@
 import funkin.modding.module.Module;
 import funkin.modding.module.ModuleHandler;
 import funkin.play.PlayState;
+import funkin.util.ReflectUtil;
 
 // Central router: toggles modules based on the current player's characterId.
 class ModuleRouter extends Module {
@@ -14,13 +15,20 @@ class ModuleRouter extends Module {
   //  }
   // Stage / song filters removed for compatibility (hscript reflection shit issues). Re‑add later via safe API.
   var charRules = [
-    // Enable both custom health bar HUD and the score HUD for these characters.
-  { ids: ["miku", "bf-hme", "rin", "len"], enable: ["Hatsune In-Game HUD", "Hatsune Score HUD", "Hatsune Voltage Panel"], disable: [] }
+    // Enable the unified gameplay HUD for these characters.
+  { ids: ["miku", "bf-hme", "rin", "len"], enable: ["Hatsune Display HUD"], disable: [] },
+    // Keep the voltage panel scoped to the mod's own song set.
+  {
+    ids: ["miku", "bf-hme", "rin", "len"],
+    songs: ["Satisfaction", "Far-away", "Far-away-Project-Diva-ver", "All-is-Music", "DIVA", "Decade", "Ai-kotoba-V", "Blue-Star", "Debug-Level", "Ray-livetune-Cover", "Romeo-and-Cinderella", "The-Disappearance-of-Hatsune Miku"],
+    enable: ["Hatsune Voltage Panel"],
+    disable: []
+  }
   ];
   // ==========================================================
 
   // HUD modules that change icon flip and need restoration when leaving.
-  var hudFlipModules = ["Hatsune In-Game HUD"]; // add more custom HUD modules here
+  var hudFlipModules = ["Hatsune Display HUD"]; // add more custom HUD modules here
   // Characters that use any hudFlipModules (auto-built from rules).
   var customHudChars = [];
   // Remaining frames to attempt passive flip restore after leaving a custom HUD character.
@@ -30,22 +38,16 @@ class ModuleRouter extends Module {
   // Whether the previous character used a custom HUD.
   var lastCharWasCustom:Bool = false;
 
-  // Flat list of all managed modules (used to compute differential activation).
-  var managed = [];
   var lastCharId:String = null;
-  // Stage/song tracking removed for compatibility (dynamic access threw exceptions).
+  var lastSongId:String = null;
+  var lastStageId:String = null;
+  var lastStateRef = null;
 
   // Cache of last enabled/disabled sets for differential activation.
   var lastEnabledModules = [];
-  var lastDisabledModules = [];
 
   public function new() {
   super("ModuleRouter", 0); // high priority
-  // Build 'managed' list.
-    for (r in charRules) {
-      if (r.enable != null) for (m in r.enable) if (!managed.contains(m)) managed.push(m);
-      if (r.disable != null) for (m in r.disable) if (!managed.contains(m)) managed.push(m);
-    }
     rebuildCustomHudChars();
   }
 
@@ -59,10 +61,27 @@ class ModuleRouter extends Module {
     return null;
   }
 
+  function getCurrentSongId() {
+    if (PlayState.instance == null || PlayState.instance.currentSong == null) return null;
+    return PlayState.instance.currentSong.id;
+  }
+
+  function getCurrentStageId() {
+    if (PlayState.instance == null) return null;
+    return PlayState.instance.currentStageId;
+  }
+
+  override function onStateChangeBegin(event) {
+    super.onStateChangeBegin(event);
+    deactivateTrackedModules();
+    resetTrackingState();
+  }
+
   override function onUpdate(e) {
   var charId = getPlayerCharacterId();
-
-  if (charId == null) return; // no player yet
+  var songId = getCurrentSongId();
+  var stageId = getCurrentStageId();
+  var stateRef = PlayState.instance;
   // Passive flip restore attempts (few frames) after leaving custom HUD.
     if (flipRestoreFrames > 0 && PlayState.instance != null && PlayState.instance.iconP1 != null) {
       var ic = PlayState.instance.iconP1;
@@ -71,8 +90,8 @@ class ModuleRouter extends Module {
       if (flipRestoreFrames <= 0) immediateFlipApplied = false; // reset
     }
 
-    // Check if character changed.
-    var dirty = (charId != lastCharId);
+    // Re-evaluate whenever the gameplay identity changes, not only the character.
+    var dirty = (charId != lastCharId) || (songId != lastSongId) || (stageId != lastStageId) || (stateRef != lastStateRef);
     if (!dirty) return; // nothing to do
 
     // Transition customHUD -> non-custom: schedule restoration.
@@ -90,20 +109,21 @@ class ModuleRouter extends Module {
       flipRestoreFrames = 5; // ~0.08s
     }
 
-    // Recompute target enabled/disabled sets based on matching rules.
+    // If the new state isn't ready yet, disable everything until the new gameplay identity exists.
     var targetEnable = [];
     var targetDisable = [];
+    if (charId != null) {
   for (r in charRules) if (ruleMatches(r, charId)) {
-      if (r.enable != null) for (m in r.enable) if (!targetEnable.contains(m)) targetEnable.push(m);
-      if (r.disable != null) for (m2 in r.disable) if (!targetDisable.contains(m2)) targetDisable.push(m2);
+        if (r.enable != null) for (m in r.enable) if (!targetEnable.contains(m)) targetEnable.push(m);
+        if (r.disable != null) for (m2 in r.disable) if (!targetDisable.contains(m2)) targetDisable.push(m2);
+      }
     }
 
   // Differential activation: touch only what changed.
     for (mPrev in lastEnabledModules) {
       var stillEnabled = targetEnable.contains(mPrev);
       if (!stillEnabled || targetDisable.contains(mPrev)) {
-        var mm = ModuleHandler.getModule(mPrev);
-        if (mm != null && mm.active) mm.active = false;
+        deactivateManagedModule(mPrev);
       }
     }
   // Activate new ones
@@ -115,15 +135,15 @@ class ModuleRouter extends Module {
     }
   // Ensure explicit disables
     for (mDis in targetDisable) {
-      var md = ModuleHandler.getModule(mDis);
-      if (md != null && md.active) md.active = false;
+      deactivateManagedModule(mDis);
     }
 
     lastEnabledModules = targetEnable;
-    lastDisabledModules = targetDisable;
 
     lastCharId = charId;
-  // Stage/song omitted intentionally.
+    lastSongId = songId;
+    lastStageId = stageId;
+    lastStateRef = stateRef;
     lastCharWasCustom = newIsCustom;
   }
 
@@ -158,6 +178,18 @@ class ModuleRouter extends Module {
       else if (r.ids != null) for (c in r.ids) if (c == charId) { charOk = true; break; }
     }
     if (!charOk) return false;
+
+    var songOk = true;
+    if (r.song != null || r.songs != null) {
+      songOk = false;
+      var songId = getCurrentSongId();
+      if (songId != null) {
+        if (r.song != null && r.song == songId) songOk = true;
+        else if (r.songs != null) for (sid in r.songs) if (sid == songId) { songOk = true; break; }
+      }
+    }
+    if (!songOk) return false;
+
     return true;
   }
 
@@ -165,16 +197,39 @@ class ModuleRouter extends Module {
   public function addRule(r) {
     if (r == null) return;
     charRules.push(r);
-    // Update 'managed'
-    if (r.enable != null) for (m in r.enable) if (!managed.contains(m)) managed.push(m);
-    if (r.disable != null) for (m2 in r.disable) if (!managed.contains(m2)) managed.push(m2);
     rebuildCustomHudChars();
   }
 
   public function clearRules() {
     charRules = [];
-  managed = [];
     rebuildCustomHudChars();
+  }
+
+  function deactivateTrackedModules() {
+    for (moduleId in lastEnabledModules) {
+      deactivateManagedModule(moduleId);
+    }
+    lastEnabledModules = [];
+  }
+
+  function resetTrackingState() {
+    lastCharId = null;
+    lastSongId = null;
+    lastStageId = null;
+    lastStateRef = null;
+    lastCharWasCustom = false;
+    flipRestoreFrames = 0;
+    immediateFlipApplied = false;
+  }
+
+  function deactivateManagedModule(moduleId:String) {
+    var module = ModuleHandler.getModule(moduleId);
+    if (module == null || !module.active) return;
+    if (ReflectUtil.hasField(module, "restoreDisplayState")) {
+      var restoreFn = ReflectUtil.getField(module, "restoreDisplayState");
+      if (restoreFn != null) restoreFn();
+    }
+    module.active = false;
   }
 }
 

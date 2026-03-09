@@ -414,6 +414,10 @@ class MikuVoltagePanel extends ScriptedModule {
 				this.active = false;
 		}
 
+	public function restoreDisplayState() {
+		deactivatePanel();
+	}
+
 	override function onActivate() {
 			// Clear any stale pause/locks when re-activating in a new state
 			_isPaused = false;
@@ -422,19 +426,22 @@ class MikuVoltagePanel extends ScriptedModule {
 	}
 
 	override function onDeactivate() {
-			// ensure we revert any style swap on deactivate
-			this.endDrainVisualStyleSwap();
-				// clear drain flags and cleanup
-				draining = false; MHE_SharedState.drainActive = false;
-				// Clear pause and any health lock to avoid leaking across states
-				_isPaused = false;
-				healthDrainLockActive = false;
-			cleanup();
+			deactivatePanel();
 	}
 
 		override function onCreate(e) {
 				// Build only if enabled by the router.
 				if (this.active) ensureBuilt();
+		}
+
+		override function onStateChangeBegin(event) {
+			super.onStateChangeBegin(event);
+			deactivatePanel();
+		}
+
+		override function onDestroy(event) {
+			super.onDestroy(event);
+			deactivatePanel();
 		}
 
 			// Pause hooks from the engine: use these to freeze our indicator and block activation
@@ -450,9 +457,35 @@ class MikuVoltagePanel extends ScriptedModule {
 				if (tapButton != null) {
 					tapButton.visible = !ControlsHandler.usingExternalInputDevice;
 				}
-				// Also force a quick layout refresh next frame so bounds and cameras are correct
-				lastW = -1; lastH = -1; // triggers layout() path in update
+				// Force only a lightweight relayout next frame; keep the current PlayState binding.
+				invalidateLayoutCache();
 			}
+
+	function deactivatePanel() {
+		this.endDrainVisualStyleSwap();
+		draining = false;
+		MHE_SharedState.drainActive = false;
+		_isPaused = false;
+		healthDrainLockActive = false;
+		_hapticStartFired = false;
+		_hapticEndFired = false;
+		hideVignetteInstant();
+		cleanup();
+		resetLayoutCache();
+	}
+
+	function resetLayoutCache() {
+		lastW = -1;
+		lastH = -1;
+		lastDownscroll = null;
+		builtState = null;
+	}
+
+	function invalidateLayoutCache() {
+		lastW = -1;
+		lastH = -1;
+		lastDownscroll = null;
+	}
 
 	override function onSongLoaded(e) {
 				// Entering a new song: reset pause and any locks
@@ -526,6 +559,7 @@ class MikuVoltagePanel extends ScriptedModule {
 			// even if we're currently flagged as paused.
 			if (builtState != PlayState.instance) {
 				if (panel != null) cleanup();
+				resetLayoutCache();
 				ensureBuilt();
 			}
 			// Freeze all logic/visuals while paused and hide tap button to prevent interaction
@@ -2089,52 +2123,53 @@ class MikuVoltagePanel extends ScriptedModule {
 	}
 
 	function cleanup() {
+			var stateRef = (builtState != null) ? builtState : PlayState.instance;
 			// Clap system removed; nothing additional to cancel here.
-			if (panel != null && PlayState.instance != null) {
-				PlayState.instance.remove(panel, true);
+			if (panel != null && stateRef != null) {
+				stateRef.remove(panel, true);
 			}
-			if (panelBorder != null && PlayState.instance != null) {
-				PlayState.instance.remove(panelBorder, true);
+			if (panelBorder != null && stateRef != null) {
+				stateRef.remove(panelBorder, true);
 			}
-			if (panelBgNote != null && PlayState.instance != null) {
-				PlayState.instance.remove(panelBgNote, true);
+			if (panelBgNote != null && stateRef != null) {
+				stateRef.remove(panelBgNote, true);
 			}
-			if (panelGlow != null && PlayState.instance != null) {
-				PlayState.instance.remove(panelGlow, true);
+			if (panelGlow != null && stateRef != null) {
+				stateRef.remove(panelGlow, true);
 			}
-			if (fullChargeSprite != null && PlayState.instance != null) {
-				PlayState.instance.remove(fullChargeSprite, true);
+			if (fullChargeSprite != null && stateRef != null) {
+				stateRef.remove(fullChargeSprite, true);
 			}
-			if (chargeFxSprite != null && PlayState.instance != null) {
-				PlayState.instance.remove(chargeFxSprite, true);
+			if (chargeFxSprite != null && stateRef != null) {
+				stateRef.remove(chargeFxSprite, true);
 			}
-			if (musicNoteCharged != null && PlayState.instance != null) {
-				PlayState.instance.remove(musicNoteCharged, true);
+			if (musicNoteCharged != null && stateRef != null) {
+				stateRef.remove(musicNoteCharged, true);
 			}
-			if (sparkSprite != null && PlayState.instance != null) {
-				PlayState.instance.remove(sparkSprite, true);
+			if (sparkSprite != null && stateRef != null) {
+				stateRef.remove(sparkSprite, true);
 			}
-			if (screenVignette != null && PlayState.instance != null) {
-				PlayState.instance.remove(screenVignette, true);
+			if (screenVignette != null && stateRef != null) {
+				stateRef.remove(screenVignette, true);
 			}
-			if (chargeSprite != null && PlayState.instance != null) {
-				PlayState.instance.remove(chargeSprite, true);
+			if (chargeSprite != null && stateRef != null) {
+				stateRef.remove(chargeSprite, true);
 			}
-			if (segGlow != null && PlayState.instance != null) {
-				PlayState.instance.remove(segGlow, true);
+			if (segGlow != null && stateRef != null) {
+				stateRef.remove(segGlow, true);
 			}
-			if (tickSprites != null && PlayState.instance != null) {
-				for (t in tickSprites) if (t != null) PlayState.instance.remove(t, true);
+			if (tickSprites != null && stateRef != null) {
+				for (t in tickSprites) if (t != null) stateRef.remove(t, true);
 			}
-			if (tickAura != null && PlayState.instance != null) {
-				PlayState.instance.remove(tickAura, true);
+			if (tickAura != null && stateRef != null) {
+				stateRef.remove(tickAura, true);
 			}
-			if (tapButton != null && PlayState.instance != null) {
-				PlayState.instance.remove(tapButton, true);
+			if (tapButton != null && stateRef != null) {
+				stateRef.remove(tapButton, true);
 			}
-			if (percentTextVisual != null && PlayState.instance != null) { PlayState.instance.remove(percentTextVisual, true); }
-			if (percentTextReal != null && PlayState.instance != null) { PlayState.instance.remove(percentTextReal, true); }
-			if (percentTextTheo != null && PlayState.instance != null) { PlayState.instance.remove(percentTextTheo, true); }
+			if (percentTextVisual != null && stateRef != null) { stateRef.remove(percentTextVisual, true); }
+			if (percentTextReal != null && stateRef != null) { stateRef.remove(percentTextReal, true); }
+			if (percentTextTheo != null && stateRef != null) { stateRef.remove(percentTextTheo, true); }
 			if (panel != null) panel.destroy();
 			if (panelBorder != null) panelBorder.destroy();
 			if (panelBgNote != null && panelBgNote.destroy != null) panelBgNote.destroy();
@@ -2174,6 +2209,7 @@ class MikuVoltagePanel extends ScriptedModule {
 			percentTextVisual = null;
 			percentTextReal = null;
 			percentTextTheo = null;
+			builtState = null;
 	}
 
 	function showVignetteActive(instant:Bool) {
