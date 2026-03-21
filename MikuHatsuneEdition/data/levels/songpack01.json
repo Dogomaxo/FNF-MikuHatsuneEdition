@@ -3,7 +3,7 @@
   "name": "SONGPACK01",
   "titleAsset": "storymenu/titles/myweek",
   "background": "#40E0D0",
-  "songs": ["Satisfaction", "Far-away", "Far-away-Project-Diva-ver", "Debug-Level"],
+  "songs": ["Satisfaction", "Far-away", "Far-away-Project-Diva-ver", "All-is-Music", "DIVA", "Decade", "Ai-kotoba-V"],
   "visible": false,
   "props": [
     {

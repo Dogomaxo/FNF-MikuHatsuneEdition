@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Created with Funkin Packer v0.1.3 https://neeeoo.github.io/funkin-packer/
+-->
+<TextureAtlas imagePath="vp_noteSplashes.png" width="965" height="589">
+	<SubTexture name="note impact 1  blue0001" x="252" y="298" width="189" height="271" frameX="-32" frameY="-11" frameWidth="260" frameHeight="298"/>
+	<SubTexture name="note impact 1  blue0002" x="260" y="0" width="213" height="266" frameX="-27" frameY="-21" frameWidth="260" frameHeight="298"/>
+	<SubTexture name="note impact 1  blue0003" x="0" y="298" width="252" height="291" frameX="-4" frameY="-6" frameWidth="260" frameHeight="298"/>
+	<SubTexture name="note impact 2 blue0001" x="738" y="238" width="170" height="201" frameX="-44" frameY="-41" frameWidth="274" frameHeight="267"/>
+	<SubTexture name="note impact 2 blue0002" x="738" y="0" width="227" height="238" frameX="-19" frameY="-20" frameWidth="274" frameHeight="267"/>
+	<SubTexture name="note impact 2 blue0003" x="473" y="0" width="265" height="257" frameX="-0" frameY="-10" frameWidth="274" frameHeight="267"/>
+	<SubTexture name="note impact 1  blue0004" x="0" y="0" width="260" height="298" frameX="-0" frameY="-0" frameWidth="260" frameHeight="298"/>
+	<SubTexture name="note impact 2 blue0004" x="441" y="266" width="224" height="258" frameX="-50" frameY="-0" frameWidth="274" frameHeight="267"/>
+</TextureAtlas>

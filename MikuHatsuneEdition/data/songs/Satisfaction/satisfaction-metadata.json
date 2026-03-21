@@ -10,7 +10,7 @@
     "altInstrumentals": {    },
     "vocals": {
       "bf": 0,
-      "bf-pixel": 0
+      "bf-car": 0
     },
     "altVocals": {    }
   },
@@ -23,18 +23,19 @@
     ],
     "characters": {
       "player": "miku",
-      "girlfriend": "bf-dark",
-      "opponent": "bf-pixel",
+      "girlfriend": "gf",
+      "opponent": "bf-car",
       "instrumental": "",
       "altInstrumentals": [      ],
       "opponentVocals": [
+        ""
       ],
       "playerVocals": [
         "miku"
       ]
     },
-    "stage": "TechnoClubStage",
-    "noteStyle": "funkin",
+    "stage": "TestingPlatform",
+    "noteStyle": "hatsunenormal",
     "ratings": {
       "easy": 1,
       "hard": 4,

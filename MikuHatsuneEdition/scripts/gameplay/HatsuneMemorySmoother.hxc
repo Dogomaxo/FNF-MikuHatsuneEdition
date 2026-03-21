@@ -1,0 +1,110 @@
+import funkin.modding.module.Module;
+import funkin.play.PlayState;
+import funkin.Preferences;
+import flixel.FlxG;
+
+class HatsuneMemorySmoother extends Module {
+	var trackedState = null;
+	var ownsDebugDisplay:Bool = false;
+	var manualDebugOverride:Bool = false;
+	var debugDisplayOffValue = "Off";
+	var debugDisplaySimpleValue = "Simple";
+
+	public function new() {
+		super("Hatsune Memory Smoother", 2);
+		this.active = false;
+	}
+
+	public function restoreDisplayState() {
+		resetRuntimeState();
+	}
+
+	override function onUpdate(event) {
+		super.onUpdate(event);
+
+		if (FlxG.keys != null && FlxG.keys.justPressed != null && FlxG.keys.justPressed.F6) {
+			manualDebugOverride = true;
+			releaseOwnedDebugDisplay();
+		}
+
+		var ps = PlayState.instance;
+		if (ps == null) {
+			resetRuntimeState();
+			return;
+		}
+
+		if (trackedState != ps) {
+			trackedState = ps;
+			updateDebugDisplayState();
+		}
+
+		updateDebugDisplayState();
+	}
+
+	override function onSongLoaded(event) {
+		super.onSongLoaded(event);
+		trackedState = PlayState.instance;
+		updateDebugDisplayState();
+	}
+
+	override function onSongRetry(event) {
+		super.onSongRetry(event);
+		trackedState = PlayState.instance;
+		updateDebugDisplayState();
+	}
+
+	override function onSongStart(event) {
+		super.onSongStart(event);
+		updateDebugDisplayState();
+	}
+
+	override function onPause(event) {
+		super.onPause(event);
+		updateDebugDisplayState();
+	}
+
+	override function onResume(event) {
+		super.onResume(event);
+		updateDebugDisplayState();
+	}
+
+	override function onStateChangeBegin(event) {
+		super.onStateChangeBegin(event);
+		resetRuntimeState();
+	}
+
+	function shouldOwnDebugDisplay():Bool {
+		if (manualDebugOverride) return false;
+		return Std.string(Preferences.debugDisplay) == debugDisplayOffValue;
+	}
+
+	function updateDebugDisplayState():Void {
+		if (PlayState.instance == null) {
+			releaseOwnedDebugDisplay();
+			return;
+		}
+
+		if (shouldOwnDebugDisplay()) {
+			if (!ownsDebugDisplay) {
+				Preferences.setDebugDisplayMode(debugDisplaySimpleValue);
+				ownsDebugDisplay = true;
+			}
+		} else if (ownsDebugDisplay) {
+			ownsDebugDisplay = false;
+		}
+	}
+
+	function resetRuntimeState():Void {
+		releaseOwnedDebugDisplay();
+		trackedState = null;
+		manualDebugOverride = false;
+	}
+
+	function releaseOwnedDebugDisplay():Void {
+		if (!ownsDebugDisplay) return;
+		ownsDebugDisplay = false;
+		if (Std.string(Preferences.debugDisplay) == debugDisplayOffValue) {
+			Preferences.setDebugDisplayMode(debugDisplayOffValue);
+		}
+	}
+}

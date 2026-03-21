@@ -33,7 +33,8 @@
       ]
     },
     "stage": "CityNight",
-    "noteStyle": "funkin",
+    "noteStyle": "hatsunenormal",
+    "vpStyle": "hatsunevp",
     "ratings": {
       "easy": 0,
       "normal": 0,

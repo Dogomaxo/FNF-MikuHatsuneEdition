@@ -1,0 +1,57 @@
+{
+ "version": "2.2.4",
+ "songName": "Ai kotoba V",
+ "artist": "DECO*27 (feat. Hatsune Miku) ",
+ "arranger": "Kz(livetune)",
+ "charter": "Dogomaxo",
+ "offsets": { },
+ "playData": {
+  "difficulties": [
+   "easy",
+   "normal",
+   "hard"
+  ],
+  "characters": {
+   "player": "miku",
+   "girlfriend": "gf",
+   "opponent": "bf",
+   "opponentVocals": [
+    ""
+   ],
+   "playerVocals": [
+    "miku"
+   ]
+  },
+  "stage": "TestingPlatform",
+  "noteStyle": "hatsunenormal",
+  "ratings": {
+   "easy": 0,
+   "normal": 0,
+   "hard": 7
+  },
+  "album": "aikotobaVcover",
+  "previewStart": 40000,
+  "previewEnd": 95000
+ },
+ "generatedBy": "Friday Night Funkin' - v0.8.2",
+ "timeChanges": [
+  {
+   "t": 0,
+   "b": 0,
+   "bpm": 139,
+   "bt": [4, 4, 4, 4]
+  },
+  {
+   "t": 205160.9065,
+   "b": 475.2894,
+   "bpm": 278,
+   "bt": [4, 4, 4, 4]
+  },
+  {
+   "t": 205315,
+   "b": 476.0034,
+   "bpm": 139,
+   "bt": [4, 4, 4, 4]
+  }
+ ]
+}

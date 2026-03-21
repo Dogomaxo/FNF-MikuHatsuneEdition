@@ -1,0 +1,88 @@
+/**
+ * MHE_SharedState: cross-module shared flags for this mod (unique name to avoid collisions).
+ * hscript-friendly static holder to avoid Reflect on native classes.
+ */
+class MHE_SharedState {
+    public static var drainActive:Bool = false;
+    public static var selectedOldAudioSongId:String = null;
+    public static var selectedOldAudioEnabled:Bool = false;
+
+    public static inline var CHANCE_TIME_FINAL_NOTE_KIND_FULL:String = "Final Rstar Arrow";
+    public static inline var CHANCE_TIME_FINAL_NOTE_KIND_EMPTY:String = "Final Rstar Arrow Empty";
+    public static inline var CHANCE_TIME_SUCCESS_SFX_DEFAULT:String = "CT/CTSUCCESS01";
+
+    public static var chanceTimeActive:Bool = false;
+    public static var chanceTimeResultPending:Bool = false;
+    public static var chanceTimeSucceeded:Bool = false;
+    public static var chanceTimeNormalBottomHudOffsetY:Float = 0.0;
+    public static var chanceTimeNormalTopHudOffsetY:Float = 0.0;
+
+    public static var chanceTimeMeter:Float = 0.0;
+    public static var chanceTimeMeterMax:Float = 100.0;
+
+    public static var chanceTimeFinalNoteKind:String = CHANCE_TIME_FINAL_NOTE_KIND_FULL;
+    public static var chanceTimeScoreMultiplier:Float = 1.0;
+    public static var chanceTimeFinalBonus:Int = 25000;
+    public static var chanceTimeSuccessSfxKey:String = CHANCE_TIME_SUCCESS_SFX_DEFAULT;
+    public static var chanceTimeSuccessSfxVolume:Float = 1.0;
+
+    public static function resetChanceTimeMeter() {
+        chanceTimeMeter = 0.0;
+        chanceTimeMeterMax = 100.0;
+        chanceTimeResultPending = false;
+        chanceTimeSucceeded = false;
+    }
+
+    public static function resetChanceTimeState() {
+        chanceTimeActive = false;
+        chanceTimeNormalBottomHudOffsetY = 0.0;
+        chanceTimeNormalTopHudOffsetY = 0.0;
+        chanceTimeSuccessSfxKey = CHANCE_TIME_SUCCESS_SFX_DEFAULT;
+        chanceTimeSuccessSfxVolume = 1.0;
+        resetChanceTimeMeter();
+    }
+
+    public static function setOldAudioSelection(songId:String, enabled:Bool) {
+        selectedOldAudioSongId = songId;
+        selectedOldAudioEnabled = enabled;
+    }
+
+    public static function resetOldAudioSelection() {
+        selectedOldAudioSongId = null;
+        selectedOldAudioEnabled = false;
+    }
+
+    public static function syncOldAudioSelectionFromSave() {
+		return;
+    }
+
+    public static function clampChanceTimeMeter() {
+        if (chanceTimeMeterMax <= 0) chanceTimeMeterMax = 100.0;
+        if (chanceTimeMeter < 0) chanceTimeMeter = 0.0;
+        if (chanceTimeMeter > chanceTimeMeterMax) chanceTimeMeter = chanceTimeMeterMax;
+    }
+
+    public static function isChanceTimeFull():Bool {
+        clampChanceTimeMeter();
+        return chanceTimeMeterMax > 0 && chanceTimeMeter >= chanceTimeMeterMax;
+    }
+
+    public static function getChanceTimeSuccessNoteKind():String {
+        return CHANCE_TIME_FINAL_NOTE_KIND_FULL;
+    }
+
+    public static function getChanceTimeFailureNoteKind():String {
+        return CHANCE_TIME_FINAL_NOTE_KIND_EMPTY;
+    }
+
+    public static function resolveChanceTimeFinalNoteKind(?meterFull:Null<Bool>):String {
+        var resolvedFull = meterFull;
+        if (resolvedFull == null) resolvedFull = isChanceTimeFull();
+        return resolvedFull ? getChanceTimeSuccessNoteKind() : getChanceTimeFailureNoteKind();
+    }
+
+    public static function matchesChanceTimeFinalNoteKind(kind:String):Bool {
+        if (kind == null || kind == '') return false;
+        return kind == chanceTimeFinalNoteKind || kind == getChanceTimeSuccessNoteKind() || kind == getChanceTimeFailureNoteKind();
+    }
+}

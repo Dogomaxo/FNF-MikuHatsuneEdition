@@ -1,0 +1,9 @@
+{
+  "timeFormat": "ms",
+  "artist": "SEGA",
+  "songName": "Random Select BGM",
+  "timeChanges": [{ "d": 4, "n": 4, "t": 0, "bt": [4, 4, 4, 4], "bpm": 145 }],
+  "generatedBy": "Manual (by Dogomaxo)",
+  "looped": true,
+  "version": "2.0.0"
+}

@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TextureAtlas imagePath="FinalStarArrow.png">
+	<!-- Created with Adobe Animate version 22.0.5.191 -->
+	<!-- http://www.adobe.com/products/animate.html -->
+	<SubTexture name="Rstar Arrow0000" x="0" y="187" width="193" height="184"/>
+	<SubTexture name="Rstar Arrow Empty0000" x="0" y="0" width="196" height="187"/>
+</TextureAtlas>

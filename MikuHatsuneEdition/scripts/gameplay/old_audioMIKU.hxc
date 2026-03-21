@@ -1,0 +1,278 @@
+import flixel.FlxG;
+import funkin.Constants;
+import funkin.Paths;
+import funkin.FunkinMemory;
+import funkin.audio.FunkinSound;
+import funkin.audio.VoicesGroup;
+import funkin.modding.module.Module;
+import funkin.play.PlayState;
+import funkin.util.ReflectUtil;
+import openfl.utils.Assets;
+import MHE_SharedState;
+
+class HatsuneOldAudio extends Module {
+	var debugPrefix:String = '[HatsuneOldAudio] ';
+	var oldAudioId:String = 'old';
+
+	public function new() {
+		super('Hatsune Old Audio', 96);
+	}
+
+	override function onSongLoaded(event) {
+		super.onSongLoaded(event);
+		debugLog('onSongLoaded song=' + getCurrentSongIdSafe() + ' inst=' + getCurrentInstrumentalSafe() + ' selected=' + isOldAudioSelected());
+		precacheOldAudioIfNeeded();
+		prepareOldAudioIfNeeded();
+	}
+
+	override function onSongRetry(event) {
+		super.onSongRetry(event);
+		debugLog('onSongRetry song=' + getCurrentSongIdSafe() + ' inst=' + getCurrentInstrumentalSafe() + ' selected=' + isOldAudioSelected());
+		precacheOldAudioIfNeeded();
+		prepareOldAudioIfNeeded();
+	}
+
+	override function onCountdownStart(event) {
+		super.onCountdownStart(event);
+	}
+
+	override function onSongStart(event) {
+		super.onSongStart(event);
+		debugLog('onSongStart song=' + getCurrentSongIdSafe() + ' inst=' + getCurrentInstrumentalSafe());
+	}
+
+	override function onStateChangeBegin(event) {
+		super.onStateChangeBegin(event);
+	}
+
+	function prepareOldAudioIfNeeded():Void {
+		var ps = PlayState.instance;
+		if (ps == null || ps.currentSong == null || ps.currentChart == null) return;
+
+		if (!isOldAudioSelected()) {
+			debugLog('prepare skipped current=' + ps.currentSong.id + ' inst=' + ps.currentInstrumental);
+			return;
+		}
+
+		var oldInstPath = getOldFolderInstPath(ps.currentSong.id);
+		var oldInstExists = Assets.exists(oldInstPath);
+		debugLog('prepare oldInstPath=' + oldInstPath + ' exists=' + oldInstExists);
+		if (!oldInstExists) return;
+
+		var previousMusic = FlxG.sound.music;
+		var previousTime:Float = previousMusic != null ? previousMusic.time : 0.0;
+		var previousPitch:Float = previousMusic != null ? previousMusic.pitch : ps.playbackRate;
+		var previousOnComplete = previousMusic != null ? previousMusic.onComplete : null;
+		if (previousMusic != null) previousMusic.stop();
+
+		ReflectUtil.setField(ps, 'overrideMusic', true);
+		ReflectUtil.setProperty(ps, 'overrideMusic', true);
+
+		var replacementMusic = FunkinSound.load(oldInstPath, 1.0, false, false, true, false, null, null, true);
+		FlxG.sound.music = replacementMusic;
+		if (replacementMusic != null) {
+			replacementMusic.onComplete = previousOnComplete;
+			FlxG.sound.list.remove(replacementMusic);
+			replacementMusic.pause();
+			replacementMusic.time = previousTime;
+			replacementMusic.pitch = previousPitch;
+			replacementMusic.volume = ps.instrumentalVolume;
+		}
+
+		var playerVoiceList = ps.currentChart.buildPlayerVoiceList();
+		var opponentVoiceList = ps.currentChart.buildOpponentVoiceList();
+		var resolvedPlayerVoiceList = buildResolvedVoiceList(playerVoiceList, true);
+		var resolvedOpponentVoiceList = buildResolvedVoiceList(opponentVoiceList, false);
+		debugLog('player voices base=' + playerVoiceList.join(', ') + ' resolved=' + resolvedPlayerVoiceList.join(', '));
+		debugLog('opponent voices base=' + opponentVoiceList.join(', ') + ' resolved=' + resolvedOpponentVoiceList.join(', '));
+		var hasAnyOldVoice = false;
+
+		for (i in 0...resolvedPlayerVoiceList.length) {
+			if (resolvedPlayerVoiceList[i] != null && resolvedPlayerVoiceList[i] != '' && i < playerVoiceList.length && resolvedPlayerVoiceList[i] != playerVoiceList[i]) {
+				hasAnyOldVoice = true;
+				break;
+			}
+		}
+		if (!hasAnyOldVoice) {
+			for (i in 0...resolvedOpponentVoiceList.length) {
+				if (resolvedOpponentVoiceList[i] != null && resolvedOpponentVoiceList[i] != '' && i < opponentVoiceList.length && resolvedOpponentVoiceList[i] != opponentVoiceList[i]) {
+					hasAnyOldVoice = true;
+					break;
+				}
+			}
+		}
+
+		if (!hasAnyOldVoice) {
+			debugLog('no old voices resolved, instrumental only swap prepared');
+			return;
+		}
+
+		if (ps.vocals != null) {
+			ps.vocals.stop();
+			ps.remove(ps.vocals);
+			ps.vocals.destroy();
+		}
+
+		var replacementVocals = new VoicesGroup();
+		for (selectedPlayerVoicePath in resolvedPlayerVoiceList) {
+			if (selectedPlayerVoicePath == null || !Assets.exists(selectedPlayerVoicePath)) continue;
+			FunkinMemory.cacheSound(selectedPlayerVoicePath);
+			replacementVocals.addPlayerVoice(FunkinSound.load(selectedPlayerVoicePath, 1.0, false, false, false, false, null, null, true));
+		}
+		for (selectedOpponentVoicePath in resolvedOpponentVoiceList) {
+			if (selectedOpponentVoicePath == null || !Assets.exists(selectedOpponentVoicePath)) continue;
+			FunkinMemory.cacheSound(selectedOpponentVoicePath);
+			replacementVocals.addOpponentVoice(FunkinSound.load(selectedOpponentVoicePath, 1.0, false, false, false, false, null, null, true));
+		}
+
+		replacementVocals.playerVolume = ps.playerVocalsVolume;
+		replacementVocals.opponentVolume = ps.opponentVocalsVolume;
+		replacementVocals.playerVoicesOffset = ps.currentChart.offsets.getVocalOffset(ps.currentChart.characters.player, ps.currentInstrumental);
+		replacementVocals.opponentVoicesOffset = ps.currentChart.offsets.getVocalOffset(ps.currentChart.characters.opponent, ps.currentInstrumental);
+		ps.vocals = replacementVocals;
+		replacementVocals.pause();
+		replacementVocals.time = previousTime;
+		replacementVocals.pitch = previousPitch;
+		replacementVocals.playerVolume = ps.playerVocalsVolume;
+		replacementVocals.opponentVolume = ps.opponentVocalsVolume;
+		debugLog('prepared OLD audio successfully at time=' + previousTime);
+	}
+
+	function precacheOldAudioIfNeeded():Void {
+		var ps = PlayState.instance;
+		if (ps == null || ps.currentSong == null || ps.currentChart == null) return;
+		if (!isOldAudioSelected()) {
+			debugLog('precache skipped current=' + getCurrentSongIdSafe() + ' inst=' + getCurrentInstrumentalSafe());
+			return;
+		}
+
+		var oldInstPath = getOldFolderInstPath(ps.currentSong.id);
+		debugLog('precache oldInstPath=' + oldInstPath + ' exists=' + Assets.exists(oldInstPath));
+		if (Assets.exists(oldInstPath)) FunkinMemory.cacheSound(oldInstPath);
+
+		for (voicePath in buildResolvedVoiceList(ps.currentChart.buildPlayerVoiceList(), true)) {
+			cacheSelectedVoicePath(voicePath);
+		}
+		for (voicePath in buildResolvedVoiceList(ps.currentChart.buildOpponentVoiceList(), false)) {
+			cacheSelectedVoicePath(voicePath);
+		}
+	}
+
+	function cacheSelectedVoicePath(defaultVoicePath:String):Void {
+		if (defaultVoicePath == null || defaultVoicePath == '') return;
+		var selectedVoicePath = defaultVoicePath;
+		if (selectedVoicePath == null || !Assets.exists(selectedVoicePath)) return;
+		FunkinMemory.cacheSound(selectedVoicePath);
+	}
+
+	function buildResolvedVoiceList(defaultVoiceList:Array<String>, isPlayer:Bool):Array<String> {
+		var result = [];
+		if (defaultVoiceList == null) return result;
+
+		for (voicePath in defaultVoiceList) {
+			result.push(pickVoicePath(voicePath, isPlayer));
+		}
+
+		return result;
+	}
+
+	function pickVoicePath(defaultVoicePath:String, isPlayer:Bool):String {
+		if (defaultVoicePath == null || defaultVoicePath == '') return defaultVoicePath;
+		var oldVoicePath = resolveOldFolderVoicePath(defaultVoicePath);
+		if (Assets.exists(oldVoicePath)) return oldVoicePath;
+
+		var fallbackOldVoicePath = resolveCharacterOldVoicePath(isPlayer);
+		if (fallbackOldVoicePath != null && fallbackOldVoicePath != '' && Assets.exists(fallbackOldVoicePath)) return fallbackOldVoicePath;
+
+		return defaultVoicePath;
+	}
+
+	function resolveCharacterOldVoicePath(isPlayer:Bool):String {
+		var ps = PlayState.instance;
+		if (ps == null || ps.currentSong == null || ps.currentChart == null || ps.currentChart.characters == null) return null;
+
+		var charId = isPlayer ? ps.currentChart.characters.player : ps.currentChart.characters.opponent;
+		if (charId == null || charId == '') return null;
+
+		var variationSuffix = '';
+		if (ps.currentVariation != null && ps.currentVariation != '' && ps.currentVariation != Constants.DEFAULT_VARIATION) {
+			variationSuffix = '-' + ps.currentVariation;
+		}
+
+		var directOldPath = buildOldFolderAssetPath(ps.currentSong.id, 'Voices-' + charId + variationSuffix);
+		if (Assets.exists(directOldPath)) return directOldPath;
+
+		var alternateOldPath = buildOldFolderAssetPath(ps.currentSong.id, 'Voices-' + charId);
+		if (Assets.exists(alternateOldPath)) return alternateOldPath;
+
+		return null;
+	}
+
+	function getOldFolderInstPath(songId:String):String {
+		return buildOldFolderAssetPath(songId, 'Inst');
+	}
+
+	function resolveOldFolderVoicePath(defaultVoicePath:String):String {
+		if (defaultVoicePath == null || defaultVoicePath == '') return defaultVoicePath;
+		var fileName = extractFileNameWithoutExtension(defaultVoicePath);
+		var ps = PlayState.instance;
+		if (fileName == null || fileName == '' || ps == null || ps.currentSong == null) return defaultVoicePath;
+		return buildOldFolderAssetPath(ps.currentSong.id, fileName);
+	}
+
+	function buildOldFolderAssetPath(songId:String, fileName:String):String {
+		if (songId == null || songId == '' || fileName == null || fileName == '') return '';
+		var normalizedSongId = songId.toLowerCase();
+		var upperPath = 'songs:assets/songs/' + normalizedSongId + '/OLD/' + fileName + '.ogg';
+		if (Assets.exists(upperPath)) return upperPath;
+		var lowerPath = 'songs:assets/songs/' + normalizedSongId + '/old/' + fileName + '.ogg';
+		if (Assets.exists(lowerPath)) return lowerPath;
+		return upperPath;
+	}
+
+	function extractFileNameWithoutExtension(audioPath:String):String {
+		if (audioPath == null || audioPath == '') return null;
+		var slashIndex = audioPath.lastIndexOf('/');
+		var fileName = slashIndex >= 0 ? audioPath.substr(slashIndex + 1) : audioPath;
+		var dotIndex = fileName.lastIndexOf('.');
+		return dotIndex > 0 ? fileName.substr(0, dotIndex) : fileName;
+	}
+
+	function getCurrentSongIdSafe():String {
+		var ps = PlayState.instance;
+		if (ps == null || ps.currentSong == null) return 'null';
+		return ps.currentSong.id;
+	}
+
+	function getCurrentInstrumentalSafe():String {
+		var ps = PlayState.instance;
+		if (ps == null) return 'null';
+		return ps.currentInstrumental;
+	}
+
+	function isOldAudioSelected():Bool {
+		var ps = PlayState.instance;
+		if (ps == null) return false;
+		return ps.currentInstrumental == oldAudioId;
+	}
+
+	function debugLog(message:String):Void {
+		trace(debugPrefix + message);
+	}
+
+	function resolveOldVoicePath(defaultVoicePath:String):String {
+		if (defaultVoicePath == null || defaultVoicePath == '') return defaultVoicePath;
+		var slashIndex = defaultVoicePath.lastIndexOf('/');
+		var directory = slashIndex >= 0 ? defaultVoicePath.substr(0, slashIndex + 1) : '';
+		var fileName = slashIndex >= 0 ? defaultVoicePath.substr(slashIndex + 1) : defaultVoicePath;
+		if (fileName == null || fileName == '') return defaultVoicePath;
+
+		var dotIndex = fileName.lastIndexOf('.');
+		var baseName = dotIndex > 0 ? fileName.substr(0, dotIndex) : fileName;
+		var extension = dotIndex > 0 ? fileName.substr(dotIndex + 1) : '';
+		if (baseName == null || baseName == '') return defaultVoicePath;
+		if (baseName.length >= 4 && baseName.substr(baseName.length - 4) == '-old') return defaultVoicePath;
+		if (extension == null || extension == '') return directory + baseName + '-old';
+		return directory + baseName + '-old.' + extension;
+	}
+}

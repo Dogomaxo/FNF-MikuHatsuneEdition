@@ -1,0 +1,62 @@
+{
+  "version": "2.2.4",
+  "songName": "ALL IS MUSIC!",
+  "artist": "YZYX (ft. Hatsune Miku)",
+  "charter": "Dogomaxo",
+  "divisions": 96,
+  "looped": false,
+  "offsets": {
+    "instrumental": 0,
+    "altInstrumentals": {    },
+    "vocals": {    },
+    "altVocals": {    }
+  },
+  "playData": {
+    "songVariations": [    ],
+    "difficulties": [
+      "easy",
+      "normal",
+      "hard"
+    ],
+    "characters": {
+      "player": "miku",
+      "girlfriend": "",
+      "opponent": "bf",
+      "instrumental": "",
+      "altInstrumentals": [      ],
+      "opponentVocals": [
+        "bf-car"
+      ],
+      "playerVocals": [
+        "miku"
+      ]
+    },
+    "stage": "TestingPlatform",
+    "noteStyle": "hatsunenormal",
+    "ratings": {
+      "easy": 0,
+      "normal": 7,
+      "hard": 7
+    },
+    "album": "allismusiccover",
+    "previewStart": 3000,
+    "previewEnd": 50600
+  },
+  "generatedBy": "Friday Night Funkin' - v0.7.3",
+  "timeFormat": "ms",
+  "timeChanges": [
+    {
+      "t": 0,
+      "b": 0,
+      "bpm": 128,
+      "n": 4,
+      "d": 4,
+      "bt": [
+        4,
+        4,
+        4,
+        4
+      ]
+    }
+  ]
+}

@@ -1,0 +1,4145 @@
+import funkin.modding.module.Module;
+import funkin.play.PlayState;
+import funkin.Highscore;
+import funkin.Conductor;
+import funkin.FunkinMemory;
+import funkin.Paths;
+import funkin.Preferences;
+import funkin.play.components.Subtitles;
+import funkin.play.scoring.Scoring;
+import haxe.ds.StringMap;
+import flixel.FlxG;
+import flixel.FlxSprite;
+import flixel.graphics.frames.FlxFrame;
+import flixel.graphics.frames.FlxAtlasFrames;
+import flixel.math.FlxRect;
+import flixel.tweens.FlxTween;
+import flixel.util.FlxColor;
+import flixel.util.FlxTimer;
+import flixel.text.FlxText;
+import flixel.text.FlxTextBorderStyle;
+import flixel.text.FlxBitmapText;
+import openfl.utils.Assets;
+import HatsuneHudLayout;
+import MHE_SharedState;
+
+/**
+ * Unified Hatsune gameplay HUD.
+ * Combines the custom health bar and score layout into a single module.
+ */
+class HatsuneDisplaySTATE extends Module {
+	var hudBuilt:Bool = false;
+	var trackedState = null;
+	var hudAtlasKey:String = HatsuneHudLayout.HUD_ATLAS_KEY;
+	var hudAtlasFrames:FlxAtlasFrames;
+	var hudAtlasFrameCache = new StringMap();
+	var downscrollHudAtlasKey:String = HatsuneHudLayout.DOWNSCROLL_HUD_ATLAS_KEY;
+	var downscrollHudAtlasFrames:FlxAtlasFrames;
+	var downscrollHudAtlasFrameCache = new StringMap();
+	var chanceTimeMeterAtlasKeys:Array<String> = ["ChanceTimeASSETS/CT_Assets-0", "ChanceTimeASSETS/CT_Assets-1"];
+	var chanceTimeMeterAtlasFrames:Array<FlxAtlasFrames> = [];
+	var chanceTimeMeterFrameCache = new StringMap();
+	var chanceTimeMeterFrameAtlasCache = new StringMap();
+	var scoreDigitsAtlasKey:String = HatsuneHudLayout.SCORE_DIGITS_ATLAS_KEY;
+	var defaultScoreDigitsAtlasKey:String = HatsuneHudLayout.SCORE_DIGITS_ATLAS_KEY;
+	var vpScoreDigitsAtlasKey:String = HatsuneHudLayout.SCORE_DIGITS_VP_ATLAS_KEY;
+	var scoreDigitsAtlasFrames:FlxAtlasFrames;
+	var scoreDigitFrameCache = new StringMap();
+	var defaultScoreDigitsAtlasFrames:FlxAtlasFrames;
+	var defaultScoreDigitFrameCache = new StringMap();
+	var defaultScoreDigitMaxFrameWidth:Int = 0;
+	var defaultScoreDigitMaxFrameHeight:Int = 0;
+	var vpScoreDigitsAtlasFrames:FlxAtlasFrames;
+	var vpScoreDigitFrameCache = new StringMap();
+	var vpScoreDigitMaxFrameWidth:Int = 0;
+	var vpScoreDigitMaxFrameHeight:Int = 0;
+	var vpScoreDigitAnimationsReady:Bool = false;
+	var scoreDigitsLayoutReferenceWidth:Int = 0;
+	var scoreDigitsLayoutReferenceHeight:Int = 0;
+	var scoreRankBadgeAtlasKey:String = HatsuneHudLayout.SCORE_RANK_BADGE_ATLAS_KEY;
+	var scoreRankBadgeFrameCache = new StringMap();
+	var scoreRankBadgeResolvedFrameNames = new StringMap();
+	var playerHudFrameName:String = HatsuneHudLayout.BOTTOM_HUD_FRAME;
+	var healthHudFrameName:String = HatsuneHudLayout.HEALTH_HUD_FRAME;
+	var scoreHudFrameName:String = HatsuneHudLayout.TOP_HUD_FRAME;
+	var songHudIconFrameName:String = HatsuneHudLayout.SONG_ICON_FRAME;
+	var lifeHudIconFrameName:String = HatsuneHudLayout.LIFE_ICON_FRAME;
+
+	var playerHudArt:FlxSprite;
+	var healthHudArt:FlxSprite;
+	var scoreHudArt:FlxSprite;
+	var chanceBottomHudArt:FlxSprite;
+	var chanceTopHudArt:FlxSprite;
+	var chanceScoreHudArt:FlxSprite;
+	var chanceStarMeter:FlxSprite;
+	var chanceStarMeterStroke:FlxSprite;
+	var chanceBottomHudLeftExt:Array<FlxSprite> = [];
+	var chanceBottomHudRightExt:Array<FlxSprite> = [];
+	var chanceTopHudLeftExt:Array<FlxSprite> = [];
+	var chanceTopHudRightExt:Array<FlxSprite> = [];
+	var scoreDigits:Array<FlxSprite> = [];
+	var scoreRankBadge:FlxSprite;
+	var scoreRankSparkle:FlxSprite;
+	var songHudIcon:FlxSprite;
+	var chanceSongHudIcon:FlxSprite;
+	var songHudLabel:FlxText;
+	var songHudLabelMeasure:FlxText;
+	var songHudDifficulty:FlxSprite;
+	var lifeLabel:FlxText;
+	var lifeHudIcon:FlxSprite;
+	var primarySubtitleDisplay:Subtitles;
+	var secondarySubtitleDisplay:Subtitles;
+	var chanceSubtitleDisplay:Subtitles;
+	var chanceSecondarySubtitleDisplay:Subtitles;
+
+	var hpBox:FlxSprite;
+	var meterBack:FlxSprite;
+	var meter:FlxSprite;
+	var borderTop:FlxSprite;
+	var borderBottom:FlxSprite;
+	var borderLeft:FlxSprite;
+	var borderRight:FlxSprite;
+	var protectedText:FlxText;
+
+	var originalHealthBarVisible:Null<Bool> = null;
+	var originalHealthBarBGVisible:Null<Bool> = null;
+	var originalIconP1Visible:Null<Bool> = null;
+	var originalIconP1AutoUpdate:Null<Bool> = null;
+	var originalIconP1BopEvery:Null<Int> = null;
+	var originalIconP1SizeX:Float = Math.NaN;
+	var originalIconP1SizeY:Float = Math.NaN;
+	var originalIconP2Visible:Null<Bool> = null;
+	var originalIconP2AutoUpdate:Null<Bool> = null;
+	var originalIconFlipX:Null<Bool> = null;
+	var lastPlayerIconVisualState:String = null;
+
+	var originalScoreX:Float = Math.NaN;
+	var originalScoreY:Float = Math.NaN;
+	var originalScoreScaleX:Float = Math.NaN;
+	var originalScoreScaleY:Float = Math.NaN;
+	var originalScoreAlignment = null;
+	var originalScoreVisible:Null<Bool> = null;
+	var originalSubtitleOffsetX:Float = Math.NaN;
+	var originalSubtitleOffsetY:Float = Math.NaN;
+	var originalSubtitleAlignment = null;
+	var originalSubtitleBackgroundVisible:Null<Bool> = null;
+	var originalSubtitleBackgroundAlpha:Float = Math.NaN;
+
+	var baseMeterW = 360;
+	var baseMeterH = 15;
+	var borderThickness:Int = HatsuneHudLayout.BAR_BORDER_THICKNESS;
+	var meterW = 360;
+	var meterH = 15;
+	var boxW = 370;
+	var boxH = 25;
+
+	var baseX = HatsuneHudLayout.BAR_BASE_X;
+	var barOffsetX = HatsuneHudLayout.BAR_OFFSET_X;
+	var barOffsetY = HatsuneHudLayout.BAR_OFFSET_Y;
+	var barScaleX:Float = HatsuneHudLayout.BAR_SCALE_X;
+	var barScaleY:Float = HatsuneHudLayout.BAR_SCALE_Y;
+
+	var meterEmptyBack = FlxColor.fromRGB(32, 24, 24);
+	var meterDangerBack = FlxColor.fromRGB(53, 24, 24);
+	var flashMod = 54;
+	var dangerRedFactor = 2.4;
+	var dangerDimFactor = 1.2;
+	var dangerBlend = 0.25;
+
+	var baseBarColor = FlxColor.WHITE;
+	var flashColor = FlxColor.WHITE;
+	var dangerFlashColor = FlxColor.WHITE;
+
+	var barTween;
+	var backTween;
+	var dangerFadeCountdown = 0.0;
+	var dangerFadeDuration = 0.0;
+
+
+	function removeAndDestroy(stateRef, spr) {
+		if (spr == null) return;
+		if (stateRef != null) stateRef.remove(spr, true);
+		if (spr.destroy != null) spr.destroy();
+	}
+	function requestStateRefresh(stateRef) {
+		if (stateRef != null) pendingStateRefresh = true;
+	}
+
+	function flushStateRefresh(stateRef) {
+		if (!pendingStateRefresh || stateRef == null) return;
+		pendingStateRefresh = false;
+		stateRef.refresh();
+	}
+	var lastHealthHudWidth:Int = -1;
+	var lastPlayerHudWidth:Int = -1;
+	var lastScoreHudWidth:Int = -1;
+	var lastChanceScoreHudWidth:Int = -1;
+	var lastChanceStarMeterWidth:Int = -1;
+	var lastChanceStarMeterStrokeWidth:Int = -1;
+	var lastSongIconSize:Int = -1;
+	var lastChanceBottomHudWidth:Int = -1;
+	var lastChanceTopHudWidth:Int = -1;
+	var lastChanceSongIconSize:Int = -1;
+	var lastLifeHudIconWidth:Int = -1;
+	var lastLifeLabelSize:Int = -1;
+	var lastLifeLabelBorderSize:Float = Math.NaN;
+	var lastLifeLabelScale:Float = Math.NaN;
+	var lastProtectedTextSize:Int = -1;
+	var lastProtectedTextBorderSize:Float = Math.NaN;
+	var lastProtectedTextScale:Float = Math.NaN;
+	var lastSongLabelValue:String = null;
+	var lastSongLabelSourceValue:String = null;
+	var lastSongLabelSourceVisibleWidth:Float = Math.NaN;
+	var lastSongLabelSourceScale:Float = Math.NaN;
+	var lastSongLabelSize:Int = -1;
+	var lastSongLabelBorderSize:Float = Math.NaN;
+	var lastSongLabelScale:Float = Math.NaN;
+	var lastSongLabelTextWidth:Float = Math.NaN;
+	var lastSongLabelX:Float = Math.NaN;
+	var lastSongLabelY:Float = Math.NaN;
+	var songHudLabelFitCache = new StringMap();
+	var lastSongDifficultyId:String = null;
+	var lastSongDifficultyHeight:Int = -1;
+	var lastSongDifficultyX:Float = Math.NaN;
+	var lastSongDifficultyY:Float = Math.NaN;
+	var lastScoreDigitsValue:String = null;
+	var lastScoreDigitsSourceValue:Int = 0;
+	var scoreDigitsAnimAccumulator:Float = 0;
+	var scoreDigitsVisualDirty:Bool = true;
+	var lastScoreDigitsHeight:Int = -1;
+	var lastScoreDigitsUiScale:Float = Math.NaN;
+	var lastScoreDigitsScaleRatio:Float = Math.NaN;
+	var lastScoreDigitsPanelX:Float = Math.NaN;
+	var lastScoreDigitsPanelY:Float = Math.NaN;
+	var lastScoreDigitsPanelW:Float = Math.NaN;
+	var lastScoreDigitsPanelH:Float = Math.NaN;
+	var lastScoreDigitChars:Array<String> = [];
+	var lastScoreDigitSymbolHeights:Array<Int> = [];
+	var scoreDigitMaxFrameWidth:Int = 0;
+	var scoreDigitMaxFrameHeight:Int = 0;
+	var lastScoreRankBadgeAnim:String = null;
+	var lastScoreRankBadgeHeight:Int = -1;
+	var lastScoreRankBadgePanelX:Float = Math.NaN;
+	var lastScoreRankBadgePanelY:Float = Math.NaN;
+	var lastScoreRankBadgePanelW:Float = Math.NaN;
+	var lastScoreRankBadgePanelH:Float = Math.NaN;
+	var lastScoreRankTallySick:Int = 0;
+	var lastScoreRankTallyGood:Int = 0;
+	var lastScoreRankTallyBad:Int = 0;
+	var lastScoreRankTallyShit:Int = 0;
+	var lastScoreRankTallyMissed:Int = 0;
+	var hasScoreRankSnapshot:Bool = false;
+	var scoreRankUpdateAccumulator:Float = 0;
+	var scoreRankVisualDirty:Bool = true;
+	var scoreRankSparkleTimer:FlxTimer;
+	var lastSongLabelVisibleWidth:Float = 0;
+	var songHudLabelScrollOffset:Float = 0;
+	var songHudLabelScrollDirection:Int = 1;
+	var songHudLabelScrollDelay:Float = 0;
+	var songHudLabelScrollAccumulator:Float = 0;
+	var songHudLabelClipRect:FlxRect;
+	var lastChanceTimeActive:Null<Bool> = null;
+	var lastAppliedChanceHudVisibility:Null<Bool> = null;
+	var decorFramesReady:Bool = false;
+	var lastChanceStarMeterFrameName:String = null;
+	var lastChanceStarMeterX:Float = Math.NaN;
+	var lastChanceStarMeterY:Float = Math.NaN;
+	var lastChanceStarMeterUiScale:Float = Math.NaN;
+	var lastHudLayoutBarX:Float = Math.NaN;
+	var lastHudLayoutYPos:Float = Math.NaN;
+	var lastHudLayoutUiScale:Float = Math.NaN;
+	var lastHudLayoutChanceActive:Null<Bool> = null;
+	var lastHudLayoutScreenW:Int = -1;
+	var lastHudLayoutScreenH:Int = -1;
+	var lastHudLayoutMeterW:Int = -1;
+	var lastHudLayoutMeterH:Int = -1;
+	var lastHudLayoutBorderThickness:Int = -1;
+	var lastHudLayoutIconWidth:Float = Math.NaN;
+	var lastHudLayoutIconHeight:Float = Math.NaN;
+	var lastTopHudLayoutUiScale:Float = Math.NaN;
+	var lastTopHudLayoutDownscroll:Null<Bool> = null;
+	var lastTopHudLayoutChanceActive:Null<Bool> = null;
+	var lastTopHudLayoutScreenW:Int = -1;
+	var lastTopHudLayoutScreenH:Int = -1;
+	var lastTopHudLayoutNormalTopOffsetY:Float = Math.NaN;
+	var lastTopHudLayoutChanceTopOffsetY:Float = Math.NaN;
+	var lastNormalSubtitleOffsetX:Float = Math.NaN;
+	var lastNormalSubtitleOffsetY:Float = Math.NaN;
+	var lastChanceSubtitleOffsetX:Float = Math.NaN;
+	var lastChanceSubtitleOffsetY:Float = Math.NaN;
+	var lastChanceSubtitleVisible:Null<Bool> = null;
+	var lastPrimarySubtitleAssetPath:String = null;
+	var lastSecondarySubtitleAssetPath:String = null;
+	var lastSubtitleSound = null;
+	var subtitleLayoutUpdateAccumulator:Float = 0.0;
+	var subtitleLayoutUpdateInterval:Float = 1.0 / 30.0;
+	var lastQuantizedNormalSubtitleBopScale:Float = 1.0;
+	var lastQuantizedChanceSubtitleBopScale:Float = 1.0;
+	var normalSubtitleBopScale:Float = 1.0;
+	var chanceSubtitleBopScale:Float = 1.0;
+	var normalBottomOffsetY:Float = 0;
+	var normalTopOffsetY:Float = 0;
+	var chanceBottomOffsetY:Float = 0;
+	var chanceTopOffsetY:Float = 0;
+	var iconAnchorRight:Bool = HatsuneHudLayout.ICON_ANCHOR_RIGHT;
+	var iconAnchorBottom:Bool = HatsuneHudLayout.ICON_ANCHOR_BOTTOM;
+	var iconScreenX:Float = HatsuneHudLayout.ICON_X;
+	var iconMarginY:Float = HatsuneHudLayout.ICON_MARGIN_Y;
+	var iconBaseScale:Float = HatsuneHudLayout.ICON_SCALE;
+	var iconOffsetX:Float = HatsuneHudLayout.ICON_OFFSET_X;
+	var iconOffsetY:Float = HatsuneHudLayout.ICON_OFFSET_Y;
+	var iconAnchorWidth:Int = -1;
+	var iconBaseWidth:Int = -1;
+	var iconBaseHeight:Int = -1;
+	var iconFixedCenterX:Float = -1.0;
+	var chanceHudTweens:Array<FlxTween> = [];
+	var hudPaused:Bool = false;
+	var hudInfoUpdateAccumulator:Float = 0.0;
+	var hudInfoUpdateInterval:Float = 1.0 / 24.0;
+	var hudMetaUpdateAccumulator:Float = 0.0;
+	var hudMetaUpdateInterval:Float = 1.0 / 8.0;
+	var hudDecorUpdateAccumulator:Float = 1.0 / 24.0;
+	var hudDecorUpdateInterval:Float = 1.0 / 24.0;
+	var chanceHudEventArmed:Bool = false;
+	var pendingStateRefresh:Bool = false;
+
+	public function new() {
+		super("Hatsune Display HUD", 1);
+		this.active = false;
+	}
+
+	public function restoreDisplayState() {
+		restoreVanilla();
+	}
+
+	public function primeDisplayState() {
+		hudPaused = false;
+		hudInfoUpdateAccumulator = hudInfoUpdateInterval;
+		hudMetaUpdateAccumulator = hudMetaUpdateInterval;
+		hudDecorUpdateAccumulator = hudDecorUpdateInterval;
+		precacheChanceTimeAssets();
+		ensureHudReady();
+	}
+
+	override function onStateCreate(event) {
+		super.onStateCreate(event);
+		if (!this.active) return;
+		if (PlayState.instance == null) return;
+		primeDisplayState();
+	}
+
+	override function onUpdate(event) {
+		super.onUpdate(event);
+		if (hudPaused) return;
+
+		var ps = PlayState.instance;
+		if (ps == null) return;
+
+		if (trackedState != null && trackedState != ps) {
+			cleanupSprites(trackedState);
+			clearTracking();
+		}
+
+		ensureBuilt(ps);
+		if (!hudBuilt) return;
+
+		enforceIconState(ps);
+		updateChanceHudTransition();
+		if (!decorFramesReady) refreshDecorFrames(false);
+		var chanceActive = isChanceHudActive();
+		var chanceHudTweening = isChanceHudTweening();
+		hudDecorUpdateAccumulator += event.elapsed;
+		var shouldUpdateHudDecor = chanceHudTweening || hudDecorUpdateAccumulator >= hudDecorUpdateInterval;
+		if (shouldUpdateHudDecor) hudDecorUpdateAccumulator = 0.0;
+		layoutHud(ps, shouldUpdateHudDecor);
+		syncVanillaScoreText(ps.scoreText);
+		if (shouldUpdateHudDecor) {
+			applyScoreLayout(ps.scoreText, false);
+			layoutScoreHud(ps.scoreText);
+		}
+		var uiScale = HatsuneHudLayout.getUiScale();
+		hudInfoUpdateAccumulator += event.elapsed;
+		var shouldUpdateScoreInfo = chanceHudTweening
+			|| hudInfoUpdateAccumulator >= hudInfoUpdateInterval
+			|| chanceActive != lastChanceTimeActive
+			|| ps.songScore != lastScoreDigitsSourceValue
+			|| scoreDigitsVisualDirty;
+		if (shouldUpdateScoreInfo) {
+			hudInfoUpdateAccumulator = 0.0;
+			updateScoreDigits(ps, uiScale);
+		}
+		hudMetaUpdateAccumulator += event.elapsed;
+		var shouldRunTimedHudMeta = !chanceActive && hudMetaUpdateAccumulator >= hudMetaUpdateInterval;
+		var shouldUpdateHudMeta = chanceHudTweening
+			|| shouldRunTimedHudMeta
+			|| chanceActive != lastChanceTimeActive
+			|| scoreRankVisualDirty;
+		if (shouldUpdateHudMeta) {
+			hudMetaUpdateAccumulator = 0.0;
+			updateScoreRankBadge(ps, uiScale);
+			updateSongHudLabel(ps, HatsuneHudLayout.isDownscroll(), uiScale);
+		}
+		updateDangerFade();
+		if (shouldUpdateHudDecor) updateChanceStarMeter(uiScale);
+		if (shouldUpdateHudDecor) updateChanceHudVisibility(ps);
+		updateSubtitleBop(event.elapsed);
+		subtitleLayoutUpdateAccumulator += event.elapsed;
+		var quantizedNormalSubtitleBopScale = quantizeSubtitleScale(normalSubtitleBopScale);
+		var quantizedChanceSubtitleBopScale = quantizeSubtitleScale(chanceSubtitleBopScale);
+		var shouldUpdateSubtitleLayout = chanceHudTweening
+			|| subtitleLayoutUpdateAccumulator >= subtitleLayoutUpdateInterval
+			|| quantizedNormalSubtitleBopScale != lastQuantizedNormalSubtitleBopScale
+			|| quantizedChanceSubtitleBopScale != lastQuantizedChanceSubtitleBopScale
+			|| chanceActive != lastChanceTimeActive;
+		if (shouldUpdateSubtitleLayout) {
+			subtitleLayoutUpdateAccumulator = 0.0;
+			lastQuantizedNormalSubtitleBopScale = quantizedNormalSubtitleBopScale;
+			lastQuantizedChanceSubtitleBopScale = quantizedChanceSubtitleBopScale;
+			updateSubtitleLayout(ps, quantizedNormalSubtitleBopScale, quantizedChanceSubtitleBopScale);
+		}
+		flushStateRefresh(ps);
+	}
+
+	override function onBeatHit(event) {
+		super.onBeatHit(event);
+		if (hudPaused || !this.active || !hudBuilt || PlayState.instance == null) return;
+		triggerPlayerIconBop(PlayState.instance);
+
+		refreshBarColors(false);
+		var chanceHudActive = isChanceHudActive();
+		var isDanger = (PlayState.instance.health <= 0.4);
+
+		if (!Preferences.flashingLights || chanceHudActive) {
+			if (barTween != null) {
+				barTween.cancel();
+				barTween = null;
+			}
+			if (backTween != null) {
+				backTween.cancel();
+				backTween = null;
+			}
+			dangerFadeCountdown = 0;
+			if (meter != null) meter.color = baseBarColor;
+			if (meterBack != null) meterBack.color = isDanger ? meterDangerBack : meterEmptyBack;
+
+			var subtitleBopScale = HatsuneHudLayout.SUBTITLE_BOP_SCALE;
+			if (subtitleBopScale > 1.0 && shouldTriggerSubtitleBop(event)) {
+				normalSubtitleBopScale = subtitleBopScale;
+				chanceSubtitleBopScale = subtitleBopScale;
+			}
+			return;
+		}
+
+		var crochetMs = (Conductor.instance != null ? Conductor.instance.beatLengthMs : 500);
+		var crochetSec = crochetMs / 1000.0;
+
+		if (backTween != null) {
+			backTween.cancel();
+			backTween = null;
+		}
+
+		if (isDanger) {
+			if (meterBack != null) meterBack.color = meterDangerBack;
+			dangerFadeCountdown = crochetSec * 0.25;
+			dangerFadeDuration = crochetSec * 0.5;
+		} else {
+			dangerFadeCountdown = 0;
+			if (meterBack != null) meterBack.color = meterEmptyBack;
+		}
+
+		if (barTween != null) barTween.cancel();
+		if (meter != null) {
+			meter.color = isDanger ? dangerFlashColor : flashColor;
+			barTween = FlxTween.color(meter, crochetSec, meter.color, baseBarColor);
+		}
+
+		var subtitleBopScale = HatsuneHudLayout.SUBTITLE_BOP_SCALE;
+		if (subtitleBopScale > 1.0 && shouldTriggerSubtitleBop(event)) {
+			normalSubtitleBopScale = subtitleBopScale;
+			chanceSubtitleBopScale = subtitleBopScale;
+		}
+
+	}
+
+	override function onPause(event) {
+		super.onPause(event);
+		hudPaused = true;
+		hudInfoUpdateAccumulator = hudInfoUpdateInterval;
+		hudMetaUpdateAccumulator = hudMetaUpdateInterval;
+		clearChanceHudTweens();
+		if (barTween != null) {
+			barTween.cancel();
+			barTween = null;
+		}
+		if (backTween != null) {
+			backTween.cancel();
+			backTween = null;
+		}
+		stopScoreRankSparkle();
+	}
+
+	override function onSongLoaded(event) {
+		super.onSongLoaded(event);
+		resetHudForSongReload();
+	}
+
+	override function onSongRetry(event) {
+		super.onSongRetry(event);
+		resetHudForSongReload();
+	}
+
+	override function onCountdownStart(event) {
+		super.onCountdownStart(event);
+		ensureHudReady();
+	}
+
+	override function onSongStart(event) {
+		super.onSongStart(event);
+		ensureHudReady();
+	}
+
+	function resetHudForSongReload() {
+		hudPaused = false;
+		hudInfoUpdateAccumulator = hudInfoUpdateInterval;
+		hudMetaUpdateAccumulator = hudMetaUpdateInterval;
+		MHE_SharedState.drainActive = false;
+		MHE_SharedState.resetChanceTimeState();
+		precacheChanceTimeAssets();
+		restoreVanilla();
+		ensureHudReady();
+	}
+
+	function ensureHudReady() {
+		var ps = PlayState.instance;
+		if (!this.active || ps == null) return;
+		ensureBuilt(ps);
+		if (!hudBuilt) return;
+
+		var uiScale = HatsuneHudLayout.getUiScale();
+
+		if (ps.healthBar != null) ps.healthBar.visible = false;
+		if (ps.healthBarBG != null) ps.healthBarBG.visible = false;
+		if (ps.iconP2 != null) {
+			ps.iconP2.visible = false;
+			ps.iconP2.autoUpdate = false;
+		}
+
+		enforceIconState(ps);
+		refreshDecorFrames(false);
+		if (scoreDigits == null || scoreDigits.length <= 0) restoreScoreDigitsState(ps);
+		else if (scoreDigitsAtlasFrames == null) reloadScoreDigitsAtlas();
+		updateChanceHudTransition(true);
+		layoutHud(ps);
+		applyScoreLayout(ps.scoreText, true);
+		layoutScoreHud(ps.scoreText);
+		scoreDigitsVisualDirty = true;
+		lastScoreDigitsValue = null;
+		updateScoreRankBadge(ps, uiScale);
+		updateScoreDigits(ps, uiScale);
+		lastAppliedChanceHudVisibility = null;
+		updateChanceHudVisibility(ps);
+		updateSongHudLabel(ps, HatsuneHudLayout.isDownscroll(), uiScale);
+		flushStateRefresh(ps);
+	}
+
+	override function onResume(event) {
+		super.onResume(event);
+		hudPaused = false;
+		hudInfoUpdateAccumulator = hudInfoUpdateInterval;
+		hudMetaUpdateAccumulator = hudMetaUpdateInterval;
+
+		var ps = PlayState.instance;
+		if (!this.active || ps == null) return;
+		ensureHudReady();
+	}
+
+	override function onSongEvent(event) {
+		super.onSongEvent(event);
+		if (HatsuneHudLayout.CT_HUD_DEBUG_FORCE_VISIBLE) {
+			updateChanceHudTransition();
+			return;
+		}
+		if (event == null || event.eventData == null) return;
+		if (event.eventData.eventKind != 'ChanceTime') return;
+		var action = event.eventData.getString('action');
+		if (action == null || action == '') action = 'start';
+		action = action.toLowerCase();
+		switch (action) {
+			case 'stop', 'reset':
+				chanceHudEventArmed = false;
+			case 'start':
+				chanceHudEventArmed = true;
+			default:
+				chanceHudEventArmed = true;
+		}
+		updateChanceHudTransition();
+		if (PlayState.instance != null) updateChanceHudVisibility(PlayState.instance);
+	}
+
+	function reloadHudAtlas():FlxAtlasFrames {
+		hudAtlasFrames = Paths.getSparrowAtlas(hudAtlasKey);
+		hudAtlasFrameCache = new StringMap();
+		if (hudAtlasFrames != null && hudAtlasFrames.frames != null) {
+			for (frame in hudAtlasFrames.frames) {
+				if (frame != null && frame.name != null) hudAtlasFrameCache.set(frame.name, frame);
+			}
+		}
+		return hudAtlasFrames;
+	}
+
+	function reloadDownscrollHudAtlas():FlxAtlasFrames {
+		downscrollHudAtlasFrames = Paths.getSparrowAtlas(downscrollHudAtlasKey);
+		downscrollHudAtlasFrameCache = new StringMap();
+		if (downscrollHudAtlasFrames != null && downscrollHudAtlasFrames.frames != null) {
+			for (frame in downscrollHudAtlasFrames.frames) {
+				if (frame != null && frame.name != null) downscrollHudAtlasFrameCache.set(frame.name, frame);
+			}
+		}
+		return downscrollHudAtlasFrames;
+	}
+
+	function buildScoreDigitsAtlasCache(atlasKey:String, isVpAtlas:Bool):FlxAtlasFrames {
+		var atlasFrames = Paths.getSparrowAtlas(atlasKey);
+		var frameCache = new StringMap();
+		var maxFrameWidth = 0;
+		var maxFrameHeight = 0;
+		if (atlasFrames != null && atlasFrames.frames != null) {
+			for (frame in atlasFrames.frames) {
+				if (frame != null && frame.name != null) {
+					frameCache.set(frame.name, frame);
+					cacheScoreDigitAliasForMap(frameCache, "digital 0", frame, "ZERO DIGITAL");
+					cacheScoreDigitAliasForMap(frameCache, "digital 1", frame, "ONE DIGITAL");
+					cacheScoreDigitAliasForMap(frameCache, "digital 2", frame, "TWO DIGITAL");
+					cacheScoreDigitAliasForMap(frameCache, "digital 3", frame, "THREE DIGITAL");
+					cacheScoreDigitAliasForMap(frameCache, "digital 4", frame, "FOUR DIGITAL");
+					cacheScoreDigitAliasForMap(frameCache, "digital 5", frame, "FIVE DIGITAL");
+					cacheScoreDigitAliasForMap(frameCache, "digital 6", frame, "SIX DIGITAL");
+					cacheScoreDigitAliasForMap(frameCache, "digital 7", frame, "SEVEN DIGITAL");
+					cacheScoreDigitAliasForMap(frameCache, "digital 8", frame, "EIGHT DIGITAL");
+					cacheScoreDigitAliasForMap(frameCache, "digital 9", frame, "NINE DIGITAL");
+					if (isScoreDigitFrameName(frame.name)) {
+						var frameWidth = Std.int(frame.frame.width);
+						var frameHeight = Std.int(frame.frame.height);
+						if (frameWidth > maxFrameWidth) maxFrameWidth = frameWidth;
+						if (frameHeight > maxFrameHeight) maxFrameHeight = frameHeight;
+					}
+				}
+			}
+		}
+
+		if (isVpAtlas) {
+			vpScoreDigitsAtlasFrames = atlasFrames;
+			vpScoreDigitFrameCache = frameCache;
+			vpScoreDigitMaxFrameWidth = maxFrameWidth;
+			vpScoreDigitMaxFrameHeight = maxFrameHeight;
+		} else {
+			defaultScoreDigitsAtlasFrames = atlasFrames;
+			defaultScoreDigitFrameCache = frameCache;
+			defaultScoreDigitMaxFrameWidth = maxFrameWidth;
+			defaultScoreDigitMaxFrameHeight = maxFrameHeight;
+		}
+		return atlasFrames;
+	}
+
+	function reloadScoreDigitsAtlas():FlxAtlasFrames {
+		var useVpAtlas = (scoreDigitsAtlasKey == vpScoreDigitsAtlasKey);
+		if (useVpAtlas) {
+			if (vpScoreDigitsAtlasFrames == null) buildScoreDigitsAtlasCache(vpScoreDigitsAtlasKey, true);
+			scoreDigitsAtlasFrames = vpScoreDigitsAtlasFrames;
+			scoreDigitFrameCache = vpScoreDigitFrameCache;
+			scoreDigitMaxFrameWidth = vpScoreDigitMaxFrameWidth;
+			scoreDigitMaxFrameHeight = vpScoreDigitMaxFrameHeight;
+		} else {
+			if (defaultScoreDigitsAtlasFrames == null) buildScoreDigitsAtlasCache(defaultScoreDigitsAtlasKey, false);
+			scoreDigitsAtlasFrames = defaultScoreDigitsAtlasFrames;
+			scoreDigitFrameCache = defaultScoreDigitFrameCache;
+			scoreDigitMaxFrameWidth = defaultScoreDigitMaxFrameWidth;
+			scoreDigitMaxFrameHeight = defaultScoreDigitMaxFrameHeight;
+		}
+		ensureScoreDigitsLayoutReference();
+		return scoreDigitsAtlasFrames;
+	}
+
+	function ensureScoreDigitsLayoutReference() {
+		if (scoreDigitsLayoutReferenceWidth > 0 && scoreDigitsLayoutReferenceHeight > 0) return;
+
+		var referenceFrames = Paths.getSparrowAtlas(defaultScoreDigitsAtlasKey);
+		if (referenceFrames == null || referenceFrames.frames == null) return;
+
+		for (frame in referenceFrames.frames) {
+			if (frame == null || frame.name == null) continue;
+			if (frame.name == "MINUS" || (frame.name.length >= 8 && frame.name.substr(0, 8) == "digital ")) {
+				var frameWidth = Std.int(frame.frame.width);
+				var frameHeight = Std.int(frame.frame.height);
+				if (frameWidth > scoreDigitsLayoutReferenceWidth) scoreDigitsLayoutReferenceWidth = frameWidth;
+				if (frameHeight > scoreDigitsLayoutReferenceHeight) scoreDigitsLayoutReferenceHeight = frameHeight;
+			}
+		}
+	}
+
+	function cacheScoreDigitAliasForMap(frameCache:StringMap<Dynamic>, alias:String, frame:FlxFrame, prefix:String) {
+		if (frameCache == null || alias == null || frame == null || frame.name == null || prefix == null) return;
+		if (frame.name.length < prefix.length || frame.name.substr(0, prefix.length) != prefix) return;
+
+		var currentFrame = frameCache.get(alias);
+		if (currentFrame == null || frame.name > currentFrame.name) frameCache.set(alias, frame);
+	}
+
+	function cacheScoreDigitAlias(alias:String, frame:FlxFrame, prefix:String) {
+		if (alias == null || frame == null || frame.name == null || prefix == null) return;
+		if (frame.name.length < prefix.length || frame.name.substr(0, prefix.length) != prefix) return;
+
+		var currentFrame = scoreDigitFrameCache.get(alias);
+		if (currentFrame == null || frame.name > currentFrame.name) scoreDigitFrameCache.set(alias, frame);
+	}
+
+	function getDownscrollDecorFrameName(frameName:String):String {
+		if (frameName == null) return null;
+		switch (frameName) {
+			case HatsuneHudLayout.BOTTOM_HUD_FRAME:
+				return HatsuneHudLayout.BOTTOM_HUD_DOWNSCROLL_FRAME;
+			case HatsuneHudLayout.HEALTH_HUD_FRAME:
+				return HatsuneHudLayout.HEALTH_HUD_DOWNSCROLL_FRAME;
+			case HatsuneHudLayout.TOP_HUD_FRAME:
+				return HatsuneHudLayout.TOP_HUD_DOWNSCROLL_FRAME;
+			case HatsuneHudLayout.CT_BOTTOM_HUD_FRAME:
+				return HatsuneHudLayout.CT_BOTTOM_HUD_DOWNSCROLL_FRAME;
+			case HatsuneHudLayout.CT_TOP_HUD_FRAME:
+				return HatsuneHudLayout.CT_TOP_HUD_DOWNSCROLL_FRAME;
+			default:
+				return null;
+		}
+	}
+
+	function findAtlasFrameInCache(frameCache:StringMap<Dynamic>, frameName:String):FlxFrame {
+		if (frameCache == null || frameName == null) return null;
+		return frameCache.get(frameName);
+	}
+
+	function selectHudAtlasFrame(frameName:String, forceReload:Bool) {
+		var downscrollFrameName = HatsuneHudLayout.isDownscroll() ? getDownscrollDecorFrameName(frameName) : null;
+		if (downscrollFrameName != null) {
+			if (forceReload || downscrollHudAtlasFrames == null) reloadDownscrollHudAtlas();
+			var downscrollFrame = findAtlasFrameInCache(downscrollHudAtlasFrameCache, downscrollFrameName);
+			if (downscrollFrame == null && !forceReload) {
+				reloadDownscrollHudAtlas();
+				downscrollFrame = findAtlasFrameInCache(downscrollHudAtlasFrameCache, downscrollFrameName);
+			}
+			if (downscrollFrame != null && downscrollHudAtlasFrames != null) {
+				return {
+					frames: downscrollHudAtlasFrames,
+					frame: downscrollFrame
+				};
+			}
+		}
+
+		if (forceReload || hudAtlasFrames == null) reloadHudAtlas();
+		var selectedFrame = findAtlasFrame(frameName);
+		if (selectedFrame == null && !forceReload) {
+			reloadHudAtlas();
+			selectedFrame = findAtlasFrame(frameName);
+		}
+		if (selectedFrame == null || hudAtlasFrames == null) return null;
+		return {
+			frames: hudAtlasFrames,
+			frame: selectedFrame
+		};
+	}
+
+	function isScoreDigitFrameName(frameName:String):Bool {
+		if (frameName == null) return false;
+		if (frameName == "MINUS") return true;
+		if (frameName.length >= 8 && frameName.substr(0, 8) == "digital ") return true;
+		if (frameName.length >= 12 && frameName.substr(0, 12) == "ZERO DIGITAL") return true;
+		if (frameName.length >= 11 && frameName.substr(0, 11) == "ONE DIGITAL") return true;
+		if (frameName.length >= 11 && frameName.substr(0, 11) == "TWO DIGITAL") return true;
+		if (frameName.length >= 13 && frameName.substr(0, 13) == "THREE DIGITAL") return true;
+		if (frameName.length >= 12 && frameName.substr(0, 12) == "FOUR DIGITAL") return true;
+		if (frameName.length >= 12 && frameName.substr(0, 12) == "FIVE DIGITAL") return true;
+		if (frameName.length >= 11 && frameName.substr(0, 11) == "SIX DIGITAL") return true;
+		if (frameName.length >= 13 && frameName.substr(0, 13) == "SEVEN DIGITAL") return true;
+		if (frameName.length >= 13 && frameName.substr(0, 13) == "EIGHT DIGITAL") return true;
+		if (frameName.length >= 12 && frameName.substr(0, 12) == "NINE DIGITAL") return true;
+		return false;
+	}
+
+	function createAtlasSprite(frameName:String, zIndex:Int, cam):FlxSprite {
+		if (hudAtlasFrames == null) reloadHudAtlas();
+		if (hudAtlasFrames == null) return null;
+
+		var spr = new FlxSprite();
+		spr.scrollFactor.set();
+		spr.cameras = [cam];
+		spr.zIndex = zIndex;
+		spr.origin.set(0, 0);
+		if (!applyAtlasFrame(spr, frameName, false)) return null;
+		return spr;
+	}
+
+	function createScoreDigitSprite(zIndex:Int, cam):FlxSprite {
+		if (scoreDigitsAtlasFrames == null) reloadScoreDigitsAtlas();
+		if (scoreDigitsAtlasFrames == null) return null;
+
+		var spr = new FlxSprite();
+		spr.scrollFactor.set();
+		spr.cameras = [cam];
+		spr.zIndex = zIndex;
+		spr.origin.set(0, 0);
+		if (!applyScoreDigitFrame(spr, "digital 0", false)) return null;
+		return spr;
+	}
+
+	function rebuildScoreDigitSprites(ps) {
+		var scoreDigitCount = (scoreDigits != null && scoreDigits.length > 0) ? scoreDigits.length : HatsuneHudLayout.SCORE_DIGITS_COUNT;
+		if (scoreDigitCount <= 0) scoreDigitCount = 7;
+		if (scoreDigits == null) scoreDigits = [];
+
+		var addedSprite = false;
+		for (i in 0...scoreDigitCount) {
+			var scoreDigit = (scoreDigits.length > i) ? scoreDigits[i] : null;
+			if (scoreDigit == null) {
+				if (ps == null) continue;
+				scoreDigit = createScoreDigitSprite(HatsuneHudLayout.SCORE_DIGITS_Z, ps.camHUD);
+				if (scoreDigit == null) continue;
+				if (scoreDigits.length > i) scoreDigits[i] = scoreDigit;
+				else scoreDigits.push(scoreDigit);
+				ps.add(scoreDigit);
+				addedSprite = true;
+			}
+
+			scoreDigit.frames = scoreDigitsAtlasFrames;
+			if (scoreDigit.animation != null) {
+				scoreDigit.animation.stop();
+			}
+			if (isVpScoreDigitsAtlas()) ensureScoreDigitAnimations(scoreDigit);
+			scoreDigit.visible = true;
+			scoreDigit.updateHitbox();
+		}
+
+		lastScoreDigitsValue = null;
+		lastScoreDigitsSourceValue = 0;
+		lastScoreDigitChars = [];
+		lastScoreDigitSymbolHeights = [];
+		scoreDigitsVisualDirty = true;
+		if (addedSprite) requestStateRefresh(ps);
+	}
+
+	function restoreScoreDigitsState(ps) {
+		var desiredAtlasKey = MHE_SharedState.drainActive ? vpScoreDigitsAtlasKey : defaultScoreDigitsAtlasKey;
+		if (desiredAtlasKey == null || desiredAtlasKey == "") desiredAtlasKey = defaultScoreDigitsAtlasKey;
+		scoreDigitsAtlasKey = desiredAtlasKey;
+		reloadScoreDigitsAtlas();
+		rebuildScoreDigitSprites(ps);
+		if (scoreDigits != null) {
+			for (digit in scoreDigits) {
+				if (digit == null) continue;
+				if (digit.animation != null) digit.animation.stop();
+				digit.visible = true;
+			}
+		}
+	}
+
+	function createChanceTimeMeterSprite(cam):FlxSprite {
+		reloadChanceTimeMeterAtlases();
+		if (chanceTimeMeterAtlasFrames == null || chanceTimeMeterAtlasFrames.length <= 0) return null;
+
+		var spr = new FlxSprite();
+		spr.scrollFactor.set();
+		spr.cameras = [cam];
+		spr.zIndex = HatsuneHudLayout.CT_STAR_METER_Z;
+		spr.origin.set(0, 0);
+		if (!applyChanceTimeMeterFrame(spr, "ct charge0001", false)) return null;
+		return spr;
+	}
+
+	function createChanceTimeMeterStrokeSprite(cam):FlxSprite {
+		reloadChanceTimeMeterAtlases();
+		if (chanceTimeMeterAtlasFrames == null || chanceTimeMeterAtlasFrames.length <= 0) return null;
+
+		var spr = new FlxSprite();
+		spr.scrollFactor.set();
+		spr.cameras = [cam];
+		spr.zIndex = HatsuneHudLayout.CT_STAR_METER_Z + 1;
+		spr.origin.set(0, 0);
+		if (!applyChanceTimeMeterFrame(spr, "ct stroke", false)) return null;
+		return spr;
+	}
+
+	function ensureChanceTimeMeterBuilt(ps:PlayState) {
+		if (ps == null) return;
+		var addedSprite = false;
+		if (chanceStarMeter == null) {
+			chanceStarMeter = createChanceTimeMeterSprite(ps.camHUD);
+			if (chanceStarMeter != null) {
+				ps.add(chanceStarMeter);
+				addedSprite = true;
+			}
+		}
+		if (chanceStarMeterStroke == null) {
+			chanceStarMeterStroke = createChanceTimeMeterStrokeSprite(ps.camHUD);
+			if (chanceStarMeterStroke != null) {
+				ps.add(chanceStarMeterStroke);
+				addedSprite = true;
+			}
+		}
+		if (addedSprite) requestStateRefresh(ps);
+	}
+
+	function getActiveScoreHudArt():FlxSprite {
+		if (isChanceHudActive() && chanceScoreHudArt != null) return chanceScoreHudArt;
+		return scoreHudArt;
+	}
+
+	function getActiveSongHudIcon():FlxSprite {
+		if (isChanceHudActive() && chanceSongHudIcon != null) return chanceSongHudIcon;
+		return songHudIcon;
+	}
+
+	function isChanceHudActive():Bool {
+		return HatsuneHudLayout.CT_HUD_DEBUG_FORCE_VISIBLE || (chanceHudEventArmed && MHE_SharedState.chanceTimeActive);
+	}
+
+	function getActiveScoreHudScale():Float {
+		if (isChanceHudActive()) {
+			var chanceScale = HatsuneHudLayout.CT_SCORE_HUD_SCALE;
+			return (chanceScale > 0) ? chanceScale : 1.0;
+		}
+
+		var normalScale = HatsuneHudLayout.TOP_HUD_SCALE;
+		return (normalScale > 0) ? normalScale : 1.0;
+	}
+
+	function setSpriteVisible(sprite:FlxSprite, visible:Bool) {
+		if (sprite != null && sprite.visible != visible) sprite.visible = visible;
+	}
+
+	function setTextVisible(text:FlxText, visible:Bool) {
+		if (text != null && text.visible != visible) text.visible = visible;
+	}
+
+	function setSubtitleDisplayEnabled(subtitles:Subtitles, enabled:Bool, visible:Bool) {
+		if (subtitles == null) return;
+		if (subtitles.active != enabled) subtitles.active = enabled;
+		if (subtitles.visible != visible) subtitles.visible = visible;
+	}
+
+	function quantizeSubtitleScale(value:Float):Float {
+		return Math.fround(value * 100.0) / 100.0;
+	}
+
+	function getSubtitleBackground(subtitles:Subtitles):FlxSprite {
+		if (subtitles == null || subtitles.members == null || subtitles.members.length <= 0) return null;
+		return subtitles.members[0];
+	}
+
+	function getSubtitleText(subtitles:Subtitles):FlxText {
+		if (subtitles == null || subtitles.members == null || subtitles.members.length <= 1) return null;
+		return subtitles.members[1];
+	}
+
+	function buildSubtitleAssetPath(ps:PlayState, fileName:String):String {
+		if (ps == null || ps.currentSong == null || ps.currentSong.id == null || ps.currentSong.id == "" || fileName == null || fileName == "") return null;
+		return 'songs/${ps.currentSong.id}/subtitles/' + fileName;
+	}
+
+	function resolveSubtitleAssetPath(ps:PlayState, secondary:Bool = false):String {
+		var candidateNames = secondary
+			? ["song-lyrics-secondary", "song-lyrics-es"]
+			: ["song-lyrics-primary", "song-lyrics-en", "song-lyrics"];
+
+		for (candidate in candidateNames) {
+			var path = buildSubtitleAssetPath(ps, candidate);
+			if (path != null && Assets.exists(Paths.srt(path))) return path;
+		}
+
+		return null;
+	}
+
+	function createSubtitleDisplay(ps:PlayState, zIndex:Int):Subtitles {
+		if (ps == null || ps.camSubtitles == null) return null;
+
+		var subtitles = new Subtitles(0, 139, "bottom");
+		subtitles.scrollFactor.set();
+		subtitles.cameras = [ps.camSubtitles];
+		subtitles.zIndex = zIndex;
+		subtitles.visible = false;
+		ps.add(subtitles);
+		return subtitles;
+	}
+
+	function ensureChanceSubtitleDisplay(ps:PlayState) {
+		if (ps == null || ps.subtitles == null || ps.camSubtitles == null) return;
+		if (primarySubtitleDisplay == null) primarySubtitleDisplay = createSubtitleDisplay(ps, HatsuneHudLayout.SUBTITLE_Z);
+		if (secondarySubtitleDisplay == null) secondarySubtitleDisplay = createSubtitleDisplay(ps, HatsuneHudLayout.SUBTITLE_Z);
+		if (chanceSubtitleDisplay == null) chanceSubtitleDisplay = createSubtitleDisplay(ps, HatsuneHudLayout.SUBTITLE_Z);
+		if (chanceSecondarySubtitleDisplay == null) chanceSecondarySubtitleDisplay = createSubtitleDisplay(ps, HatsuneHudLayout.SUBTITLE_Z + 1);
+	}
+
+	function syncChanceSubtitleSource(ps:PlayState) {
+		if (ps == null || ps.subtitles == null) return;
+
+		var primarySubtitlePath = resolveSubtitleAssetPath(ps, false);
+		var secondarySubtitlePath = resolveSubtitleAssetPath(ps, true);
+		var music = FlxG.sound.music;
+		if (primarySubtitlePath == null || music == null) return;
+		if (lastPrimarySubtitleAssetPath == primarySubtitlePath && lastSecondarySubtitleAssetPath == secondarySubtitlePath && lastSubtitleSound == music) return;
+
+		if (primarySubtitleDisplay != null) primarySubtitleDisplay.assignSubtitles(primarySubtitlePath, music);
+		if (chanceSubtitleDisplay != null) chanceSubtitleDisplay.assignSubtitles(primarySubtitlePath, music);
+		if (secondarySubtitleDisplay != null && secondarySubtitlePath != null) secondarySubtitleDisplay.assignSubtitles(secondarySubtitlePath, music);
+		if (chanceSecondarySubtitleDisplay != null && secondarySubtitlePath != null) chanceSecondarySubtitleDisplay.assignSubtitles(secondarySubtitlePath, music);
+
+		lastPrimarySubtitleAssetPath = primarySubtitlePath;
+		lastSecondarySubtitleAssetPath = secondarySubtitlePath;
+		lastSubtitleSound = music;
+	}
+
+	function styleSubtitleDisplay(subtitles:Subtitles, targetSize:Int, targetScale:Float) {
+		if (subtitles == null) return;
+
+		var subtitleBackground = getSubtitleBackground(subtitles);
+		if (subtitleBackground != null && HatsuneHudLayout.SUBTITLE_HIDE_BACKGROUND) {
+			subtitleBackground.visible = false;
+			subtitleBackground.alpha = 0;
+		}
+
+		var subtitleText = getSubtitleText(subtitles);
+		if (subtitleText != null) {
+			if (targetSize <= 0) targetSize = 24;
+			targetScale = quantizeSubtitleScale(targetScale);
+			if (subtitleText.font != "5by7") {
+				subtitleText.font = "5by7";
+				subtitleText.updateHitbox();
+			}
+			if (subtitleText.alignment != "left") {
+				subtitleText.alignment = "left";
+				subtitleText.updateHitbox();
+			}
+			if (subtitleText.size != targetSize) {
+				subtitleText.size = targetSize;
+				subtitleText.updateHitbox();
+			}
+			if (subtitleText.scale.x != targetScale || subtitleText.scale.y != targetScale) {
+				subtitleText.scale.set(targetScale, targetScale);
+				subtitleText.updateHitbox();
+			}
+		}
+	}
+
+	function getSubtitleDisplayHeight(subtitles:Subtitles):Float {
+		if (subtitles == null) return 0;
+
+		var subtitleText = getSubtitleText(subtitles);
+		if (subtitleText != null) {
+			if (subtitleText.height > 0) return subtitleText.height;
+		}
+
+		return subtitles.height;
+	}
+
+	function getSubtitleDisplayWidth(subtitles:Subtitles):Float {
+		if (subtitles == null) return 0;
+
+		var subtitleText = getSubtitleText(subtitles);
+		if (subtitleText != null) {
+			if (subtitleText.width > 0) return subtitleText.width;
+		}
+
+		return subtitles.width;
+	}
+
+	function setSubtitleLeftX(subtitles:Subtitles, targetLeftX:Float) {
+		if (subtitles == null) return;
+		if (subtitles.x != targetLeftX) subtitles.x = targetLeftX;
+	}
+
+	function hideVanillaSubtitles(ps:PlayState) {
+		if (ps == null || ps.subtitles == null) return;
+
+		if (ps.subtitles.active) ps.subtitles.active = false;
+		if (ps.subtitles.visible) ps.subtitles.visible = false;
+
+		var vanillaBackground = getSubtitleBackground(ps.subtitles);
+		if (vanillaBackground != null) {
+			vanillaBackground.visible = false;
+			vanillaBackground.alpha = 0;
+		}
+
+		var vanillaText = getSubtitleText(ps.subtitles);
+		if (vanillaText != null && vanillaText.visible) vanillaText.visible = false;
+	}
+
+	function shouldTriggerSubtitleBop(event):Bool {
+		var beatsPerMeasure = HatsuneHudLayout.SUBTITLE_BOP_BEATS_PER_MEASURE;
+		if (beatsPerMeasure <= 0) beatsPerMeasure = 4;
+
+		var beatIndex = -1;
+		if (event != null && event.beat != null) {
+			beatIndex = event.beat;
+		} else if (Conductor.instance != null) {
+			beatIndex = Conductor.instance.currentBeat;
+		}
+		if (beatIndex < 0) return false;
+
+		return beatIndex % beatsPerMeasure == 0;
+	}
+
+	function updateSubtitleBop(elapsed:Float) {
+		var decay = HatsuneHudLayout.SUBTITLE_BOP_DECAY;
+		if (decay <= 0) {
+			normalSubtitleBopScale = 1.0;
+			chanceSubtitleBopScale = 1.0;
+			return;
+		}
+
+		var step = Math.min(1.0, elapsed * decay);
+		normalSubtitleBopScale += (1.0 - normalSubtitleBopScale) * step;
+		chanceSubtitleBopScale += (1.0 - chanceSubtitleBopScale) * step;
+		if (Math.abs(normalSubtitleBopScale - 1.0) < 0.001) normalSubtitleBopScale = 1.0;
+		if (Math.abs(chanceSubtitleBopScale - 1.0) < 0.001) chanceSubtitleBopScale = 1.0;
+	}
+
+	function setSubtitleOffsets(subtitles:Subtitles, offsetX:Float, offsetY:Float, isChanceDisplay:Bool = false) {
+		if (subtitles == null) return;
+
+		subtitles.offsets = [offsetX, offsetY];
+		if (isChanceDisplay) {
+			lastChanceSubtitleOffsetX = offsetX;
+			lastChanceSubtitleOffsetY = offsetY;
+		} else {
+			lastNormalSubtitleOffsetX = offsetX;
+			lastNormalSubtitleOffsetY = offsetY;
+		}
+	}
+
+	function getSubtitleTargetBottomY(anchorTopY:Float, gap:Float, offsetY:Float, fallbackOffsetY:Float):Float {
+		if (Math.isNaN(anchorTopY)) return fallbackOffsetY;
+		return anchorTopY - gap + offsetY;
+	}
+
+	function getSubtitleBottomOffsetForBottomY(targetBottomY:Float):Float {
+		return FlxG.height - targetBottomY;
+	}
+
+	function mirrorBottomAlignedTarget(targetBottomY:Float, displayHeight:Float):Float {
+		return FlxG.height - targetBottomY + displayHeight;
+	}
+
+	function getSubtitleTargetBottomYForDownscroll(anchorTopY:Float, anchorHeight:Float, gap:Float, offsetY:Float, displayHeight:Float, fallbackOffsetY:Float):Float {
+		if (Math.isNaN(anchorTopY)) return fallbackOffsetY;
+		return anchorTopY + anchorHeight + gap + displayHeight + offsetY;
+	}
+
+	function updateSubtitleLayout(ps:PlayState, normalBopScale:Float = 1.0, chanceBopScale:Float = 1.0) {
+		if (ps == null || ps.subtitles == null) {
+			setSubtitleDisplayEnabled(primarySubtitleDisplay, false, false);
+			setSubtitleDisplayEnabled(secondarySubtitleDisplay, false, false);
+			setSubtitleDisplayEnabled(chanceSubtitleDisplay, false, false);
+			setSubtitleDisplayEnabled(chanceSecondarySubtitleDisplay, false, false);
+			return;
+		}
+
+		ensureChanceSubtitleDisplay(ps);
+		syncChanceSubtitleSource(ps);
+
+		var uiScale = HatsuneHudLayout.getUiScale();
+		var downscroll = HatsuneHudLayout.isDownscroll();
+
+		styleSubtitleDisplay(primarySubtitleDisplay, HatsuneHudLayout.SUBTITLE_NORMAL_TEXT_SIZE, normalBopScale);
+		styleSubtitleDisplay(secondarySubtitleDisplay, HatsuneHudLayout.SUBTITLE_SECONDARY_NORMAL_TEXT_SIZE, normalBopScale);
+		styleSubtitleDisplay(chanceSubtitleDisplay, HatsuneHudLayout.SUBTITLE_CT_TEXT_SIZE, chanceBopScale);
+		styleSubtitleDisplay(chanceSecondarySubtitleDisplay, HatsuneHudLayout.SUBTITLE_SECONDARY_CT_TEXT_SIZE, chanceBopScale);
+		hideVanillaSubtitles(ps);
+
+		var normalBaseLeftX = downscroll
+			? ((playerHudArt != null) ? playerHudArt.x : ((meterBack != null) ? meterBack.x : 0))
+			: ((meterBack != null) ? meterBack.x : ((playerHudArt != null) ? playerHudArt.x : 0));
+		var normalTargetLeftX = normalBaseLeftX
+			+ (HatsuneHudLayout.SUBTITLE_NORMAL_OFFSET_X * uiScale)
+			+ (downscroll ? (HatsuneHudLayout.SUBTITLE_NORMAL_DOWNSCROLL_OFFSET_X * uiScale) : 0);
+		var normalGap = HatsuneHudLayout.SUBTITLE_NORMAL_HUD_GAP * uiScale;
+		var normalStackGap = HatsuneHudLayout.SUBTITLE_SECONDARY_STACK_GAP * uiScale;
+		var normalAnchorTopY = downscroll
+			? ((playerHudArt != null) ? playerHudArt.y : ((meterBack != null) ? meterBack.y : Math.NaN))
+			: ((meterBack != null) ? meterBack.y : ((playerHudArt != null) ? playerHudArt.y : Math.NaN));
+		var normalNudgeY = (HatsuneHudLayout.SUBTITLE_NORMAL_OFFSET_Y * uiScale)
+			+ (downscroll ? (HatsuneHudLayout.SUBTITLE_NORMAL_DOWNSCROLL_OFFSET_Y * uiScale) : 0);
+		var normalPrimaryHasText = false;
+		var normalPrimaryHeight = 0.0;
+		if (primarySubtitleDisplay != null) {
+			var primaryText = getSubtitleText(primarySubtitleDisplay);
+			normalPrimaryHasText = primaryText != null && primaryText.text != null && primaryText.text != "";
+			if (primarySubtitleDisplay.alignment != "bottom") primarySubtitleDisplay.alignment = "bottom";
+			normalPrimaryHeight = getSubtitleDisplayHeight(primarySubtitleDisplay);
+		}
+		var normalBottomY = getSubtitleTargetBottomY(normalAnchorTopY, normalGap, normalNudgeY, FlxG.height - (139 + normalBottomOffsetY));
+		if (downscroll) normalBottomY = mirrorBottomAlignedTarget(normalBottomY, normalPrimaryHeight);
+		var normalOffsetY = getSubtitleBottomOffsetForBottomY(normalBottomY);
+		if (primarySubtitleDisplay != null) {
+			setSubtitleOffsets(primarySubtitleDisplay, 0, normalOffsetY);
+			setSubtitleLeftX(primarySubtitleDisplay, normalTargetLeftX);
+		}
+		var normalSecondaryHasText = false;
+		if (secondarySubtitleDisplay != null) {
+			var secondaryText = getSubtitleText(secondarySubtitleDisplay);
+			normalSecondaryHasText = secondaryText != null && secondaryText.text != null && secondaryText.text != "";
+			if (secondaryText != null) {
+				if (secondarySubtitleDisplay.alignment != "bottom") secondarySubtitleDisplay.alignment = "bottom";
+				var normalSecondaryHeight = getSubtitleDisplayHeight(secondarySubtitleDisplay);
+				var normalSecondaryTargetLeftX = normalTargetLeftX
+					+ (HatsuneHudLayout.SUBTITLE_SECONDARY_NORMAL_OFFSET_X * uiScale)
+					+ (downscroll ? (HatsuneHudLayout.SUBTITLE_SECONDARY_NORMAL_DOWNSCROLL_OFFSET_X * uiScale) : 0);
+				var normalSecondaryBottomY = normalBottomY + normalPrimaryHeight + normalStackGap + normalSecondaryHeight;
+				setSubtitleOffsets(
+					secondarySubtitleDisplay,
+					0,
+					getSubtitleBottomOffsetForBottomY(
+						normalSecondaryBottomY
+						+ (HatsuneHudLayout.SUBTITLE_SECONDARY_NORMAL_OFFSET_Y * uiScale)
+						+ (downscroll ? (HatsuneHudLayout.SUBTITLE_SECONDARY_NORMAL_DOWNSCROLL_OFFSET_Y * uiScale) : 0)
+					)
+				);
+				setSubtitleLeftX(secondarySubtitleDisplay, normalSecondaryTargetLeftX);
+			}
+		}
+
+		if (chanceSubtitleDisplay == null) return;
+
+		var chanceActive = isChanceHudActive();
+		var chanceLayoutActive = isChanceHudLayoutActive();
+		setSubtitleDisplayEnabled(primarySubtitleDisplay, !chanceLayoutActive, !chanceLayoutActive && normalPrimaryHasText);
+		setSubtitleDisplayEnabled(secondarySubtitleDisplay, !chanceLayoutActive, !chanceLayoutActive && normalSecondaryHasText);
+		if (chanceSubtitleDisplay.active != chanceLayoutActive) chanceSubtitleDisplay.active = chanceLayoutActive;
+
+		var chanceText = getSubtitleText(chanceSubtitleDisplay);
+		var chanceHasText = chanceText != null && chanceText.text != null && chanceText.text != "";
+		var chanceVisible = chanceLayoutActive && chanceHasText;
+		if (chanceSecondarySubtitleDisplay != null && !chanceLayoutActive) setSubtitleDisplayEnabled(chanceSecondarySubtitleDisplay, false, false);
+		if (lastChanceSubtitleVisible != chanceVisible) {
+			chanceSubtitleDisplay.visible = chanceVisible;
+			lastChanceSubtitleVisible = chanceVisible;
+		}
+		if (!chanceVisible) {
+			setSubtitleDisplayEnabled(chanceSecondarySubtitleDisplay, false, false);
+			return;
+		}
+
+		var chanceBaseLeftX = 0.0;
+		if (chanceBottomHudArt != null) {
+			chanceBaseLeftX = chanceBottomHudArt.x;
+		} else if (chanceStarMeter != null) {
+			chanceBaseLeftX = chanceStarMeter.x;
+		} else if (meterBack != null) {
+			chanceBaseLeftX = meterBack.x;
+		}
+		var chanceTargetLeftX = chanceBaseLeftX + (HatsuneHudLayout.SUBTITLE_CT_OFFSET_X * uiScale);
+		var chanceGap = HatsuneHudLayout.SUBTITLE_CT_HUD_GAP * uiScale;
+		var chanceStackGap = HatsuneHudLayout.SUBTITLE_SECONDARY_STACK_GAP * uiScale;
+		var chanceAnchorTopY = Math.NaN;
+		var chanceAnchorHeight = 0.0;
+		if (chanceBottomHudArt != null) {
+			chanceAnchorTopY = chanceBottomHudArt.y;
+			chanceAnchorHeight = chanceBottomHudArt.height;
+		} else if (chanceStarMeter != null) {
+			chanceAnchorTopY = chanceStarMeter.y;
+			chanceAnchorHeight = chanceStarMeter.height;
+		} else if (meterBack != null) {
+			chanceAnchorTopY = meterBack.y;
+			chanceAnchorHeight = meterBack.height;
+		}
+		var chanceNudgeY = HatsuneHudLayout.SUBTITLE_CT_OFFSET_Y * uiScale;
+		if (HatsuneHudLayout.isDownscroll()) chanceNudgeY += HatsuneHudLayout.SUBTITLE_CT_DOWNSCROLL_OFFSET_Y * uiScale;
+		if (chanceSubtitleDisplay.alignment != "bottom") chanceSubtitleDisplay.alignment = "bottom";
+		var chancePrimaryHeight = getSubtitleDisplayHeight(chanceSubtitleDisplay);
+		var chanceBottomY = getSubtitleTargetBottomY(chanceAnchorTopY, chanceGap, chanceNudgeY, FlxG.height - (139 + chanceBottomOffsetY));
+		if (downscroll) {
+			var chanceBaseAnchorTopY = Math.isNaN(chanceAnchorTopY) ? chanceAnchorTopY : (chanceAnchorTopY - chanceBottomOffsetY);
+			var chanceRestBottomY = getSubtitleTargetBottomY(chanceBaseAnchorTopY, chanceGap, chanceNudgeY, FlxG.height - 139);
+			chanceBottomY = mirrorBottomAlignedTarget(chanceRestBottomY, chancePrimaryHeight) + chanceBottomOffsetY;
+		}
+		var chanceOffsetY = getSubtitleBottomOffsetForBottomY(chanceBottomY);
+		setSubtitleOffsets(chanceSubtitleDisplay, 0, chanceOffsetY, true);
+		setSubtitleLeftX(chanceSubtitleDisplay, chanceTargetLeftX + (downscroll ? (HatsuneHudLayout.SUBTITLE_CT_DOWNSCROLL_OFFSET_X * uiScale) : 0));
+
+		if (chanceSecondarySubtitleDisplay != null) {
+			var chanceSecondaryText = getSubtitleText(chanceSecondarySubtitleDisplay);
+			var chanceSecondaryHasText = chanceSecondaryText != null && chanceSecondaryText.text != null && chanceSecondaryText.text != "";
+			setSubtitleDisplayEnabled(chanceSecondarySubtitleDisplay, chanceLayoutActive, chanceLayoutActive && chanceSecondaryHasText);
+			if (chanceSecondaryHasText) {
+				if (chanceSecondarySubtitleDisplay.alignment != "bottom") chanceSecondarySubtitleDisplay.alignment = "bottom";
+				var chanceSecondaryHeight = getSubtitleDisplayHeight(chanceSecondarySubtitleDisplay);
+				var chanceSecondaryBottomY = chanceBottomY + chancePrimaryHeight + chanceStackGap + chanceSecondaryHeight;
+				var chanceSecondaryTargetLeftX = chanceTargetLeftX + (HatsuneHudLayout.SUBTITLE_SECONDARY_CT_OFFSET_X * uiScale)
+					+ (downscroll ? (HatsuneHudLayout.SUBTITLE_CT_DOWNSCROLL_OFFSET_X * uiScale) : 0);
+				setSubtitleOffsets(
+					chanceSecondarySubtitleDisplay,
+					0,
+					getSubtitleBottomOffsetForBottomY(chanceSecondaryBottomY + (HatsuneHudLayout.SUBTITLE_SECONDARY_CT_OFFSET_Y * uiScale)),
+					true
+				);
+				setSubtitleLeftX(chanceSecondarySubtitleDisplay, chanceSecondaryTargetLeftX);
+			}
+		}
+	}
+
+	function setSpriteArrayVisible(sprites:Array<FlxSprite>, visible:Bool) {
+		if (sprites == null) return;
+		for (sprite in sprites) setSpriteVisible(sprite, visible);
+	}
+
+	function setChanceHudOnlyVisible(visible:Bool) {
+		setSpriteVisible(chanceBottomHudArt, visible);
+		setSpriteVisible(chanceTopHudArt, visible);
+		setSpriteVisible(chanceScoreHudArt, false);
+		setSpriteVisible(chanceStarMeter, visible);
+		setSpriteVisible(chanceStarMeterStroke, visible);
+		setSpriteArrayVisible(chanceBottomHudLeftExt, visible);
+		setSpriteArrayVisible(chanceBottomHudRightExt, visible);
+		setSpriteArrayVisible(chanceTopHudLeftExt, visible);
+		setSpriteArrayVisible(chanceTopHudRightExt, visible);
+		setSpriteVisible(chanceSongHudIcon, visible);
+	}
+
+	function isChanceHudLayoutActive():Bool {
+		if (isChanceHudActive()) return true;
+		return isChanceHudTweening();
+	}
+
+	function isChanceHudTweening():Bool {
+		if (chanceHudTweens == null || chanceHudTweens.length <= 0) return false;
+		for (tween in chanceHudTweens) {
+			if (tween != null && tween.active) return true;
+		}
+		return false;
+	}
+
+	function updateChanceHudVisibility(ps:PlayState) {
+		var chanceActive = isChanceHudActive();
+		var chanceLayoutActive = isChanceHudLayoutActive();
+		setChanceHudOnlyVisible(chanceLayoutActive);
+		if (lastAppliedChanceHudVisibility == chanceLayoutActive) {
+			if (ps != null && ps.scoreText != null && ps.scoreText.visible) ps.scoreText.visible = false;
+			return;
+		}
+		lastAppliedChanceHudVisibility = chanceLayoutActive;
+
+		setSpriteVisible(playerHudArt, true);
+		setSpriteVisible(healthHudArt, true);
+		setSpriteVisible(scoreHudArt, true);
+		setSpriteVisible(songHudIcon, !chanceLayoutActive);
+		setSpriteVisible(lifeHudIcon, true);
+		setSpriteVisible(hpBox, false);
+		setSpriteVisible(meterBack, true);
+		setSpriteVisible(meter, true);
+		setSpriteVisible(borderTop, true);
+		setSpriteVisible(borderBottom, true);
+		setSpriteVisible(borderLeft, true);
+		setSpriteVisible(borderRight, true);
+		setSpriteVisible(scoreRankBadge, scoreRankBadge != null && scoreRankBadge.visible);
+		setSpriteVisible(scoreRankSparkle, scoreRankSparkle != null && scoreRankSparkle.visible);
+		setSpriteVisible(songHudDifficulty, HatsuneHudLayout.SONG_LABEL_DIFFICULTY_SHOW && !chanceLayoutActive);
+
+		for (digit in scoreDigits) setSpriteVisible(digit, digit != null);
+
+		setTextVisible(protectedText, MHE_SharedState.drainActive);
+		setTextVisible(lifeLabel, HatsuneHudLayout.LIFE_LABEL_SHOW);
+		setTextVisible(songHudLabel, true);
+
+		if (ps != null && ps.iconP1 != null) {
+			ps.iconP1.visible = true;
+			ps.iconP1.autoUpdate = false;
+		}
+		if (ps != null && ps.scoreText != null) {
+			ps.scoreText.visible = false;
+		}
+	}
+
+	function getBottomHudTransitionDistance(uiScale:Float):Float {
+		var largest = 0.0;
+		if (playerHudArt != null && playerHudArt.height > largest) largest = playerHudArt.height;
+		if (HatsuneHudLayout.HEALTH_HUD_ANCHOR_BOTTOM && healthHudArt != null && healthHudArt.height > largest) largest = healthHudArt.height;
+		if (HatsuneHudLayout.ICON_ANCHOR_BOTTOM && PlayState.instance != null && PlayState.instance.iconP1 != null && PlayState.instance.iconP1.height > largest) largest = PlayState.instance.iconP1.height;
+		if (chanceBottomHudArt != null && chanceBottomHudArt.height > largest) largest = chanceBottomHudArt.height;
+		return largest + (64 * uiScale);
+	}
+
+	function getTopHudTransitionDistance(uiScale:Float):Float {
+		var largest = 0.0;
+		if (scoreHudArt != null && scoreHudArt.height > largest) largest = scoreHudArt.height;
+		if (chanceTopHudArt != null && chanceTopHudArt.height > largest) largest = chanceTopHudArt.height;
+		if (songHudIcon != null && songHudIcon.height > largest) largest = songHudIcon.height;
+		if (chanceSongHudIcon != null && chanceSongHudIcon.height > largest) largest = chanceSongHudIcon.height;
+		if (!HatsuneHudLayout.HEALTH_HUD_ANCHOR_BOTTOM && healthHudArt != null && healthHudArt.height > largest) largest = healthHudArt.height;
+		if (!HatsuneHudLayout.ICON_ANCHOR_BOTTOM && PlayState.instance != null && PlayState.instance.iconP1 != null && PlayState.instance.iconP1.height > largest) largest = PlayState.instance.iconP1.height;
+		if (lifeHudIcon != null && lifeHudIcon.height > largest) largest = lifeHudIcon.height;
+		if (lifeLabel != null && lifeLabel.height > largest) largest = lifeLabel.height;
+		if (protectedText != null && protectedText.height > largest) largest = protectedText.height;
+		return largest + (64 * uiScale);
+	}
+
+	function getNormalBottomHudHiddenOffset(distance:Float):Float {
+		return HatsuneHudLayout.isDownscroll() ? -distance : distance;
+	}
+
+	function getChanceBottomHudHiddenOffset(distance:Float):Float {
+		return HatsuneHudLayout.isDownscroll() ? -distance : distance;
+	}
+
+	function getTopHudHiddenOffset(distance:Float):Float {
+		return HatsuneHudLayout.isDownscroll() ? distance : -distance;
+	}
+
+	function getHealthHudOffsetY():Float {
+		return HatsuneHudLayout.HEALTH_HUD_ANCHOR_BOTTOM ? normalBottomOffsetY : normalTopOffsetY;
+	}
+
+	function clearChanceHudTweens() {
+		for (tween in chanceHudTweens) {
+			if (tween != null) tween.cancel();
+		}
+		chanceHudTweens = [];
+	}
+
+	function applyChanceHudStateInstant(chanceActive:Bool, uiScale:Float) {
+		var bottomDistance = getBottomHudTransitionDistance(uiScale);
+		var topDistance = getTopHudTransitionDistance(uiScale);
+		var normalBottomHiddenOffset = getNormalBottomHudHiddenOffset(bottomDistance);
+		var chanceBottomHiddenOffset = getChanceBottomHudHiddenOffset(bottomDistance);
+		var topHiddenOffset = getTopHudHiddenOffset(topDistance);
+		normalBottomOffsetY = chanceActive ? normalBottomHiddenOffset : 0;
+		chanceBottomOffsetY = chanceActive ? 0 : chanceBottomHiddenOffset;
+		normalTopOffsetY = chanceActive ? topHiddenOffset : 0;
+		chanceTopOffsetY = chanceActive ? 0 : topHiddenOffset;
+		MHE_SharedState.chanceTimeNormalBottomHudOffsetY = normalBottomOffsetY;
+		MHE_SharedState.chanceTimeNormalTopHudOffsetY = normalTopOffsetY;
+	}
+
+	function tweenChanceHudOffset(fromValue:Float, toValue:Float, duration:Float, setter:Float->Void) {
+		if (setter == null) return null;
+		if (duration <= 0) {
+			setter(toValue);
+			return null;
+		}
+		return FlxTween.num(fromValue, toValue, duration, {onUpdate: function(tween) {
+			setter(tween.value);
+		}}, function(value) {
+			setter(value);
+		});
+	}
+
+	function updateChanceHudTransition(force:Bool = false) {
+		var chanceActive = isChanceHudActive();
+		var uiScale = HatsuneHudLayout.getUiScale();
+		if (force || lastChanceTimeActive == null) {
+			clearChanceHudTweens();
+			applyChanceHudStateInstant(chanceActive, uiScale);
+			lastChanceTimeActive = chanceActive;
+			return;
+		}
+		if (lastChanceTimeActive == chanceActive) return;
+
+		lastChanceTimeActive = chanceActive;
+		clearChanceHudTweens();
+
+		var bottomDistance = getBottomHudTransitionDistance(uiScale);
+		var topDistance = getTopHudTransitionDistance(uiScale);
+		var normalBottomHiddenOffset = getNormalBottomHudHiddenOffset(bottomDistance);
+		var chanceBottomHiddenOffset = getChanceBottomHudHiddenOffset(bottomDistance);
+		var topHiddenOffset = getTopHudHiddenOffset(topDistance);
+		var duration = HatsuneHudLayout.CT_HUD_TRANSITION_DURATION;
+		if (duration <= 0) duration = 0.72;
+
+		var tween = tweenChanceHudOffset(normalBottomOffsetY, chanceActive ? normalBottomHiddenOffset : 0, duration, function(value) {
+			normalBottomOffsetY = value;
+			MHE_SharedState.chanceTimeNormalBottomHudOffsetY = value;
+		});
+		if (tween != null) chanceHudTweens.push(tween);
+		tween = tweenChanceHudOffset(chanceBottomOffsetY, chanceActive ? 0 : chanceBottomHiddenOffset, duration, function(value) {
+			chanceBottomOffsetY = value;
+		});
+		if (tween != null) chanceHudTweens.push(tween);
+		tween = tweenChanceHudOffset(normalTopOffsetY, chanceActive ? topHiddenOffset : 0, duration, function(value) {
+			normalTopOffsetY = value;
+			MHE_SharedState.chanceTimeNormalTopHudOffsetY = value;
+		});
+		if (tween != null) chanceHudTweens.push(tween);
+		tween = tweenChanceHudOffset(chanceTopOffsetY, chanceActive ? 0 : topHiddenOffset, duration, function(value) {
+			chanceTopOffsetY = value;
+		});
+		if (tween != null) chanceHudTweens.push(tween);
+	}
+
+	function isVpScoreDigitsAtlas():Bool {
+		return scoreDigitsAtlasKey == vpScoreDigitsAtlasKey;
+	}
+
+	function getScoreDigitAnimPrefix(frameName:String):String {
+		if (frameName == null) return null;
+		switch (frameName) {
+			case "digital 0":
+				return "ZERO DIGITAL";
+			case "digital 1":
+				return "ONE DIGITAL";
+			case "digital 2":
+				return "TWO DIGITAL";
+			case "digital 3":
+				return "THREE DIGITAL";
+			case "digital 4":
+				return "FOUR DIGITAL";
+			case "digital 5":
+				return "FIVE DIGITAL";
+			case "digital 6":
+				return "SIX DIGITAL";
+			case "digital 7":
+				return "SEVEN DIGITAL";
+			case "digital 8":
+				return "EIGHT DIGITAL";
+			case "digital 9":
+				return "NINE DIGITAL";
+			default:
+				return null;
+		}
+	}
+
+	function ensureScoreDigitAnimations(sprite:FlxSprite) {
+		if (sprite == null || sprite.animation == null) return;
+		var animFps = HatsuneHudLayout.SCORE_DIGITS_VP_ANIM_FPS;
+		if (animFps <= 0) animFps = 24;
+
+		if (sprite.animation.getByName("digital 0") == null) sprite.animation.addByPrefix("digital 0", "ZERO DIGITAL", animFps, false);
+		if (sprite.animation.getByName("digital 1") == null) sprite.animation.addByPrefix("digital 1", "ONE DIGITAL", animFps, false);
+		if (sprite.animation.getByName("digital 2") == null) sprite.animation.addByPrefix("digital 2", "TWO DIGITAL", animFps, false);
+		if (sprite.animation.getByName("digital 3") == null) sprite.animation.addByPrefix("digital 3", "THREE DIGITAL", animFps, false);
+		if (sprite.animation.getByName("digital 4") == null) sprite.animation.addByPrefix("digital 4", "FOUR DIGITAL", animFps, false);
+		if (sprite.animation.getByName("digital 5") == null) sprite.animation.addByPrefix("digital 5", "FIVE DIGITAL", animFps, false);
+		if (sprite.animation.getByName("digital 6") == null) sprite.animation.addByPrefix("digital 6", "SIX DIGITAL", animFps, false);
+		if (sprite.animation.getByName("digital 7") == null) sprite.animation.addByPrefix("digital 7", "SEVEN DIGITAL", animFps, false);
+		if (sprite.animation.getByName("digital 8") == null) sprite.animation.addByPrefix("digital 8", "EIGHT DIGITAL", animFps, false);
+		if (sprite.animation.getByName("digital 9") == null) sprite.animation.addByPrefix("digital 9", "NINE DIGITAL", animFps, false);
+	}
+
+	function ensureAllScoreDigitAnimations() {
+		if (scoreDigits == null) return;
+		for (digit in scoreDigits) {
+			if (digit == null) continue;
+			if (vpScoreDigitsAtlasFrames != null && digit.frames != vpScoreDigitsAtlasFrames) digit.frames = vpScoreDigitsAtlasFrames;
+			ensureScoreDigitAnimations(digit);
+		}
+		vpScoreDigitAnimationsReady = true;
+	}
+
+	function createScoreRankBadgeSprite(cam):FlxSprite {
+		var badgeFrames = Paths.getSparrowAtlas(scoreRankBadgeAtlasKey);
+		if (badgeFrames == null) return null;
+
+		var spr = new FlxSprite();
+		spr.scrollFactor.set();
+		spr.cameras = [cam];
+		spr.zIndex = HatsuneHudLayout.SCORE_RANK_BADGE_Z;
+		spr.origin.set(0, 0);
+		spr.frames = badgeFrames;
+		spr.animation.addByPrefix("LOSS", "LOSS rank", 24, false);
+		spr.animation.addByPrefix("GOOD", "GOOD rank", 24, false);
+		spr.animation.addByPrefix("GREAT", "GREAT rank", 24, false);
+		spr.animation.addByPrefix("EXCELLENT", "EXCELLENT rank", 24, false);
+		spr.animation.addByPrefix("PERFECT", "PERFECT rank", 24, false);
+		spr.animation.addByPrefix("PERFECT_GOLD", "PERFECT rank GOLD", 24, false);
+		scoreRankBadgeFrameCache = new StringMap();
+		scoreRankBadgeResolvedFrameNames = new StringMap();
+		if (badgeFrames.frames != null) {
+			for (frame in badgeFrames.frames) {
+				if (frame != null && frame.name != null) {
+					scoreRankBadgeFrameCache.set(frame.name, frame);
+					cacheScoreRankBadgeFrameName("LOSS", frame.name, "LOSS rank");
+					cacheScoreRankBadgeFrameName("GOOD", frame.name, "GOOD rank");
+					cacheScoreRankBadgeFrameName("GREAT", frame.name, "GREAT rank");
+					cacheScoreRankBadgeFrameName("EXCELLENT", frame.name, "EXCELLENT rank");
+					cacheScoreRankBadgeFrameName("PERFECT", frame.name, "PERFECT rank");
+					cacheScoreRankBadgeFrameName("PERFECT_GOLD", frame.name, "PERFECT rank GOLD");
+				}
+			}
+		}
+		spr.visible = false;
+		return spr;
+	}
+
+	function createScoreRankSparkleSprite(cam):FlxSprite {
+		var sparkleFrames = Paths.getSparrowAtlas("freeplay/sparkle");
+		if (sparkleFrames == null) return null;
+
+		var spr = new FlxSprite();
+		spr.scrollFactor.set();
+		spr.cameras = [cam];
+		spr.zIndex = HatsuneHudLayout.SCORE_RANK_SPARKLE_Z;
+		spr.frames = sparkleFrames;
+		spr.animation.addByPrefix("sparkle", "sparkle Export0", 24, false);
+		spr.animation.play("sparkle", true);
+		spr.scale.set(HatsuneHudLayout.SCORE_RANK_SPARKLE_SCALE, HatsuneHudLayout.SCORE_RANK_SPARKLE_SCALE);
+		spr.blend = "add";
+		spr.visible = false;
+		spr.alpha = HatsuneHudLayout.SCORE_RANK_SPARKLE_ALPHA;
+		spr.updateHitbox();
+		return spr;
+	}
+
+	function stopScoreRankSparkle() {
+		if (scoreRankSparkleTimer != null) {
+			scoreRankSparkleTimer.cancel();
+		}
+		if (scoreRankSparkle != null) scoreRankSparkle.visible = false;
+	}
+
+	function triggerScoreRankSparkle(timer:FlxTimer) {
+		if (scoreRankSparkle == null || scoreRankBadge == null || !scoreRankBadge.visible || lastScoreRankBadgeAnim != "PERFECT_GOLD") {
+			stopScoreRankSparkle();
+			return;
+		}
+
+		refreshScoreRankSparkleTransform();
+		var minX = scoreRankBadge.x + (scoreRankBadge.width * HatsuneHudLayout.SCORE_RANK_SPARKLE_OFFSET_LEFT_RATIO);
+		var maxX = scoreRankBadge.x + (scoreRankBadge.width * HatsuneHudLayout.SCORE_RANK_SPARKLE_OFFSET_RIGHT_RATIO);
+		var minY = scoreRankBadge.y + (scoreRankBadge.height * HatsuneHudLayout.SCORE_RANK_SPARKLE_OFFSET_TOP_RATIO);
+		var maxY = scoreRankBadge.y + (scoreRankBadge.height * HatsuneHudLayout.SCORE_RANK_SPARKLE_OFFSET_BOTTOM_RATIO);
+		if (maxX < minX) {
+			var swapX = minX;
+			minX = maxX;
+			maxX = swapX;
+		}
+		if (maxY < minY) {
+			var swapY = minY;
+			minY = maxY;
+			maxY = swapY;
+		}
+		scoreRankSparkle.setPosition(FlxG.random.float(minX, maxX), FlxG.random.float(minY, maxY));
+		scoreRankSparkle.animation.play("sparkle", true);
+		scoreRankSparkle.visible = true;
+		var nextDelay = FlxG.random.float(1.2, 4.5);
+		if (timer != null) {
+			scoreRankSparkleTimer = timer.start(nextDelay, triggerScoreRankSparkle);
+		} else if (scoreRankSparkleTimer != null) {
+			scoreRankSparkleTimer = scoreRankSparkleTimer.start(nextDelay, triggerScoreRankSparkle);
+		} else {
+			scoreRankSparkleTimer = new FlxTimer().start(nextDelay, triggerScoreRankSparkle);
+		}
+	}
+
+	function refreshScoreRankSparkleTransform() {
+		if (scoreRankSparkle == null || scoreRankBadge == null) return;
+
+		var sparkleScale = HatsuneHudLayout.SCORE_RANK_SPARKLE_SCALE;
+		var sparkleHeightRatio = HatsuneHudLayout.SCORE_RANK_SPARKLE_HEIGHT_RATIO;
+		if (sparkleScale <= 0) sparkleScale = 1.0;
+		if (sparkleHeightRatio <= 0) sparkleHeightRatio = 1.0;
+
+		var targetSparkleHeight = Std.int(scoreRankBadge.height * sparkleHeightRatio * sparkleScale);
+		if (targetSparkleHeight < 1) targetSparkleHeight = 1;
+		scoreRankSparkle.setGraphicSize(0, targetSparkleHeight);
+		scoreRankSparkle.updateHitbox();
+		scoreRankSparkle.alpha = HatsuneHudLayout.SCORE_RANK_SPARKLE_ALPHA;
+	}
+
+	function updateScoreRankSparkleState(rankAnim:String) {
+		if (scoreRankSparkle == null) return;
+
+		if (rankAnim == "PERFECT_GOLD") {
+			scoreRankSparkle.visible = true;
+			if (scoreRankSparkleTimer != null) {
+				scoreRankSparkleTimer = scoreRankSparkleTimer.start(1, triggerScoreRankSparkle);
+			} else {
+				scoreRankSparkleTimer = new FlxTimer().start(1, triggerScoreRankSparkle);
+			}
+		} else {
+			stopScoreRankSparkle();
+		}
+	}
+
+	function cacheScoreRankBadgeFrameName(rankKey:String, frameName:String, prefix:String) {
+		if (frameName == null || prefix == null) return;
+		if (frameName.length < prefix.length || frameName.substr(0, prefix.length) != prefix) return;
+
+		var currentFrameName = scoreRankBadgeResolvedFrameNames.get(rankKey);
+		if (currentFrameName == null || frameName > currentFrameName) scoreRankBadgeResolvedFrameNames.set(rankKey, frameName);
+	}
+
+	function applyAtlasFrame(sprite:FlxSprite, frameName:String, forceReload:Bool):Bool {
+		if (sprite == null) return false;
+		var selection = selectHudAtlasFrame(frameName, forceReload);
+		if (selection == null || selection.frames == null || selection.frame == null) return false;
+
+		sprite.frames = selection.frames;
+		sprite.frame = selection.frame;
+		sprite.visible = true;
+		sprite.updateHitbox();
+		return true;
+	}
+
+	function applyScoreDigitFrame(sprite:FlxSprite, frameName:String, forceReload:Bool):Bool {
+		if (sprite == null) return false;
+		if (forceReload || scoreDigitsAtlasFrames == null) reloadScoreDigitsAtlas();
+		if (scoreDigitsAtlasFrames == null) return false;
+
+		var selectedFrame = scoreDigitFrameCache.get(frameName);
+		if (selectedFrame == null && !forceReload) {
+			reloadScoreDigitsAtlas();
+			selectedFrame = scoreDigitFrameCache.get(frameName);
+		}
+		if (selectedFrame == null) return false;
+
+		var framesChanged = (sprite.frames != scoreDigitsAtlasFrames);
+		if (framesChanged) sprite.frames = scoreDigitsAtlasFrames;
+		if (isVpScoreDigitsAtlas() && framesChanged) ensureScoreDigitAnimations(sprite);
+		sprite.frame = selectedFrame;
+		if (sprite.animation != null && sprite.animation.curAnim != null) sprite.animation.stop();
+		sprite.visible = true;
+		sprite.updateHitbox();
+		return true;
+	}
+
+	function reloadChanceTimeMeterAtlases() {
+		chanceTimeMeterAtlasFrames = [];
+		chanceTimeMeterFrameCache = new StringMap();
+		chanceTimeMeterFrameAtlasCache = new StringMap();
+
+		for (atlasKey in chanceTimeMeterAtlasKeys) {
+			var atlasFrames = Paths.getSparrowAtlas(atlasKey);
+			if (atlasFrames == null) continue;
+			chanceTimeMeterAtlasFrames.push(atlasFrames);
+			if (atlasFrames.frames == null) continue;
+			for (frame in atlasFrames.frames) {
+				if (frame == null || frame.name == null) continue;
+				chanceTimeMeterFrameCache.set(frame.name, frame);
+				chanceTimeMeterFrameAtlasCache.set(frame.name, atlasFrames);
+			}
+		}
+	}
+
+	function precacheChanceTimeAssets() {
+		var cachedTextureKeys = new StringMap();
+
+		cacheTextureKey(Paths.image(hudAtlasKey), cachedTextureKeys);
+		cacheTextureKey(Paths.image(downscrollHudAtlasKey), cachedTextureKeys);
+		cacheTextureKey(Paths.image(defaultScoreDigitsAtlasKey), cachedTextureKeys);
+		cacheTextureKey(Paths.image(scoreDigitsAtlasKey), cachedTextureKeys);
+		cacheTextureKey(Paths.image(vpScoreDigitsAtlasKey), cachedTextureKeys);
+		cacheTextureKey(Paths.image(scoreRankBadgeAtlasKey), cachedTextureKeys);
+		cacheTextureKey(Paths.image("freeplay/sparkle"), cachedTextureKeys);
+		cacheTextureKey(Paths.image("storymenu/difficulties/easy"), cachedTextureKeys);
+		cacheTextureKey(Paths.image("storymenu/difficulties/normal"), cachedTextureKeys);
+		cacheTextureKey(Paths.image("storymenu/difficulties/hard"), cachedTextureKeys);
+
+		for (atlasKey in chanceTimeMeterAtlasKeys) {
+			cacheTextureKey(Paths.image(atlasKey), cachedTextureKeys);
+		}
+
+		buildScoreDigitsAtlasCache(defaultScoreDigitsAtlasKey, false);
+		buildScoreDigitsAtlasCache(vpScoreDigitsAtlasKey, true);
+		reloadChanceTimeMeterAtlases();
+	}
+
+	function cacheTextureKey(textureKey:String, cachedTextureKeys:StringMap<Dynamic>) {
+		if (textureKey == null || textureKey == "" || cachedTextureKeys == null) return;
+		if (cachedTextureKeys.exists(textureKey)) return;
+		cachedTextureKeys.set(textureKey, true);
+		FunkinMemory.cacheTexture(textureKey);
+	}
+
+	function applyChanceTimeMeterFrame(sprite:FlxSprite, frameName:String, forceReload:Bool):Bool {
+		if (sprite == null) return false;
+		if (forceReload || chanceTimeMeterFrameCache == null || chanceTimeMeterFrameCache.get(frameName) == null) reloadChanceTimeMeterAtlases();
+
+		var selectedFrame = chanceTimeMeterFrameCache.get(frameName);
+		var selectedAtlas = chanceTimeMeterFrameAtlasCache.get(frameName);
+		if (selectedFrame == null || selectedAtlas == null) return false;
+		if (!forceReload && sprite.frames == selectedAtlas && sprite.frame == selectedFrame) return true;
+
+		sprite.frames = selectedAtlas;
+		sprite.frame = selectedFrame;
+		sprite.visible = true;
+		sprite.updateHitbox();
+		return true;
+	}
+
+	function getChanceTimeMeterFrameName():String {
+		var maxMeter = MHE_SharedState.chanceTimeMeterMax;
+		if (maxMeter <= 0) maxMeter = 100.0;
+		var meterValue = MHE_SharedState.chanceTimeMeter;
+		if (meterValue < 0) meterValue = 0;
+		if (meterValue > maxMeter) meterValue = maxMeter;
+
+		var ratio = meterValue / maxMeter;
+		if (ratio < 0) ratio = 0;
+		if (ratio > 1) ratio = 1;
+
+		var frameIndex = 1 + Std.int(Math.round(ratio * 17));
+		if (frameIndex < 1) frameIndex = 1;
+		if (frameIndex > 18) frameIndex = 18;
+
+		var frameId = Std.string(frameIndex);
+		while (frameId.length < 4) frameId = "0" + frameId;
+		return "ct charge" + frameId;
+	}
+
+	function refreshDecorFrames(forceReload:Bool) {
+		if (forceReload) {
+			reloadHudAtlas();
+			reloadDownscrollHudAtlas();
+		}
+		var ready = true;
+		ready = applyAtlasFrame(playerHudArt, playerHudFrameName, false) && ready;
+		ready = applyAtlasFrame(healthHudArt, healthHudFrameName, false) && ready;
+		ready = applyAtlasFrame(scoreHudArt, scoreHudFrameName, false) && ready;
+		ready = applyAtlasFrame(chanceBottomHudArt, HatsuneHudLayout.CT_BOTTOM_HUD_FRAME, false) && ready;
+		ready = applyAtlasFrame(chanceTopHudArt, HatsuneHudLayout.CT_TOP_HUD_FRAME, false) && ready;
+		ready = applyAtlasFrame(chanceScoreHudArt, scoreHudFrameName, false) && ready;
+		for (sprite in chanceBottomHudLeftExt) ready = applyAtlasFrame(sprite, HatsuneHudLayout.CT_BOTTOM_HUD_EX_FRAME, false) && ready;
+		for (sprite in chanceBottomHudRightExt) ready = applyAtlasFrame(sprite, HatsuneHudLayout.CT_BOTTOM_HUD_EX_FRAME, false) && ready;
+		for (sprite in chanceTopHudLeftExt) ready = applyAtlasFrame(sprite, HatsuneHudLayout.CT_TOP_HUD_EX_FRAME, false) && ready;
+		for (sprite in chanceTopHudRightExt) ready = applyAtlasFrame(sprite, HatsuneHudLayout.CT_TOP_HUD_EX_FRAME, false) && ready;
+		ready = applyAtlasFrame(songHudIcon, songHudIconFrameName, false) && ready;
+		ready = applyAtlasFrame(chanceSongHudIcon, HatsuneHudLayout.CT_SONG_ICON_FRAME, false) && ready;
+		ready = applyAtlasFrame(lifeHudIcon, lifeHudIconFrameName, false) && ready;
+		if (chanceStarMeter != null) ready = applyChanceTimeMeterFrame(chanceStarMeter, getChanceTimeMeterFrameName(), forceReload) && ready;
+		if (chanceStarMeterStroke != null) ready = applyChanceTimeMeterFrame(chanceStarMeterStroke, "ct stroke", forceReload) && ready;
+		decorFramesReady = ready;
+	}
+
+	function syncChanceHudExtCount(stateRef, sprites:Array<FlxSprite>, targetCount:Int, frameName:String, zIndex:Int, cam):Bool {
+		if (sprites == null) return false;
+		if (targetCount < 0) targetCount = 0;
+
+		var changed = false;
+		while (sprites.length < targetCount) {
+			var spr = createAtlasSprite(frameName, zIndex, cam);
+			if (spr == null) break;
+			sprites.push(spr);
+			if (stateRef != null) stateRef.add(spr);
+			changed = true;
+		}
+
+		while (sprites.length > targetCount) {
+			var spr = sprites.pop();
+			removeAndDestroy(stateRef, spr);
+			changed = true;
+		}
+
+		if (changed) requestStateRefresh(stateRef);
+		return changed;
+	}
+
+	function layoutChanceHudExtRow(mainSprite:FlxSprite, leftExt:Array<FlxSprite>, rightExt:Array<FlxSprite>, frameName:String, scale:Float, yOffset:Float, downscroll:Bool, cam,
+		alignBottom:Bool = false, overlap:Float = 0) {
+		var stateRef = (trackedState != null) ? trackedState : PlayState.instance;
+		if (mainSprite == null) {
+			syncChanceHudExtCount(stateRef, leftExt, 0, frameName, HatsuneHudLayout.PLAYER_HUD_Z, cam);
+			syncChanceHudExtCount(stateRef, rightExt, 0, frameName, HatsuneHudLayout.PLAYER_HUD_Z, cam);
+			return;
+		}
+
+		var extFrame = findAtlasFrame(frameName);
+		if (extFrame == null) {
+			syncChanceHudExtCount(stateRef, leftExt, 0, frameName, HatsuneHudLayout.PLAYER_HUD_Z, cam);
+			syncChanceHudExtCount(stateRef, rightExt, 0, frameName, HatsuneHudLayout.PLAYER_HUD_Z, cam);
+			return;
+		}
+
+		if (scale <= 0) scale = 1.0;
+		var mainFrameWidth = getSpriteFrameWidth(mainSprite);
+		var actualScale = scale;
+		if (mainFrameWidth > 0 && mainSprite.width > 0) actualScale = mainSprite.width / mainFrameWidth;
+		if (actualScale <= 0) actualScale = scale;
+		var targetWidth = extFrame.frame.width * actualScale;
+		if (targetWidth < 1) targetWidth = 1;
+		var overlapPixels = Std.int(Math.floor(overlap));
+		if (overlapPixels < 0) overlapPixels = 0;
+		if (overlapPixels >= targetWidth) overlapPixels = Std.int(targetWidth) - 1;
+		var stride = targetWidth - overlapPixels;
+		if (stride < 1) stride = 1;
+
+		var leftGap = Std.int(Math.max(0, Math.ceil(mainSprite.x)));
+		var rightGap = Std.int(Math.max(0, Math.ceil(FlxG.width - (mainSprite.x + mainSprite.width))));
+		var leftCount = Std.int(Math.ceil(leftGap / stride));
+		var rightCount = Std.int(Math.ceil(rightGap / stride));
+
+		syncChanceHudExtCount(stateRef, leftExt, leftCount, frameName, mainSprite.zIndex, cam);
+		syncChanceHudExtCount(stateRef, rightExt, rightCount, frameName, mainSprite.zIndex, cam);
+
+		for (index in 0...leftExt.length) {
+			var sprite = leftExt[index];
+			if (sprite == null) continue;
+			if (sprite.scale.x != actualScale || sprite.scale.y != actualScale) {
+				sprite.scale.set(actualScale, actualScale);
+				sprite.updateHitbox();
+			}
+			if (sprite.flipY) sprite.flipY = false;
+			sprite.x = Std.int(mainSprite.x - ((index + 1) * stride));
+			sprite.y = alignBottom
+				? Std.int(mainSprite.y + mainSprite.height - sprite.height + yOffset)
+				: Std.int(mainSprite.y + yOffset);
+		}
+
+		for (index in 0...rightExt.length) {
+			var sprite = rightExt[index];
+			if (sprite == null) continue;
+			if (sprite.scale.x != actualScale || sprite.scale.y != actualScale) {
+				sprite.scale.set(actualScale, actualScale);
+				sprite.updateHitbox();
+			}
+			if (sprite.flipY) sprite.flipY = false;
+			sprite.x = Std.int(mainSprite.x + mainSprite.width - overlapPixels + (index * stride));
+			sprite.y = alignBottom
+				? Std.int(mainSprite.y + mainSprite.height - sprite.height + yOffset)
+				: Std.int(mainSprite.y + yOffset);
+		}
+	}
+
+	function findAtlasFrame(frameName:String):FlxFrame {
+		if (hudAtlasFrameCache == null) return null;
+		return hudAtlasFrameCache.get(frameName);
+	}
+
+	override function onStateChangeBegin(event) {
+		super.onStateChangeBegin(event);
+		hudPaused = false;
+		hudInfoUpdateAccumulator = hudInfoUpdateInterval;
+		hudMetaUpdateAccumulator = hudMetaUpdateInterval;
+		restoreVanilla();
+	}
+
+	override function onDestroy(event) {
+		super.onDestroy(event);
+		hudPaused = false;
+		hudInfoUpdateAccumulator = hudInfoUpdateInterval;
+		hudMetaUpdateAccumulator = hudMetaUpdateInterval;
+		restoreVanilla();
+	}
+
+	function ensureBuilt(ps) {
+		if (hudBuilt) return;
+		if (ps.healthBar == null || ps.scoreText == null || ps.iconP1 == null) return;
+
+		captureVanillaState(ps);
+		cleanupSprites(ps);
+		resetRuntimeCache();
+
+		if (ps.healthBar != null) ps.healthBar.visible = false;
+		if (ps.healthBarBG != null) ps.healthBarBG.visible = false;
+		if (ps.iconP2 != null) {
+			ps.iconP2.visible = false;
+			ps.iconP2.autoUpdate = false;
+		}
+
+		enforceIconState(ps);
+
+		playerHudArt = createAtlasSprite(playerHudFrameName, HatsuneHudLayout.PLAYER_HUD_Z, ps.camHUD);
+		healthHudArt = createAtlasSprite(healthHudFrameName, HatsuneHudLayout.HEALTH_HUD_Z, ps.camHUD);
+		scoreHudArt = createAtlasSprite(scoreHudFrameName, HatsuneHudLayout.SCORE_HUD_Z, ps.camHUD);
+		chanceBottomHudArt = createAtlasSprite(HatsuneHudLayout.CT_BOTTOM_HUD_FRAME, HatsuneHudLayout.PLAYER_HUD_Z, ps.camHUD);
+		chanceTopHudArt = createAtlasSprite(HatsuneHudLayout.CT_TOP_HUD_FRAME, HatsuneHudLayout.SCORE_HUD_Z, ps.camHUD);
+		chanceScoreHudArt = createAtlasSprite(scoreHudFrameName, HatsuneHudLayout.SCORE_HUD_Z, ps.camHUD);
+		chanceStarMeter = null;
+		chanceStarMeterStroke = null;
+		chanceBottomHudLeftExt = [];
+		chanceBottomHudRightExt = [];
+		chanceTopHudLeftExt = [];
+		chanceTopHudRightExt = [];
+		scoreRankBadge = createScoreRankBadgeSprite(ps.camHUD);
+		scoreRankSparkle = createScoreRankSparkleSprite(ps.camHUD);
+		reloadScoreDigitsAtlas();
+		scoreDigits = [];
+		var scoreDigitCount = HatsuneHudLayout.SCORE_DIGITS_COUNT;
+		if (scoreDigitCount <= 0) scoreDigitCount = 7;
+		for (i in 0...scoreDigitCount) {
+			var scoreDigit = createScoreDigitSprite(HatsuneHudLayout.SCORE_DIGITS_Z, ps.camHUD);
+			if (scoreDigit != null) scoreDigits.push(scoreDigit);
+		}
+		songHudIcon = createAtlasSprite(songHudIconFrameName, HatsuneHudLayout.SONG_ICON_Z, ps.camHUD);
+		chanceSongHudIcon = createAtlasSprite(HatsuneHudLayout.CT_SONG_ICON_FRAME, HatsuneHudLayout.SONG_ICON_Z, ps.camHUD);
+		lifeHudIcon = createAtlasSprite(lifeHudIconFrameName, HatsuneHudLayout.LIFE_ICON_Z, ps.camHUD);
+
+		hpBox = new FlxSprite();
+		hpBox.makeGraphic(boxW, boxH, FlxColor.TRANSPARENT);
+		hpBox.scrollFactor.set();
+		hpBox.cameras = [ps.camHUD];
+		hpBox.visible = false;
+		hpBox.zIndex = HatsuneHudLayout.HP_BOX_Z;
+
+		meterBack = new FlxSprite();
+		meterBack.makeGraphic(meterW, meterH, FlxColor.WHITE);
+		meterBack.scrollFactor.set();
+		meterBack.cameras = [ps.camHUD];
+		meterBack.zIndex = HatsuneHudLayout.METER_BACK_Z;
+		meterBack.origin.set(0, 0);
+		meterBack.color = meterEmptyBack;
+
+		meter = new FlxSprite();
+		meter.makeGraphic(1, meterH, FlxColor.WHITE);
+		meter.scrollFactor.set();
+		meter.cameras = [ps.camHUD];
+		meter.zIndex = HatsuneHudLayout.METER_Z;
+		meter.origin.set(0, 0);
+
+		protectedText = new FlxText(0, 0, meterW, "protected", HatsuneHudLayout.PROTECTED_TEXT_SIZE);
+		protectedText.scrollFactor.set();
+		protectedText.cameras = [ps.camHUD];
+		protectedText.alignment = "center";
+		protectedText.color = FlxColor.WHITE;
+		protectedText.borderStyle = FlxTextBorderStyle.OUTLINE;
+		protectedText.borderSize = HatsuneHudLayout.PROTECTED_TEXT_BORDER_SIZE;
+		protectedText.borderColor = FlxColor.BLACK;
+		protectedText.alpha = 0.95;
+		protectedText.scale.set(HatsuneHudLayout.PROTECTED_TEXT_SCALE, HatsuneHudLayout.PROTECTED_TEXT_SCALE);
+		protectedText.updateHitbox();
+		protectedText.zIndex = HatsuneHudLayout.PROTECTED_TEXT_Z;
+		protectedText.visible = false;
+
+		lifeLabel = new FlxText(0, 0, 0, "LIFE", HatsuneHudLayout.LIFE_LABEL_SIZE);
+		lifeLabel.scrollFactor.set();
+		lifeLabel.cameras = [ps.camHUD];
+		lifeLabel.font = "5by7";
+		lifeLabel.alignment = "left";
+		lifeLabel.color = FlxColor.WHITE;
+		lifeLabel.borderStyle = FlxTextBorderStyle.OUTLINE;
+		lifeLabel.borderColor = FlxColor.BLACK;
+		lifeLabel.borderSize = HatsuneHudLayout.LIFE_LABEL_BORDER_SIZE;
+		lifeLabel.scale.set(HatsuneHudLayout.LIFE_LABEL_SCALE, HatsuneHudLayout.LIFE_LABEL_SCALE);
+		lifeLabel.zIndex = HatsuneHudLayout.LIFE_LABEL_Z;
+		lifeLabel.visible = HatsuneHudLayout.LIFE_LABEL_SHOW;
+		lifeLabel.updateHitbox();
+
+		songHudLabel = new FlxText(0, 0, HatsuneHudLayout.SONG_LABEL_MAX_WIDTH, "", HatsuneHudLayout.SONG_LABEL_SIZE);
+		songHudLabel.scrollFactor.set();
+		songHudLabel.cameras = [ps.camHUD];
+		songHudLabel.font = "5by7";
+		songHudLabel.alignment = "left";
+		songHudLabel.color = FlxColor.WHITE;
+		songHudLabel.borderStyle = FlxTextBorderStyle.OUTLINE;
+		songHudLabel.borderColor = FlxColor.BLACK;
+		songHudLabel.borderSize = HatsuneHudLayout.SONG_LABEL_BORDER_SIZE;
+		songHudLabel.scale.set(HatsuneHudLayout.SONG_LABEL_SCALE, HatsuneHudLayout.SONG_LABEL_SCALE);
+		songHudLabel.zIndex = HatsuneHudLayout.SONG_LABEL_Z;
+		songHudLabel.visible = true;
+		songHudLabel.updateHitbox();
+
+		songHudLabelMeasure = new FlxText(0, 0, 0, "", HatsuneHudLayout.SONG_LABEL_SIZE);
+		songHudLabelMeasure.font = songHudLabel.font;
+		songHudLabelMeasure.alignment = songHudLabel.alignment;
+		songHudLabelMeasure.color = songHudLabel.color;
+		songHudLabelMeasure.borderStyle = songHudLabel.borderStyle;
+		songHudLabelMeasure.borderColor = songHudLabel.borderColor;
+		songHudLabelMeasure.borderSize = songHudLabel.borderSize;
+		songHudLabelMeasure.scale.set(songHudLabel.scale.x, songHudLabel.scale.y);
+		songHudLabelMeasure.visible = false;
+		songHudLabelMeasure.active = false;
+		songHudLabelMeasure.updateHitbox();
+
+		songHudDifficulty = new FlxSprite();
+		songHudDifficulty.scrollFactor.set();
+		songHudDifficulty.cameras = [ps.camHUD];
+		songHudDifficulty.zIndex = HatsuneHudLayout.SONG_LABEL_DIFFICULTY_Z;
+		songHudDifficulty.origin.set(0, 0);
+		songHudDifficulty.visible = false;
+
+		borderTop = new FlxSprite();
+		borderTop.makeGraphic(boxW, borderThickness, FlxColor.BLACK);
+		borderTop.scrollFactor.set();
+		borderTop.cameras = [ps.camHUD];
+		borderTop.zIndex = HatsuneHudLayout.BORDER_Z;
+		borderTop.origin.set(0, 0);
+
+		borderBottom = new FlxSprite();
+		borderBottom.makeGraphic(boxW, borderThickness, FlxColor.BLACK);
+		borderBottom.scrollFactor.set();
+		borderBottom.cameras = [ps.camHUD];
+		borderBottom.zIndex = HatsuneHudLayout.BORDER_Z;
+		borderBottom.origin.set(0, 0);
+
+		borderLeft = new FlxSprite();
+		borderLeft.makeGraphic(borderThickness, meterH, FlxColor.BLACK);
+		borderLeft.scrollFactor.set();
+		borderLeft.cameras = [ps.camHUD];
+		borderLeft.zIndex = HatsuneHudLayout.BORDER_Z;
+		borderLeft.origin.set(0, 0);
+
+		borderRight = new FlxSprite();
+		borderRight.makeGraphic(borderThickness, meterH, FlxColor.BLACK);
+		borderRight.scrollFactor.set();
+		borderRight.cameras = [ps.camHUD];
+		borderRight.zIndex = HatsuneHudLayout.BORDER_Z;
+		borderRight.origin.set(0, 0);
+
+		refreshBarSizing(true);
+
+		if (playerHudArt != null) ps.add(playerHudArt);
+		if (healthHudArt != null) ps.add(healthHudArt);
+		if (scoreHudArt != null) ps.add(scoreHudArt);
+		if (chanceBottomHudArt != null) ps.add(chanceBottomHudArt);
+		if (chanceTopHudArt != null) ps.add(chanceTopHudArt);
+		if (chanceScoreHudArt != null) ps.add(chanceScoreHudArt);
+		syncChanceHudExtCount(ps, chanceBottomHudLeftExt, 0, HatsuneHudLayout.CT_BOTTOM_HUD_EX_FRAME, HatsuneHudLayout.PLAYER_HUD_Z, ps.camHUD);
+		syncChanceHudExtCount(ps, chanceBottomHudRightExt, 0, HatsuneHudLayout.CT_BOTTOM_HUD_EX_FRAME, HatsuneHudLayout.PLAYER_HUD_Z, ps.camHUD);
+		syncChanceHudExtCount(ps, chanceTopHudLeftExt, 0, HatsuneHudLayout.CT_TOP_HUD_EX_FRAME, HatsuneHudLayout.SCORE_HUD_Z, ps.camHUD);
+		syncChanceHudExtCount(ps, chanceTopHudRightExt, 0, HatsuneHudLayout.CT_TOP_HUD_EX_FRAME, HatsuneHudLayout.SCORE_HUD_Z, ps.camHUD);
+		if (scoreRankBadge != null) ps.add(scoreRankBadge);
+		if (scoreRankSparkle != null) ps.add(scoreRankSparkle);
+		for (scoreDigit in scoreDigits) {
+			if (scoreDigit != null) ps.add(scoreDigit);
+		}
+		if (songHudIcon != null) ps.add(songHudIcon);
+		if (chanceSongHudIcon != null) ps.add(chanceSongHudIcon);
+		if (lifeHudIcon != null) ps.add(lifeHudIcon);
+		ps.add(hpBox);
+		ps.add(meterBack);
+		ps.add(meter);
+		ps.add(borderTop);
+		ps.add(borderBottom);
+		ps.add(borderLeft);
+		ps.add(borderRight);
+		ps.add(protectedText);
+		ps.add(lifeLabel);
+		ps.add(songHudDifficulty);
+		ps.add(songHudLabel);
+		ensureChanceSubtitleDisplay(ps);
+
+		refreshBarColors(true);
+		syncVanillaScoreText(ps.scoreText);
+		applyScoreLayout(ps.scoreText, true);
+		layoutScoreHud(ps.scoreText);
+		var uiScale = HatsuneHudLayout.getUiScale();
+		updateScoreRankBadge(ps, uiScale);
+		updateScoreDigits(ps, uiScale);
+		layoutHud(ps);
+		updateSongHudLabel(ps, HatsuneHudLayout.isDownscroll(), HatsuneHudLayout.getUiScale());
+		updateChanceHudTransition(true);
+		lastAppliedChanceHudVisibility = null;
+		updateChanceHudVisibility(ps);
+		requestStateRefresh(ps);
+		flushStateRefresh(ps);
+
+		hudBuilt = true;
+	}
+
+	function captureVanillaState(ps) {
+		if (trackedState == ps) return;
+
+		trackedState = ps;
+		originalHealthBarVisible = (ps.healthBar != null) ? ps.healthBar.visible : null;
+		originalHealthBarBGVisible = (ps.healthBarBG != null) ? ps.healthBarBG.visible : null;
+
+		if (ps.iconP1 != null) {
+			originalIconP1Visible = ps.iconP1.visible;
+			originalIconP1AutoUpdate = ps.iconP1.autoUpdate;
+			originalIconP1BopEvery = ps.iconP1.bopEvery;
+			if (ps.iconP1.size != null) {
+				originalIconP1SizeX = ps.iconP1.size.x;
+				originalIconP1SizeY = ps.iconP1.size.y;
+			}
+			originalIconFlipX = ps.iconP1.flipX;
+		}
+
+		if (ps.iconP2 != null) {
+			originalIconP2Visible = ps.iconP2.visible;
+			originalIconP2AutoUpdate = ps.iconP2.autoUpdate;
+		}
+
+		storeOriginalScoreState(ps.scoreText);
+
+		if (ps.subtitles != null) {
+			if (ps.subtitles.offsets != null && ps.subtitles.offsets.length > 1) {
+				originalSubtitleOffsetX = ps.subtitles.offsets[0];
+				originalSubtitleOffsetY = ps.subtitles.offsets[1];
+			}
+			originalSubtitleAlignment = ps.subtitles.alignment;
+			var subtitleBackground = getSubtitleBackground(ps.subtitles);
+			if (subtitleBackground != null) {
+				originalSubtitleBackgroundVisible = subtitleBackground.visible;
+				originalSubtitleBackgroundAlpha = subtitleBackground.alpha;
+			}
+		}
+	}
+
+	function storeOriginalScoreState(txt:FlxBitmapText) {
+		if (txt == null) return;
+		originalScoreX = txt.x;
+		originalScoreY = txt.y;
+		originalScoreScaleX = txt.scale.x;
+		originalScoreScaleY = txt.scale.y;
+		originalScoreAlignment = txt.alignment;
+		originalScoreVisible = txt.visible;
+	}
+
+	function restoreVanilla() {
+		var ps = (trackedState != null) ? trackedState : PlayState.instance;
+
+		if (ps != null) {
+			if (ps.healthBar != null && originalHealthBarVisible != null) ps.healthBar.visible = originalHealthBarVisible;
+			if (ps.healthBarBG != null && originalHealthBarBGVisible != null) ps.healthBarBG.visible = originalHealthBarBGVisible;
+
+			if (ps.iconP1 != null) {
+				if (originalIconFlipX != null) ps.iconP1.flipX = originalIconFlipX;
+				if (originalIconP1Visible != null) ps.iconP1.visible = originalIconP1Visible;
+				if (originalIconP1AutoUpdate != null) ps.iconP1.autoUpdate = originalIconP1AutoUpdate;
+				if (originalIconP1BopEvery != null) ps.iconP1.bopEvery = originalIconP1BopEvery;
+				if (ps.iconP1.size != null && !Math.isNaN(originalIconP1SizeX) && !Math.isNaN(originalIconP1SizeY)) {
+					ps.iconP1.size.set(originalIconP1SizeX, originalIconP1SizeY);
+					if (ps.iconP1.snapToTargetSize != null) ps.iconP1.snapToTargetSize();
+				}
+			}
+
+			if (ps.iconP2 != null) {
+				if (originalIconP2Visible != null) ps.iconP2.visible = originalIconP2Visible;
+				if (originalIconP2AutoUpdate != null) ps.iconP2.autoUpdate = originalIconP2AutoUpdate;
+			}
+
+			restoreScoreState(ps.scoreText);
+
+			if (ps.subtitles != null) {
+				if (!Math.isNaN(originalSubtitleOffsetX) && !Math.isNaN(originalSubtitleOffsetY)) {
+					ps.subtitles.offsets = [originalSubtitleOffsetX, originalSubtitleOffsetY];
+				}
+				if (originalSubtitleAlignment != null) ps.subtitles.alignment = originalSubtitleAlignment;
+				ps.subtitles.active = true;
+				ps.subtitles.visible = true;
+				var subtitleBackground = getSubtitleBackground(ps.subtitles);
+				if (subtitleBackground != null) {
+					if (originalSubtitleBackgroundVisible != null) subtitleBackground.visible = originalSubtitleBackgroundVisible;
+					if (!Math.isNaN(originalSubtitleBackgroundAlpha)) subtitleBackground.alpha = originalSubtitleBackgroundAlpha;
+				}
+			}
+		}
+
+		cleanupSprites(ps);
+		clearTracking();
+	}
+
+	function restoreScoreState(txt:FlxBitmapText) {
+		if (txt == null) return;
+		if (!Math.isNaN(originalScoreX)) txt.x = originalScoreX;
+		if (!Math.isNaN(originalScoreY)) txt.y = originalScoreY;
+		if (!Math.isNaN(originalScoreScaleX)) txt.scale.x = originalScoreScaleX;
+		if (!Math.isNaN(originalScoreScaleY)) txt.scale.y = originalScoreScaleY;
+		if (originalScoreAlignment != null) txt.alignment = originalScoreAlignment;
+		if (originalScoreVisible != null) txt.visible = originalScoreVisible;
+	}
+
+	function clearTracking() {
+		hudBuilt = false;
+		trackedState = null;
+		originalHealthBarVisible = null;
+		originalHealthBarBGVisible = null;
+		originalIconP1Visible = null;
+		originalIconP1AutoUpdate = null;
+		originalIconP1BopEvery = null;
+		originalIconP1SizeX = Math.NaN;
+		originalIconP1SizeY = Math.NaN;
+		originalIconP2Visible = null;
+		originalIconP2AutoUpdate = null;
+		originalIconFlipX = null;
+		originalScoreX = Math.NaN;
+		originalScoreY = Math.NaN;
+		originalScoreScaleX = Math.NaN;
+		originalScoreScaleY = Math.NaN;
+		originalScoreAlignment = null;
+		originalScoreVisible = null;
+		originalSubtitleOffsetX = Math.NaN;
+		originalSubtitleOffsetY = Math.NaN;
+		originalSubtitleAlignment = null;
+		originalSubtitleBackgroundVisible = null;
+		originalSubtitleBackgroundAlpha = Math.NaN;
+		resetRuntimeCache();
+	}
+
+	function resetRuntimeCache() {
+		chanceHudEventArmed = false;
+		iconBaseWidth = -1;
+		iconBaseHeight = -1;
+		iconAnchorWidth = -1;
+		iconFixedCenterX = -1.0;
+		lastPlayerIconVisualState = null;
+		lastIconSampleKey = null;
+		lastPlayerIconX = Math.NaN;
+		lastPlayerIconY = Math.NaN;
+		lastVanillaHealthBarX = Math.NaN;
+		lastVanillaHealthBarY = Math.NaN;
+		lastVanillaHealthBarBgX = Math.NaN;
+		lastVanillaHealthBarBgY = Math.NaN;
+		lastScoreScreenW = -1;
+		lastScoreScreenH = -1;
+		lastScoreWidth = Math.NaN;
+		lastScoreHeight = Math.NaN;
+		lastDownscroll = null;
+		lastFillW = Math.NaN;
+		lastDrainActive = null;
+		lastDecorDownscroll = null;
+		lastHealthHudWidth = -1;
+		lastPlayerHudWidth = -1;
+		lastScoreHudWidth = -1;
+		lastChanceScoreHudWidth = -1;
+		lastChanceStarMeterWidth = -1;
+		lastChanceStarMeterStrokeWidth = -1;
+		lastSongIconSize = -1;
+		lastChanceBottomHudWidth = -1;
+		lastChanceTopHudWidth = -1;
+		lastChanceSongIconSize = -1;
+		lastLifeHudIconWidth = -1;
+		lastLifeLabelSize = -1;
+		lastLifeLabelBorderSize = Math.NaN;
+		lastLifeLabelScale = Math.NaN;
+		lastProtectedTextSize = -1;
+		lastProtectedTextBorderSize = Math.NaN;
+		lastProtectedTextScale = Math.NaN;
+		lastSongLabelValue = null;
+		lastSongLabelSourceValue = null;
+		lastSongLabelSourceVisibleWidth = Math.NaN;
+		lastSongLabelSourceScale = Math.NaN;
+		lastSongLabelSize = -1;
+		lastSongLabelBorderSize = Math.NaN;
+		lastSongLabelScale = Math.NaN;
+		lastSongLabelTextWidth = Math.NaN;
+		lastSongLabelX = Math.NaN;
+		lastSongLabelY = Math.NaN;
+		songHudLabelFitCache = new StringMap();
+		lastSongDifficultyId = null;
+		lastSongDifficultyHeight = -1;
+		lastSongDifficultyX = Math.NaN;
+		lastSongDifficultyY = Math.NaN;
+		lastScoreDigitsValue = null;
+		lastScoreDigitsSourceValue = 0;
+		scoreDigitsAnimAccumulator = 0;
+		scoreDigitsVisualDirty = true;
+		lastScoreDigitsHeight = -1;
+		lastScoreDigitsUiScale = Math.NaN;
+		lastScoreDigitsScaleRatio = Math.NaN;
+		lastScoreDigitsPanelX = Math.NaN;
+		lastScoreDigitsPanelY = Math.NaN;
+		lastScoreDigitsPanelW = Math.NaN;
+		lastScoreDigitsPanelH = Math.NaN;
+		lastScoreDigitChars = [];
+		lastScoreDigitSymbolHeights = [];
+		scoreDigitMaxFrameWidth = 0;
+		scoreDigitMaxFrameHeight = 0;
+		vpScoreDigitAnimationsReady = false;
+		scoreDigitsLayoutReferenceWidth = 0;
+		scoreDigitsLayoutReferenceHeight = 0;
+		lastScoreRankBadgeAnim = null;
+		lastScoreRankBadgeHeight = -1;
+		lastScoreRankBadgePanelX = Math.NaN;
+		lastScoreRankBadgePanelY = Math.NaN;
+		lastScoreRankBadgePanelW = Math.NaN;
+		lastScoreRankBadgePanelH = Math.NaN;
+		lastScoreRankTallySick = 0;
+		lastScoreRankTallyGood = 0;
+		lastScoreRankTallyBad = 0;
+		lastScoreRankTallyShit = 0;
+		lastScoreRankTallyMissed = 0;
+		hasScoreRankSnapshot = false;
+		scoreRankUpdateAccumulator = 0;
+		scoreRankVisualDirty = true;
+		lastSongLabelVisibleWidth = 0;
+		songHudLabelScrollOffset = 0;
+		songHudLabelScrollDirection = 1;
+		songHudLabelScrollDelay = 0;
+		songHudLabelScrollAccumulator = 0;
+		songHudLabelClipRect = null;
+		lastHudLayoutBarX = Math.NaN;
+		lastHudLayoutYPos = Math.NaN;
+		lastHudLayoutUiScale = Math.NaN;
+		lastHudLayoutChanceActive = null;
+		lastHudLayoutScreenW = -1;
+		lastHudLayoutScreenH = -1;
+		lastHudLayoutMeterW = -1;
+		lastHudLayoutMeterH = -1;
+		lastHudLayoutBorderThickness = -1;
+		lastHudLayoutIconWidth = Math.NaN;
+		lastHudLayoutIconHeight = Math.NaN;
+		lastTopHudLayoutUiScale = Math.NaN;
+		lastTopHudLayoutDownscroll = null;
+		lastTopHudLayoutChanceActive = null;
+		lastTopHudLayoutScreenW = -1;
+		lastTopHudLayoutScreenH = -1;
+		lastTopHudLayoutNormalTopOffsetY = Math.NaN;
+		lastTopHudLayoutChanceTopOffsetY = Math.NaN;
+		lastNormalSubtitleOffsetX = Math.NaN;
+		lastNormalSubtitleOffsetY = Math.NaN;
+		lastChanceSubtitleOffsetX = Math.NaN;
+		lastChanceSubtitleOffsetY = Math.NaN;
+		lastChanceSubtitleVisible = null;
+		lastPrimarySubtitleAssetPath = null;
+		lastSecondarySubtitleAssetPath = null;
+		lastSubtitleSound = null;
+		subtitleLayoutUpdateAccumulator = 0;
+		lastQuantizedNormalSubtitleBopScale = 1.0;
+		lastQuantizedChanceSubtitleBopScale = 1.0;
+		normalSubtitleBopScale = 1.0;
+		chanceSubtitleBopScale = 1.0;
+		dangerFadeCountdown = 0;
+		dangerFadeDuration = 0;
+		lastChanceTimeActive = null;
+		lastAppliedChanceHudVisibility = null;
+		decorFramesReady = false;
+		lastChanceStarMeterFrameName = null;
+		lastChanceStarMeterX = Math.NaN;
+		lastChanceStarMeterY = Math.NaN;
+		lastChanceStarMeterUiScale = Math.NaN;
+		normalBottomOffsetY = 0;
+		normalTopOffsetY = 0;
+		chanceBottomOffsetY = 0;
+		chanceTopOffsetY = 0;
+		MHE_SharedState.chanceTimeNormalBottomHudOffsetY = 0;
+		MHE_SharedState.chanceTimeNormalTopHudOffsetY = 0;
+		clearChanceHudTweens();
+		pendingStateRefresh = false;
+		hudMetaUpdateAccumulator = hudMetaUpdateInterval;
+		hudDecorUpdateAccumulator = hudDecorUpdateInterval;
+	}
+
+	function updateSpriteWidth(sprite:FlxSprite, targetWidth:Int, cacheWidth:Int):Int {
+		if (sprite == null) return cacheWidth;
+		if (targetWidth != cacheWidth) {
+			sprite.setGraphicSize(targetWidth, 0);
+			sprite.updateHitbox();
+			return targetWidth;
+		}
+		return cacheWidth;
+	}
+
+	function updateSpriteSquare(sprite:FlxSprite, targetSize:Int, cacheSize:Int):Int {
+		if (sprite == null) return cacheSize;
+		if (targetSize != cacheSize) {
+			sprite.setGraphicSize(targetSize, 0);
+			sprite.updateHitbox();
+			return targetSize;
+		}
+		return cacheSize;
+	}
+
+	function getSpriteFrameWidth(sprite:FlxSprite):Int {
+		if (sprite == null || sprite.frame == null) return 0;
+		return Std.int(sprite.frame.frame.width);
+	}
+
+	function refreshBarSizing(force:Bool) {
+		var nextScaleX = HatsuneHudLayout.BAR_SCALE_X;
+		var nextScaleY = HatsuneHudLayout.BAR_SCALE_Y;
+		var nextBorderThickness = HatsuneHudLayout.BAR_BORDER_THICKNESS;
+		if (nextScaleX <= 0) nextScaleX = 1.0;
+		if (nextScaleY <= 0) nextScaleY = 1.0;
+		if (nextBorderThickness <= 0) nextBorderThickness = 1;
+
+		if (!force && nextScaleX == barScaleX && nextScaleY == barScaleY && nextBorderThickness == borderThickness) return;
+
+		barScaleX = nextScaleX;
+		barScaleY = nextScaleY;
+		borderThickness = nextBorderThickness;
+		meterW = Std.int(baseMeterW * barScaleX);
+		meterH = Std.int(baseMeterH * barScaleY);
+		if (meterW < 1) meterW = 1;
+		if (meterH < 1) meterH = 1;
+		boxW = meterW + (borderThickness * 2);
+		boxH = meterH + (borderThickness * 2);
+		lastFillW = Math.NaN;
+
+		if (hpBox != null) {
+			hpBox.makeGraphic(boxW, boxH, FlxColor.TRANSPARENT);
+			hpBox.origin.set(0, 0);
+		}
+		if (meterBack != null) {
+			var backColor = meterBack.color;
+			meterBack.makeGraphic(meterW, meterH, FlxColor.WHITE);
+			meterBack.origin.set(0, 0);
+			meterBack.color = backColor;
+		}
+		if (meter != null) {
+			var fillColor = meter.color;
+			meter.makeGraphic(1, meterH, FlxColor.WHITE);
+			meter.origin.set(0, 0);
+			meter.color = fillColor;
+		}
+		if (borderTop != null) {
+			borderTop.makeGraphic(boxW, borderThickness, FlxColor.BLACK);
+			borderTop.origin.set(0, 0);
+		}
+		if (borderBottom != null) {
+			borderBottom.makeGraphic(boxW, borderThickness, FlxColor.BLACK);
+			borderBottom.origin.set(0, 0);
+		}
+		if (borderLeft != null) {
+			borderLeft.makeGraphic(borderThickness, meterH, FlxColor.BLACK);
+			borderLeft.origin.set(0, 0);
+		}
+		if (borderRight != null) {
+			borderRight.makeGraphic(borderThickness, meterH, FlxColor.BLACK);
+			borderRight.origin.set(0, 0);
+		}
+	}
+
+	function enforceIconState(ps) {
+		if (ps.iconP1 == null) return;
+
+		var icon = ps.iconP1;
+		if (!icon.visible) icon.visible = true;
+		if (icon.autoUpdate) icon.autoUpdate = false;
+		if (icon.bopEvery != 0) icon.bopEvery = 0;
+		if (icon.flipX) icon.flipX = false;
+		updatePlayerIconVisualState(ps);
+		var shouldReapplyBaseScale = false;
+
+		if (iconBaseScale != HatsuneHudLayout.ICON_SCALE) {
+			iconBaseScale = HatsuneHudLayout.ICON_SCALE;
+			iconAnchorWidth = -1;
+			iconFixedCenterX = -1.0;
+			iconBaseWidth = -1;
+			iconBaseHeight = -1;
+			shouldReapplyBaseScale = true;
+		}
+
+		if (iconAnchorRight != HatsuneHudLayout.ICON_ANCHOR_RIGHT || iconAnchorBottom != HatsuneHudLayout.ICON_ANCHOR_BOTTOM || iconScreenX != HatsuneHudLayout.ICON_X
+			|| iconMarginY != HatsuneHudLayout.ICON_MARGIN_Y || iconOffsetX != HatsuneHudLayout.ICON_OFFSET_X || iconOffsetY != HatsuneHudLayout.ICON_OFFSET_Y) {
+			iconAnchorRight = HatsuneHudLayout.ICON_ANCHOR_RIGHT;
+			iconAnchorBottom = HatsuneHudLayout.ICON_ANCHOR_BOTTOM;
+			iconScreenX = HatsuneHudLayout.ICON_X;
+			iconMarginY = HatsuneHudLayout.ICON_MARGIN_Y;
+			iconOffsetX = HatsuneHudLayout.ICON_OFFSET_X;
+			iconOffsetY = HatsuneHudLayout.ICON_OFFSET_Y;
+			iconAnchorWidth = -1;
+			iconFixedCenterX = -1.0;
+		}
+
+		if (iconBaseScale <= 0) iconBaseScale = 1.0;
+		var iconSizeChanged = false;
+		var needsScaleSync = false;
+		if (icon.size != null && (Math.abs(icon.size.x - iconBaseScale) > 0.001 || Math.abs(icon.size.y - iconBaseScale) > 0.001)) {
+			needsScaleSync = true;
+		}
+		if (icon.size != null && (shouldReapplyBaseScale || needsScaleSync)) {
+			icon.size.set(iconBaseScale, iconBaseScale);
+			if (icon.snapToTargetSize != null) icon.snapToTargetSize();
+			iconSizeChanged = true;
+		}
+
+		if (icon.width > 0 && icon.height > 0 && (iconSizeChanged || iconBaseWidth <= 0 || iconBaseHeight <= 0)) icon.centerOrigin();
+		if (icon.width > 0 && iconBaseWidth <= 0) iconBaseWidth = Std.int(icon.width);
+		if (icon.height > 0 && iconBaseHeight <= 0) iconBaseHeight = Std.int(icon.height);
+	}
+
+	function positionPlayerIconAtCenter(icon, centerX:Float, centerY:Float) {
+		if (icon == null) return;
+		icon.x = centerX - (icon.width * 0.5);
+		icon.y = centerY - (icon.height * 0.5);
+		lastPlayerIconX = Math.NaN;
+		lastPlayerIconY = Math.NaN;
+	}
+
+	function triggerPlayerIconBop(ps) {
+		if (ps == null || ps.iconP1 == null || Conductor.instance == null) return;
+
+		var icon = ps.iconP1;
+		var bopEvery = (originalIconP1BopEvery != null && originalIconP1BopEvery > 0) ? originalIconP1BopEvery : 4;
+		if (bopEvery == 0 || Conductor.instance.currentStep % bopEvery != 0) return;
+		if (icon.width <= 0 || icon.height <= 0) return;
+
+		var baseWidth = (iconBaseWidth > 0) ? iconBaseWidth : Std.int(icon.width);
+		var baseHeight = (iconBaseHeight > 0) ? iconBaseHeight : Std.int(icon.height);
+		if (baseWidth <= 0 || baseHeight <= 0) return;
+
+		var centerX = icon.x + (icon.width * 0.5);
+		var centerY = icon.y + (icon.height * 0.5);
+		var bopMultiplier = 1.2;
+		var targetWidth = Std.int(baseWidth * bopMultiplier);
+		var targetHeight = Std.int(baseHeight * bopMultiplier);
+		if (targetWidth < 1) targetWidth = 1;
+		if (targetHeight < 1) targetHeight = 1;
+
+		if (icon.bopTween != null) icon.bopTween.cancel();
+
+		if (baseWidth >= baseHeight) {
+			icon.setGraphicSize(targetWidth, 0);
+		} else {
+			icon.setGraphicSize(0, targetHeight);
+		}
+		icon.updateHitbox();
+		icon.centerOrigin();
+		positionPlayerIconAtCenter(icon, centerX, centerY);
+
+		var tweenDuration = Math.min(Conductor.instance.stepLengthMs * 0.002, 0.175);
+		icon.bopTween = FlxTween.num(1.0, 0.0, tweenDuration, {
+			onComplete: function(_) {
+				icon.bopTween = null;
+			}
+		}, function(value) {
+				var currentWidth = Std.int(baseWidth + ((targetWidth - baseWidth) * value));
+				var currentHeight = Std.int(baseHeight + ((targetHeight - baseHeight) * value));
+				if (currentWidth < 1) currentWidth = 1;
+				if (currentHeight < 1) currentHeight = 1;
+
+				if (baseWidth >= baseHeight) {
+					icon.setGraphicSize(currentWidth, 0);
+				} else {
+					icon.setGraphicSize(0, currentHeight);
+				}
+				icon.updateHitbox();
+				icon.centerOrigin();
+				positionPlayerIconAtCenter(icon, centerX, centerY);
+			});
+
+		icon.angle += icon.bopAngle;
+	}
+
+	function updatePlayerIconVisualState(ps):Void {
+		if (ps == null || ps.iconP1 == null || ps.iconP1.playAnimation == null) return;
+
+		var nextState = "idle";
+		if (ps.health < 0.4) {
+			nextState = "losing";
+		} else if (ps.health > 1.6) {
+			nextState = "winning";
+		}
+
+		if (lastPlayerIconVisualState == nextState) return;
+		lastPlayerIconVisualState = nextState;
+		ps.iconP1.playAnimation(nextState, "idle");
+	}
+
+	function layoutHud(ps, updateAux:Bool = true) {
+		if (hpBox == null || meterBack == null || meter == null) return;
+		refreshBarSizing(false);
+
+		var layout = HatsuneHudLayout.getBarAnchor(barOffsetX, barOffsetY);
+		var uiScale = layout.uiScale;
+		var downscroll = layout.downscroll;
+		var barX = layout.x;
+		var yPos = layout.y + getHealthHudOffsetY();
+		var chanceActive = isChanceHudActive();
+		var chanceHudTweening = isChanceHudTweening();
+		var screenW = FlxG.width;
+		var screenH = FlxG.height;
+		var hudLayoutDirty = chanceHudTweening
+			|| lastHudLayoutBarX != barX
+			|| lastHudLayoutYPos != yPos
+			|| lastHudLayoutUiScale != uiScale
+			|| lastHudLayoutChanceActive != chanceActive
+			|| lastHudLayoutScreenW != screenW
+			|| lastHudLayoutScreenH != screenH
+			|| lastHudLayoutMeterW != meterW
+			|| lastHudLayoutMeterH != meterH
+			|| lastHudLayoutBorderThickness != borderThickness;
+
+		if (hudLayoutDirty) {
+			hpBox.x = barX - borderThickness;
+			hpBox.y = yPos - borderThickness;
+
+			meterBack.x = barX;
+			meterBack.y = yPos;
+			layoutDecorHud(barX, yPos, uiScale, downscroll);
+
+			if (borderTop != null) {
+				borderTop.x = barX - borderThickness;
+				borderTop.y = yPos - borderThickness;
+			}
+			if (borderBottom != null) {
+				borderBottom.x = barX - borderThickness;
+				borderBottom.y = yPos + meterH;
+			}
+			if (borderLeft != null) {
+				borderLeft.x = barX - borderThickness;
+				borderLeft.y = yPos;
+			}
+			if (borderRight != null) {
+				borderRight.x = barX + meterW;
+				borderRight.y = yPos;
+			}
+
+			if (updateAux) {
+				layoutLifeLabel(barX, yPos, uiScale);
+				layoutLifeHudIcon(uiScale);
+			}
+
+			lastHudLayoutBarX = barX;
+			lastHudLayoutYPos = yPos;
+			lastHudLayoutUiScale = uiScale;
+			lastHudLayoutChanceActive = chanceActive;
+			lastHudLayoutScreenW = screenW;
+			lastHudLayoutScreenH = screenH;
+			lastHudLayoutMeterW = meterW;
+			lastHudLayoutMeterH = meterH;
+			lastHudLayoutBorderThickness = borderThickness;
+		}
+		if (ps.healthBar != null && ps.healthBar.visible) ps.healthBar.visible = false;
+		if (ps.healthBarBG != null && ps.healthBarBG.visible) ps.healthBarBG.visible = false;
+
+		var ratio = Math.max(0, Math.min(1, ps.health / 2));
+		var fillW = Math.max(1, meterW * ratio);
+		if (hudLayoutDirty) meter.setPosition(barX, yPos);
+		if (fillW != lastFillW) {
+			meter.scale.x = fillW;
+			lastFillW = fillW;
+		}
+
+		if (updateAux) {
+			updateProtectedText(yPos);
+			layoutIcon(ps, yPos);
+		}
+	}
+
+	function updateChanceStarMeter(uiScale:Float) {
+		if (!isChanceHudLayoutActive()) {
+			setSpriteVisible(chanceStarMeter, false);
+			setSpriteVisible(chanceStarMeterStroke, false);
+			return;
+		}
+
+		var ps = PlayState.instance;
+		if (chanceStarMeter == null || chanceStarMeterStroke == null) ensureChanceTimeMeterBuilt(ps);
+		if (chanceStarMeter == null) return;
+
+		var meterFrameName = getChanceTimeMeterFrameName();
+		if (lastChanceStarMeterFrameName != meterFrameName) {
+			applyChanceTimeMeterFrame(chanceStarMeter, meterFrameName, false);
+			lastChanceStarMeterFrameName = meterFrameName;
+			lastChanceStarMeterWidth = -1;
+		}
+
+		var meterScale = HatsuneHudLayout.CT_STAR_METER_SCALE;
+		if (meterScale <= 0) meterScale = 0.075;
+		var meterFrameWidth = getSpriteFrameWidth(chanceStarMeter);
+		var targetWidth = Std.int(meterFrameWidth * meterScale);
+		if (targetWidth < 1) targetWidth = 1;
+		lastChanceStarMeterWidth = updateSpriteWidth(chanceStarMeter, targetWidth, lastChanceStarMeterWidth);
+		var downscroll = HatsuneHudLayout.isDownscroll();
+		chanceStarMeter.flipY = downscroll;
+
+		var anchorX = HatsuneHudLayout.CT_STAR_METER_X;
+		var anchorY = FlxG.height - chanceStarMeter.height - HatsuneHudLayout.CT_STAR_METER_MARGIN_Y;
+		if (chanceBottomHudArt != null) {
+			anchorX = chanceBottomHudArt.x + HatsuneHudLayout.CT_STAR_METER_X;
+			anchorY = chanceBottomHudArt.y + chanceBottomHudArt.height - chanceStarMeter.height - HatsuneHudLayout.CT_STAR_METER_MARGIN_Y;
+		}
+
+		var targetMeterX = Std.int(anchorX + (HatsuneHudLayout.CT_STAR_METER_OFFSET_X * uiScale));
+		var targetMeterY = Std.int(anchorY + (HatsuneHudLayout.CT_STAR_METER_OFFSET_Y * uiScale));
+		if (lastChanceStarMeterX != targetMeterX) {
+			chanceStarMeter.x = targetMeterX;
+			lastChanceStarMeterX = targetMeterX;
+		}
+		if (lastChanceStarMeterY != targetMeterY) {
+			chanceStarMeter.y = targetMeterY;
+			lastChanceStarMeterY = targetMeterY;
+		}
+		lastChanceStarMeterUiScale = uiScale;
+
+		if (chanceStarMeterStroke != null) {
+			var strokeFrameWidth = getSpriteFrameWidth(chanceStarMeterStroke);
+			var strokeTargetWidth = Std.int(strokeFrameWidth * meterScale);
+			if (strokeTargetWidth < 1) strokeTargetWidth = 1;
+			lastChanceStarMeterStrokeWidth = updateSpriteWidth(chanceStarMeterStroke, strokeTargetWidth, lastChanceStarMeterStrokeWidth);
+			chanceStarMeterStroke.flipY = downscroll;
+			if (chanceStarMeterStroke.x != chanceStarMeter.x) chanceStarMeterStroke.x = chanceStarMeter.x;
+			if (chanceStarMeterStroke.y != chanceStarMeter.y) chanceStarMeterStroke.y = chanceStarMeter.y;
+		}
+	}
+
+	function layoutLifeLabel(barX:Float, yPos:Float, uiScale:Float) {
+		if (lifeLabel == null) return;
+
+		var showLabel = HatsuneHudLayout.LIFE_LABEL_SHOW;
+		if (lifeLabel.visible != showLabel) lifeLabel.visible = showLabel;
+		if (!showLabel) return;
+
+		var labelSize = HatsuneHudLayout.LIFE_LABEL_SIZE;
+		var labelScale = HatsuneHudLayout.LIFE_LABEL_SCALE;
+		var labelGap = HatsuneHudLayout.LIFE_LABEL_GAP;
+		var labelOffsetX = HatsuneHudLayout.LIFE_LABEL_OFFSET_X;
+		var labelOffsetY = HatsuneHudLayout.LIFE_LABEL_OFFSET_Y;
+		var labelBorderSize = HatsuneHudLayout.LIFE_LABEL_BORDER_SIZE;
+		if (labelSize <= 0) labelSize = 18;
+		if (labelScale <= 0) labelScale = 1.0;
+		if (labelGap < 0) labelGap = 0;
+		if (labelBorderSize < 0) labelBorderSize = 0;
+
+		var lifeLabelMetricsDirty = false;
+		if (lastLifeLabelSize != labelSize) {
+			lifeLabel.size = labelSize;
+			lastLifeLabelSize = labelSize;
+			lifeLabelMetricsDirty = true;
+		}
+		if (lastLifeLabelBorderSize != labelBorderSize) {
+			lifeLabel.borderSize = labelBorderSize;
+			lastLifeLabelBorderSize = labelBorderSize;
+			lifeLabelMetricsDirty = true;
+		}
+		if (lastLifeLabelScale != labelScale) {
+			lifeLabel.scale.set(labelScale, labelScale);
+			lastLifeLabelScale = labelScale;
+			lifeLabelMetricsDirty = true;
+		}
+		if (lifeLabel.text != "LIFE") {
+			lifeLabel.text = "LIFE";
+			lifeLabelMetricsDirty = true;
+		}
+		if (lifeLabelMetricsDirty) lifeLabel.updateHitbox();
+		var downscroll = HatsuneHudLayout.isDownscroll();
+		var labelDownscrollOffsetX = downscroll ? (HatsuneHudLayout.LIFE_LABEL_DOWNSCROLL_OFFSET_X * uiScale) : 0;
+		var labelDownscrollOffsetY = downscroll ? (HatsuneHudLayout.LIFE_LABEL_DOWNSCROLL_OFFSET_Y * uiScale) : 0;
+
+		lifeLabel.x = Std.int(barX - lifeLabel.width - (labelGap * uiScale) + (labelOffsetX * uiScale) + labelDownscrollOffsetX);
+		lifeLabel.y = Std.int(yPos + ((meterH - lifeLabel.height) * 0.5) + (labelOffsetY * uiScale) + labelDownscrollOffsetY);
+	}
+
+	function layoutLifeHudIcon(uiScale:Float) {
+		if (lifeHudIcon == null) return;
+
+		var showIcon = HatsuneHudLayout.LIFE_ICON_SHOW;
+		if (lifeHudIcon.visible != showIcon) lifeHudIcon.visible = showIcon;
+		if (!showIcon) return;
+
+		var iconScale = HatsuneHudLayout.LIFE_ICON_SCALE;
+		var iconGap = HatsuneHudLayout.LIFE_ICON_GAP;
+		var iconOffsetX = HatsuneHudLayout.LIFE_ICON_OFFSET_X;
+		var iconOffsetY = HatsuneHudLayout.LIFE_ICON_OFFSET_Y;
+		if (iconScale <= 0) iconScale = 1.0;
+		if (iconGap < 0) iconGap = 0;
+
+		var iconFrameWidth = getSpriteFrameWidth(lifeHudIcon);
+		var targetWidth = Std.int(iconFrameWidth * iconScale);
+		lastLifeHudIconWidth = updateSpriteWidth(lifeHudIcon, targetWidth, lastLifeHudIconWidth);
+		var downscroll = HatsuneHudLayout.isDownscroll();
+		var iconDownscrollOffsetX = downscroll ? (HatsuneHudLayout.LIFE_ICON_DOWNSCROLL_OFFSET_X * uiScale) : 0;
+		var iconDownscrollOffsetY = downscroll ? (HatsuneHudLayout.LIFE_ICON_DOWNSCROLL_OFFSET_Y * uiScale) : 0;
+
+		var anchorX = (lifeLabel != null && lifeLabel.visible) ? lifeLabel.x : meterBack.x;
+		var anchorY = (lifeLabel != null && lifeLabel.visible) ? lifeLabel.y + ((lifeLabel.height - lifeHudIcon.height) * 0.5) : meterBack.y + ((meterH - lifeHudIcon.height) * 0.5);
+		lifeHudIcon.x = Std.int(anchorX - lifeHudIcon.width - (iconGap * uiScale) + (iconOffsetX * uiScale) + iconDownscrollOffsetX);
+		lifeHudIcon.y = Std.int(anchorY + (iconOffsetY * uiScale) + iconDownscrollOffsetY);
+	}
+
+	function syncVanillaHealthBar(ps, iconTargetX:Float, iconTargetY:Float) {
+		if (ps == null || ps.healthBar == null || ps.iconP1 == null) return;
+
+		var vanillaPositionOffset = 26;
+		var iconRatio = 1 - (ps.healthBar.value / 2);
+		var derivedBarX = iconTargetX - (ps.healthBar.width * iconRatio - vanillaPositionOffset);
+		var derivedBarY = iconTargetY + (ps.iconP1.height * 0.5);
+
+		if (lastVanillaHealthBarX != derivedBarX) {
+			ps.healthBar.x = derivedBarX;
+			lastVanillaHealthBarX = derivedBarX;
+		}
+		if (lastVanillaHealthBarY != derivedBarY) {
+			ps.healthBar.y = derivedBarY;
+			lastVanillaHealthBarY = derivedBarY;
+		}
+		if (ps.healthBar.visible) ps.healthBar.visible = false;
+
+		if (ps.healthBarBG != null) {
+			var derivedBgX = derivedBarX - borderThickness;
+			var derivedBgY = derivedBarY - borderThickness;
+			if (lastVanillaHealthBarBgX != derivedBgX) {
+				ps.healthBarBG.x = derivedBgX;
+				lastVanillaHealthBarBgX = derivedBgX;
+			}
+			if (lastVanillaHealthBarBgY != derivedBgY) {
+				ps.healthBarBG.y = derivedBgY;
+				lastVanillaHealthBarBgY = derivedBgY;
+			}
+			if (ps.healthBarBG.visible) ps.healthBarBG.visible = false;
+		}
+	}
+
+	function layoutDecorHud(meterX:Float, yPos:Float, uiScale:Float, downscroll:Bool) {
+		var screenW = FlxG.width;
+		var screenH = FlxG.height;
+		var bottomHudBaseY = screenH - HatsuneHudLayout.BOTTOM_HUD_MARGIN_Y + (HatsuneHudLayout.BOTTOM_HUD_OFFSET_Y * uiScale);
+		var healthHudMarginY = HatsuneHudLayout.HEALTH_HUD_MARGIN_Y + (HatsuneHudLayout.HEALTH_HUD_OFFSET_Y * uiScale);
+		var bottomHudDownscrollOffsetX = HatsuneHudLayout.BOTTOM_HUD_DOWNSCROLL_OFFSET_X * uiScale;
+		var bottomHudDownscrollOffsetY = HatsuneHudLayout.BOTTOM_HUD_DOWNSCROLL_OFFSET_Y * uiScale;
+		var healthHudDownscrollOffsetX = HatsuneHudLayout.HEALTH_HUD_DOWNSCROLL_OFFSET_X * uiScale;
+		var healthHudDownscrollOffsetY = HatsuneHudLayout.HEALTH_HUD_DOWNSCROLL_OFFSET_Y * uiScale;
+		var chanceBottomHudDownscrollOffsetX = HatsuneHudLayout.CT_BOTTOM_HUD_DOWNSCROLL_OFFSET_X * uiScale;
+		var chanceBottomHudDownscrollOffsetY = HatsuneHudLayout.CT_BOTTOM_HUD_DOWNSCROLL_OFFSET_Y * uiScale;
+		var chanceLayoutActive = isChanceHudLayoutActive();
+
+		if (healthHudArt != null) {
+			var healthFrameWidth = getSpriteFrameWidth(healthHudArt);
+			var healthScale = HatsuneHudLayout.HEALTH_HUD_SCALE;
+			if (healthScale <= 0) healthScale = 1.0;
+			var targetHealthWidth = Std.int(healthFrameWidth * healthScale);
+			lastHealthHudWidth = updateSpriteWidth(healthHudArt, targetHealthWidth, lastHealthHudWidth);
+			if (healthHudArt.flipY) healthHudArt.flipY = false;
+			var healthHudMarginX = HatsuneHudLayout.HEALTH_HUD_X + (HatsuneHudLayout.HEALTH_HUD_OFFSET_X * uiScale);
+			var healthHudOffsetY = getHealthHudOffsetY();
+			healthHudArt.x = HatsuneHudLayout.HEALTH_HUD_ANCHOR_RIGHT
+				? Std.int(screenW - healthHudArt.width - healthHudMarginX)
+				: Std.int(healthHudMarginX);
+			if (downscroll) {
+				healthHudArt.x += healthHudDownscrollOffsetX;
+				healthHudArt.y = Std.int(healthHudMarginY + healthHudOffsetY + healthHudDownscrollOffsetY);
+			} else {
+				healthHudArt.y = HatsuneHudLayout.HEALTH_HUD_ANCHOR_BOTTOM
+					? Std.int(screenH - healthHudArt.height - healthHudMarginY + healthHudOffsetY)
+					: Std.int(healthHudMarginY + healthHudOffsetY);
+			}
+		}
+
+		if (playerHudArt != null) {
+			var playerFrameWidth = getSpriteFrameWidth(playerHudArt);
+			var bottomScale = HatsuneHudLayout.BOTTOM_HUD_SCALE;
+			if (bottomScale <= 0) bottomScale = 1.0;
+			var targetHudWidth = Std.int(playerFrameWidth * bottomScale);
+			lastPlayerHudWidth = updateSpriteWidth(playerHudArt, targetHudWidth, lastPlayerHudWidth);
+			if (playerHudArt.flipY) playerHudArt.flipY = false;
+			playerHudArt.x = Std.int(HatsuneHudLayout.BOTTOM_HUD_X + (HatsuneHudLayout.BOTTOM_HUD_OFFSET_X * uiScale) + (downscroll ? bottomHudDownscrollOffsetX : 0));
+			playerHudArt.y = downscroll
+				? Std.int(HatsuneHudLayout.BOTTOM_HUD_MARGIN_Y + (HatsuneHudLayout.BOTTOM_HUD_OFFSET_Y * uiScale) + normalBottomOffsetY + bottomHudDownscrollOffsetY)
+				: Std.int(bottomHudBaseY - playerHudArt.height + normalBottomOffsetY);
+		}
+
+		if (chanceBottomHudArt != null && chanceLayoutActive) {
+			var chanceBottomFrameWidth = getSpriteFrameWidth(chanceBottomHudArt);
+			var chanceBottomScale = HatsuneHudLayout.CT_BOTTOM_HUD_SCALE;
+			if (chanceBottomScale <= 0) chanceBottomScale = 1.0;
+			var targetChanceBottomWidth = Std.int(chanceBottomFrameWidth * chanceBottomScale);
+			lastChanceBottomHudWidth = updateSpriteWidth(chanceBottomHudArt, targetChanceBottomWidth, lastChanceBottomHudWidth);
+			if (chanceBottomHudArt.flipY) chanceBottomHudArt.flipY = false;
+			chanceBottomHudArt.x = Std.int(HatsuneHudLayout.CT_BOTTOM_HUD_X + (HatsuneHudLayout.CT_BOTTOM_HUD_OFFSET_X * uiScale) + (downscroll ? chanceBottomHudDownscrollOffsetX : 0));
+			chanceBottomHudArt.y = downscroll
+				? Std.int((HatsuneHudLayout.CT_BOTTOM_HUD_MARGIN_Y * uiScale) + (HatsuneHudLayout.CT_BOTTOM_HUD_OFFSET_Y * uiScale) + chanceBottomOffsetY + chanceBottomHudDownscrollOffsetY)
+				: Std.int(screenH - (HatsuneHudLayout.CT_BOTTOM_HUD_MARGIN_Y * uiScale) - chanceBottomHudArt.height + (HatsuneHudLayout.CT_BOTTOM_HUD_OFFSET_Y * uiScale) + chanceBottomOffsetY);
+			layoutChanceHudExtRow(
+				chanceBottomHudArt,
+				chanceBottomHudLeftExt,
+				chanceBottomHudRightExt,
+				HatsuneHudLayout.CT_BOTTOM_HUD_EX_FRAME,
+				chanceBottomScale,
+				HatsuneHudLayout.CT_BOTTOM_HUD_EX_OFFSET_Y * uiScale,
+				downscroll,
+				PlayState.instance != null ? PlayState.instance.camHUD : null,
+				true,
+				HatsuneHudLayout.CT_BOTTOM_HUD_EX_OVERLAP * uiScale
+			);
+		} else {
+			layoutChanceHudExtRow(null, chanceBottomHudLeftExt, chanceBottomHudRightExt, HatsuneHudLayout.CT_BOTTOM_HUD_EX_FRAME, 1.0, 0, downscroll, PlayState.instance != null ? PlayState.instance.camHUD : null, true, 0);
+		}
+
+		if (playerHudArt != null && healthHudArt != null) {
+			hpBox.x = playerHudArt.x;
+			hpBox.y = playerHudArt.y;
+			if (hpBox.visible) hpBox.visible = false;
+		}
+
+		if (lastDecorDownscroll != downscroll) {
+			refreshDecorFrames(false);
+			if (scoreHudArt != null && scoreHudArt.flipY) scoreHudArt.flipY = false;
+			if (songHudIcon != null && songHudIcon.flipY) songHudIcon.flipY = false;
+			if (chanceTopHudArt != null && chanceTopHudArt.flipY) chanceTopHudArt.flipY = false;
+			if (chanceSongHudIcon != null && chanceSongHudIcon.flipY) chanceSongHudIcon.flipY = false;
+			lastDecorDownscroll = downscroll;
+		}
+	}
+
+	function updateProtectedText(yPos:Float) {
+		if (protectedText == null) return;
+
+		var drainActive:Bool = MHE_SharedState.drainActive;
+		if (lastDrainActive != drainActive) {
+			protectedText.visible = drainActive;
+			lastDrainActive = drainActive;
+		}
+
+		if (!drainActive) return;
+
+		var uiScale = HatsuneHudLayout.getUiScale();
+		var protectedTextSize = HatsuneHudLayout.PROTECTED_TEXT_SIZE;
+		var protectedTextScale = HatsuneHudLayout.PROTECTED_TEXT_SCALE;
+		var protectedTextBorderSize = HatsuneHudLayout.PROTECTED_TEXT_BORDER_SIZE;
+		if (protectedTextSize <= 0) protectedTextSize = 14;
+		if (protectedTextScale <= 0) protectedTextScale = 1.0;
+		if (protectedTextBorderSize < 0) protectedTextBorderSize = 0;
+
+		var protectedTextMetricsDirty = false;
+		if (lastProtectedTextSize != protectedTextSize) {
+			protectedText.size = protectedTextSize;
+			lastProtectedTextSize = protectedTextSize;
+			protectedTextMetricsDirty = true;
+		}
+		if (lastProtectedTextBorderSize != protectedTextBorderSize) {
+			protectedText.borderSize = protectedTextBorderSize;
+			lastProtectedTextBorderSize = protectedTextBorderSize;
+			protectedTextMetricsDirty = true;
+		}
+		if (lastProtectedTextScale != protectedTextScale) {
+			protectedText.scale.set(protectedTextScale, protectedTextScale);
+			lastProtectedTextScale = protectedTextScale;
+			protectedTextMetricsDirty = true;
+		}
+
+		protectedText.width = meterW;
+		if (protectedText.text != "PROTECTED") {
+			protectedText.text = "PROTECTED";
+			protectedTextMetricsDirty = true;
+		}
+		if (protectedTextMetricsDirty) protectedText.updateHitbox();
+		var downscroll = HatsuneHudLayout.isDownscroll();
+		var protectedDownscrollOffsetX = downscroll ? (HatsuneHudLayout.PROTECTED_TEXT_DOWNSCROLL_OFFSET_X * uiScale) : 0;
+		var protectedDownscrollOffsetY = downscroll ? (HatsuneHudLayout.PROTECTED_TEXT_DOWNSCROLL_OFFSET_Y * uiScale) : 0;
+		protectedText.x = ((healthHudArt != null) ? healthHudArt.x : baseX + barOffsetX) + (HatsuneHudLayout.PROTECTED_TEXT_X_NUDGE * uiScale) + protectedDownscrollOffsetX;
+		protectedText.width = (healthHudArt != null) ? healthHudArt.width : meterW;
+		protectedText.y = yPos + ((meterH - protectedText.height) * 0.5) + (HatsuneHudLayout.PROTECTED_TEXT_Y_NUDGE * uiScale) + protectedDownscrollOffsetY;
+	}
+
+	function layoutIcon(ps, yPos:Float) {
+		if (ps.iconP1 == null) return;
+
+		var icon = ps.iconP1;
+		var uiScale = HatsuneHudLayout.getUiScale();
+		var downscroll = HatsuneHudLayout.isDownscroll();
+		var iconDownscrollOffsetX = downscroll ? (HatsuneHudLayout.ICON_DOWNSCROLL_OFFSET_X * uiScale) : 0;
+		var iconDownscrollOffsetY = downscroll ? (HatsuneHudLayout.ICON_DOWNSCROLL_OFFSET_Y * uiScale) : 0;
+		var targetIconX = 0.0;
+		var targetIconY = 0.0;
+		var useBarAnchor = (meterBack != null);
+		var anchorWidth = (iconBaseWidth > 0) ? iconBaseWidth : icon.width;
+		var anchorHeight = (iconBaseHeight > 0) ? iconBaseHeight : icon.height;
+
+		if (useBarAnchor) {
+			var baselineIconX = 15.0;
+			var baselineIconMarginY = 630.0;
+			var marginNudgeX = (iconScreenX - baselineIconX) * uiScale;
+			var marginNudgeY = (iconMarginY - baselineIconMarginY) * uiScale;
+			var barAnchorX = meterBack.x - (anchorWidth * 0.82);
+			var barAnchorY = yPos + ((meterH - anchorHeight) * 0.5) - (anchorHeight * 0.18);
+			targetIconX = barAnchorX + marginNudgeX + (iconOffsetX * uiScale) + iconDownscrollOffsetX + ((anchorWidth - icon.width) * 0.5);
+			targetIconY = barAnchorY + marginNudgeY + (iconOffsetY * uiScale) + HatsuneHudLayout.ICON_FINAL_Y_SHIFT + iconDownscrollOffsetY
+				+ ((anchorHeight - icon.height) * 0.5);
+		} else {
+			var iconMarginX = iconScreenX + (iconOffsetX * uiScale);
+			var anchorLeft = iconAnchorRight ? (FlxG.width - anchorWidth - iconMarginX) : iconMarginX;
+			targetIconX = anchorLeft + ((anchorWidth - icon.width) * 0.5);
+
+			var iconMarginBottom = iconMarginY + (iconOffsetY * uiScale);
+			var anchorTop = iconAnchorBottom ? (FlxG.height - anchorHeight - iconMarginBottom) : iconMarginBottom;
+			targetIconY = anchorTop + ((anchorHeight - icon.height) * 0.5);
+			targetIconY += downscroll ? normalBottomOffsetY : normalTopOffsetY;
+			targetIconX += iconDownscrollOffsetX;
+			targetIconY += HatsuneHudLayout.ICON_FINAL_Y_SHIFT + iconDownscrollOffsetY;
+		}
+
+		if (lastPlayerIconX != targetIconX) {
+			icon.x = targetIconX;
+			lastPlayerIconX = targetIconX;
+		}
+		if (lastPlayerIconY != targetIconY) {
+			icon.y = targetIconY;
+			lastPlayerIconY = targetIconY;
+		}
+		syncVanillaHealthBar(ps, targetIconX, targetIconY);
+		if (icon.zIndex != HatsuneHudLayout.PLAYER_ICON_Z) icon.zIndex = HatsuneHudLayout.PLAYER_ICON_Z;
+		if (icon.cameras == null || icon.cameras.length != 1 || icon.cameras[0] != ps.camHUD) icon.cameras = [ps.camHUD];
+	}
+
+	function applyScoreLayout(txt:FlxBitmapText, force:Bool) {
+		if (txt == null) return;
+		if (!txt.visible) return;
+
+		if (txt.scale.x != scoreScaleMultiplier || txt.scale.y != scoreScaleMultiplier) {
+			txt.scale.x = scoreScaleMultiplier;
+			txt.scale.y = scoreScaleMultiplier;
+			force = true;
+		}
+
+		var screenW = FlxG.width;
+		var screenH = FlxG.height;
+		var down = HatsuneHudLayout.isDownscroll();
+		var textW = txt.width;
+		var textH = txt.height;
+
+		if (force || screenW != lastScoreScreenW || textW != lastScoreWidth) {
+			if (scoreAnchorHorizontal == "LEFT") {
+				txt.x = scoreMarginLeft;
+				if (txt.alignment != "left") txt.alignment = "left";
+			} else {
+				var newX = screenW - textW - scoreMarginRight;
+				if (newX < scoreMarginLeft) newX = scoreMarginLeft;
+				txt.x = newX;
+				if (txt.alignment != "right") txt.alignment = "right";
+			}
+		}
+
+		if (force || down != lastDownscroll || screenH != lastScoreScreenH || textH != lastScoreHeight) {
+			txt.y = down ? (screenH - textH - scoreMarginBottom) : scoreMarginTop;
+		}
+
+		lastScoreScreenW = screenW;
+		lastScoreScreenH = screenH;
+		lastScoreWidth = textW;
+		lastScoreHeight = textH;
+		lastDownscroll = down;
+	}
+
+	function layoutScoreHud(txt:FlxBitmapText) {
+		if (txt == null) return;
+
+		var uiScale = HatsuneHudLayout.getUiScale();
+		var downscroll = HatsuneHudLayout.isDownscroll();
+		var chanceActive = isChanceHudActive();
+		var chanceHudTweening = isChanceHudTweening();
+		var chanceLayoutActive = chanceActive || chanceHudTweening;
+		var topHudDownscrollOffsetX = HatsuneHudLayout.TOP_HUD_DOWNSCROLL_OFFSET_X * uiScale;
+		var topHudDownscrollOffsetY = HatsuneHudLayout.TOP_HUD_DOWNSCROLL_OFFSET_Y * uiScale;
+		var chanceScoreHudDownscrollOffsetX = HatsuneHudLayout.CT_SCORE_HUD_DOWNSCROLL_OFFSET_X * uiScale;
+		var chanceScoreHudDownscrollOffsetY = HatsuneHudLayout.CT_SCORE_HUD_DOWNSCROLL_OFFSET_Y * uiScale;
+		var chanceTopHudDownscrollOffsetX = HatsuneHudLayout.CT_TOP_HUD_DOWNSCROLL_OFFSET_X * uiScale;
+		var chanceTopHudDownscrollOffsetY = HatsuneHudLayout.CT_TOP_HUD_DOWNSCROLL_OFFSET_Y * uiScale;
+		var topHudLayoutDirty = chanceHudTweening
+			|| lastTopHudLayoutUiScale != uiScale
+			|| lastTopHudLayoutDownscroll != downscroll
+			|| lastTopHudLayoutChanceActive != chanceActive
+			|| lastTopHudLayoutScreenW != FlxG.width
+			|| lastTopHudLayoutScreenH != FlxG.height
+			|| lastTopHudLayoutNormalTopOffsetY != normalTopOffsetY
+			|| lastTopHudLayoutChanceTopOffsetY != chanceTopOffsetY;
+
+		if (topHudLayoutDirty && scoreHudArt != null) {
+			var scoreFrameWidth = getSpriteFrameWidth(scoreHudArt);
+			var scoreScale = HatsuneHudLayout.TOP_HUD_SCALE;
+			if (scoreScale <= 0) scoreScale = 1.0;
+			var targetWidth = Std.int(scoreFrameWidth * scoreScale);
+			lastScoreHudWidth = updateSpriteWidth(scoreHudArt, targetWidth, lastScoreHudWidth);
+
+			var scoreHudMarginX = HatsuneHudLayout.TOP_HUD_X + (HatsuneHudLayout.TOP_HUD_OFFSET_X * uiScale);
+			scoreHudArt.x = HatsuneHudLayout.TOP_HUD_ANCHOR_RIGHT
+				? Std.int(FlxG.width - scoreHudArt.width - scoreHudMarginX)
+				: Std.int(scoreHudMarginX);
+			if (downscroll) scoreHudArt.x += topHudDownscrollOffsetX;
+			scoreHudArt.y = downscroll
+				? Std.int(FlxG.height - scoreHudArt.height - (HatsuneHudLayout.TOP_HUD_MARGIN_Y * uiScale) + (HatsuneHudLayout.TOP_HUD_OFFSET_Y * uiScale) + normalTopOffsetY + topHudDownscrollOffsetY)
+				: Std.int(HatsuneHudLayout.TOP_HUD_MARGIN_Y + (HatsuneHudLayout.TOP_HUD_OFFSET_Y * uiScale) + normalTopOffsetY);
+		}
+
+		if (topHudLayoutDirty && chanceScoreHudArt != null && chanceLayoutActive) {
+			var chanceScoreFrameWidth = getSpriteFrameWidth(chanceScoreHudArt);
+			var chanceScoreScale = HatsuneHudLayout.CT_SCORE_HUD_SCALE;
+			if (chanceScoreScale <= 0) chanceScoreScale = 1.0;
+			var targetChanceScoreWidth = Std.int(chanceScoreFrameWidth * chanceScoreScale);
+			lastChanceScoreHudWidth = updateSpriteWidth(chanceScoreHudArt, targetChanceScoreWidth, lastChanceScoreHudWidth);
+			var chanceScoreMarginX = HatsuneHudLayout.CT_SCORE_HUD_X + (HatsuneHudLayout.CT_SCORE_HUD_OFFSET_X * uiScale);
+			chanceScoreHudArt.x = HatsuneHudLayout.CT_SCORE_HUD_ANCHOR_RIGHT
+				? Std.int(FlxG.width - chanceScoreHudArt.width - chanceScoreMarginX)
+				: Std.int(chanceScoreMarginX);
+			if (downscroll) chanceScoreHudArt.x += chanceScoreHudDownscrollOffsetX;
+			chanceScoreHudArt.y = downscroll
+				? Std.int(FlxG.height - chanceScoreHudArt.height - (HatsuneHudLayout.CT_SCORE_HUD_MARGIN_Y * uiScale) + (HatsuneHudLayout.CT_SCORE_HUD_OFFSET_Y * uiScale) + chanceTopOffsetY + chanceScoreHudDownscrollOffsetY)
+				: Std.int((HatsuneHudLayout.CT_SCORE_HUD_MARGIN_Y * uiScale) + (HatsuneHudLayout.CT_SCORE_HUD_OFFSET_Y * uiScale) + chanceTopOffsetY);
+		}
+
+		if (topHudLayoutDirty && chanceTopHudArt != null && chanceLayoutActive) {
+			var chanceTopFrameWidth = getSpriteFrameWidth(chanceTopHudArt);
+			var chanceTopScale = HatsuneHudLayout.CT_TOP_HUD_SCALE;
+			if (chanceTopScale <= 0) chanceTopScale = 1.0;
+			var targetChanceTopWidth = Std.int(chanceTopFrameWidth * chanceTopScale);
+			lastChanceTopHudWidth = updateSpriteWidth(chanceTopHudArt, targetChanceTopWidth, lastChanceTopHudWidth);
+			chanceTopHudArt.x = Std.int(HatsuneHudLayout.CT_TOP_HUD_X + (HatsuneHudLayout.CT_TOP_HUD_OFFSET_X * uiScale) + (downscroll ? chanceTopHudDownscrollOffsetX : 0));
+			chanceTopHudArt.y = downscroll
+				? Std.int(FlxG.height - chanceTopHudArt.height - (HatsuneHudLayout.CT_TOP_HUD_MARGIN_Y * uiScale) + (HatsuneHudLayout.CT_TOP_HUD_OFFSET_Y * uiScale) + chanceTopOffsetY + chanceTopHudDownscrollOffsetY)
+				: Std.int((HatsuneHudLayout.CT_TOP_HUD_MARGIN_Y * uiScale) + (HatsuneHudLayout.CT_TOP_HUD_OFFSET_Y * uiScale) + chanceTopOffsetY);
+			layoutChanceHudExtRow(
+				chanceTopHudArt,
+				chanceTopHudLeftExt,
+				chanceTopHudRightExt,
+				HatsuneHudLayout.CT_TOP_HUD_EX_FRAME,
+				chanceTopScale,
+				HatsuneHudLayout.CT_TOP_HUD_EX_OFFSET_Y * uiScale,
+				downscroll,
+				PlayState.instance != null ? PlayState.instance.camHUD : null,
+				false,
+				HatsuneHudLayout.CT_TOP_HUD_EX_OVERLAP * uiScale
+			);
+		} else if (topHudLayoutDirty) {
+			layoutChanceHudExtRow(null, chanceTopHudLeftExt, chanceTopHudRightExt, HatsuneHudLayout.CT_TOP_HUD_EX_FRAME, 1.0, 0, downscroll, PlayState.instance != null ? PlayState.instance.camHUD : null, false, 0);
+		}
+
+		if (topHudLayoutDirty) {
+			layoutSongIcon(downscroll, uiScale);
+			lastTopHudLayoutUiScale = uiScale;
+			lastTopHudLayoutDownscroll = downscroll;
+			lastTopHudLayoutChanceActive = chanceActive;
+			lastTopHudLayoutScreenW = FlxG.width;
+			lastTopHudLayoutScreenH = FlxG.height;
+			lastTopHudLayoutNormalTopOffsetY = normalTopOffsetY;
+			lastTopHudLayoutChanceTopOffsetY = chanceTopOffsetY;
+		}
+
+		var activeScoreHudArt = getActiveScoreHudArt();
+		if (activeScoreHudArt == null) return;
+
+		if (topHudLayoutDirty) {
+			var rightInset = Std.int(HatsuneHudLayout.SCORE_HUD_RIGHT_INSET * uiScale);
+			txt.x = Std.int((activeScoreHudArt.x + activeScoreHudArt.width) - txt.width - rightInset);
+			txt.y = Std.int(activeScoreHudArt.y + (activeScoreHudArt.height - txt.height) * 0.5 - (HatsuneHudLayout.SCORE_HUD_Y_OFFSET * uiScale));
+		}
+	}
+
+	function syncVanillaScoreText(txt:FlxBitmapText) {
+		if (txt == null) return;
+		if (txt.visible) txt.visible = false;
+	}
+
+	function formatScoreDigits(scoreValue:Int, digitCount:Int):String {
+		if (digitCount <= 0) digitCount = 7;
+
+		var isNegative = (scoreValue < 0);
+		var absValue = isNegative ? -scoreValue : scoreValue;
+		if (absValue < 0) absValue = 0;
+
+		var formatted = Std.string(absValue);
+		var digitsOnlyCount = isNegative ? (digitCount - 1) : digitCount;
+		if (digitsOnlyCount < 1) digitsOnlyCount = 1;
+		while (formatted.length < digitsOnlyCount) formatted = "0" + formatted;
+		if (formatted.length > digitsOnlyCount) formatted = formatted.substr(formatted.length - digitsOnlyCount, digitsOnlyCount);
+		if (isNegative) formatted = "-" + formatted;
+		return formatted;
+	}
+
+	function updateScoreDigits(ps, uiScale:Float) {
+		var activeScoreHudArt = getActiveScoreHudArt();
+		if (activeScoreHudArt == null || scoreDigits == null || scoreDigits.length <= 0) return;
+		var baseScoreHudScale = HatsuneHudLayout.TOP_HUD_SCALE;
+		if (baseScoreHudScale <= 0) baseScoreHudScale = 1.0;
+		var activeScoreHudScale = getActiveScoreHudScale();
+		var activeScoreHudScaleRatio = activeScoreHudScale / baseScoreHudScale;
+		if (activeScoreHudScaleRatio <= 0) activeScoreHudScaleRatio = 1.0;
+		var drainActive:Bool = MHE_SharedState.drainActive;
+		var desiredAtlasKey = drainActive ? vpScoreDigitsAtlasKey : defaultScoreDigitsAtlasKey;
+		if (desiredAtlasKey == null || desiredAtlasKey == "") desiredAtlasKey = defaultScoreDigitsAtlasKey;
+		var atlasChanged = false;
+		if (scoreDigitsAtlasKey != desiredAtlasKey) {
+			scoreDigitsAtlasKey = desiredAtlasKey;
+			restoreScoreDigitsState(ps);
+			if (scoreDigitsAtlasKey == vpScoreDigitsAtlasKey && !vpScoreDigitAnimationsReady) ensureAllScoreDigitAnimations();
+			lastScoreDigitsValue = null;
+			lastScoreDigitsHeight = -1;
+			lastScoreDigitsUiScale = Math.NaN;
+			lastScoreDigitsScaleRatio = Math.NaN;
+			lastScoreDigitsPanelX = Math.NaN;
+			lastScoreDigitsPanelY = Math.NaN;
+			lastScoreDigitsPanelW = Math.NaN;
+			lastScoreDigitsPanelH = Math.NaN;
+			lastScoreDigitChars = [];
+			lastScoreDigitSymbolHeights = [];
+			scoreDigitsAnimAccumulator = 0;
+			scoreDigitsVisualDirty = true;
+			atlasChanged = true;
+		}
+		if (scoreDigitsAtlasKey == vpScoreDigitsAtlasKey && !vpScoreDigitAnimationsReady) ensureAllScoreDigitAnimations();
+		if (scoreDigitsAtlasFrames == null) reloadScoreDigitsAtlas();
+		if (scoreDigitsAtlasFrames == null) return;
+
+		var digitCount = scoreDigits.length;
+		var sourceScoreValue = (ps != null) ? ps.songScore : 0;
+		if (sourceScoreValue != lastScoreDigitsSourceValue) scoreDigitsVisualDirty = true;
+		var scoreValue = sourceScoreValue;
+		var scoreAnimStep = 1.0 / 24.0;
+		var panelX = activeScoreHudArt.x;
+		var panelY = activeScoreHudArt.y;
+		var panelW = activeScoreHudArt.width;
+		var panelH = activeScoreHudArt.height;
+		var targetHeight = Std.int(HatsuneHudLayout.SCORE_DIGITS_HEIGHT * uiScale * activeScoreHudScaleRatio);
+		var digitGap = HatsuneHudLayout.SCORE_DIGITS_GAP * uiScale * activeScoreHudScaleRatio;
+		var rightInset = HatsuneHudLayout.SCORE_DIGITS_RIGHT_INSET * uiScale * activeScoreHudScaleRatio;
+		var offsetX = HatsuneHudLayout.SCORE_DIGITS_OFFSET_X * uiScale * activeScoreHudScaleRatio;
+		var offsetY = HatsuneHudLayout.SCORE_DIGITS_OFFSET_Y * uiScale * activeScoreHudScaleRatio;
+		var vpHeightMultiplier = HatsuneHudLayout.SCORE_DIGITS_VP_HEIGHT_MULTIPLIER;
+		var minusHeightMultiplier = HatsuneHudLayout.SCORE_MINUS_HEIGHT_MULTIPLIER;
+		if (targetHeight <= 0) targetHeight = Std.int(28 * uiScale);
+		if (digitGap < 0) digitGap = 0;
+		if (vpHeightMultiplier <= 0) vpHeightMultiplier = 1.0;
+		if (minusHeightMultiplier <= 0) minusHeightMultiplier = 0.3;
+		if (scoreDigitMaxFrameWidth <= 0 || scoreDigitMaxFrameHeight <= 0) reloadScoreDigitsAtlas();
+		if (scoreDigitMaxFrameWidth <= 0 || scoreDigitMaxFrameHeight <= 0) return;
+		ensureScoreDigitsLayoutReference();
+
+		var slotSourceWidth = (scoreDigitsLayoutReferenceWidth > 0) ? scoreDigitsLayoutReferenceWidth : scoreDigitMaxFrameWidth;
+		var slotSourceHeight = (scoreDigitsLayoutReferenceHeight > 0) ? scoreDigitsLayoutReferenceHeight : scoreDigitMaxFrameHeight;
+		var slotWidth = (slotSourceHeight > 0) ? ((slotSourceWidth * targetHeight) / slotSourceHeight) : 0.0;
+		if (slotWidth <= 0) slotWidth = targetHeight;
+		var layoutChanged = atlasChanged || targetHeight != lastScoreDigitsHeight || uiScale != lastScoreDigitsUiScale || activeScoreHudScaleRatio != lastScoreDigitsScaleRatio
+			|| panelX != lastScoreDigitsPanelX || panelY != lastScoreDigitsPanelY || panelW != lastScoreDigitsPanelW || panelH != lastScoreDigitsPanelH;
+
+		scoreDigitsAnimAccumulator += FlxG.elapsed;
+		var shouldRefreshVisuals = layoutChanged || lastScoreDigitsValue == null || (scoreDigitsVisualDirty && scoreDigitsAnimAccumulator >= scoreAnimStep);
+		if (!shouldRefreshVisuals) return;
+
+		scoreDigitsAnimAccumulator = 0;
+		var scoreTextValue = formatScoreDigits(scoreValue, digitCount);
+		if (!layoutChanged && scoreTextValue == lastScoreDigitsValue) return;
+		var totalWidth = (digitCount * slotWidth) + ((digitCount - 1) * digitGap);
+		var badgeReservedWidth = 0.0;
+		if (HatsuneHudLayout.SCORE_DIGITS_RESERVE_BADGE_SPACE && scoreRankBadge != null && scoreRankBadge.visible) {
+			var badgeGap = HatsuneHudLayout.SCORE_RANK_BADGE_GAP * uiScale;
+			if (badgeGap < 0) badgeGap = 0;
+			badgeReservedWidth = scoreRankBadge.width + badgeGap;
+		}
+		var startX = (activeScoreHudArt.x + activeScoreHudArt.width) - rightInset - badgeReservedWidth - totalWidth + offsetX;
+
+		var rebuiltMissingDigit = false;
+		for (i in 0...digitCount) {
+			var digitSprite = scoreDigits[i];
+			if (digitSprite == null) continue;
+
+			var digitChar = scoreTextValue.substr(i, 1);
+			var previousDigitChar = (lastScoreDigitChars != null && lastScoreDigitChars.length > i) ? lastScoreDigitChars[i] : null;
+			var frameName = (digitChar == "-") ? "MINUS" : ("digital " + digitChar);
+			var symbolTargetHeight = (digitChar == "-") ? Std.int(targetHeight * minusHeightMultiplier) : targetHeight;
+			if (digitChar != "-" && isVpScoreDigitsAtlas()) symbolTargetHeight = Std.int(symbolTargetHeight * vpHeightMultiplier);
+			if (symbolTargetHeight <= 0) symbolTargetHeight = 1;
+			var previousSymbolTargetHeight = (lastScoreDigitSymbolHeights != null && lastScoreDigitSymbolHeights.length > i) ? lastScoreDigitSymbolHeights[i] : -1;
+			var digitFrameChanged = atlasChanged || previousDigitChar != digitChar;
+			if (digitFrameChanged && !applyScoreDigitFrame(digitSprite, frameName, false)) {
+				if (!rebuiltMissingDigit && ps != null) {
+					rebuiltMissingDigit = true;
+					rebuildScoreDigitSprites(ps);
+					if (scoreDigits != null && scoreDigits.length > i) digitSprite = scoreDigits[i];
+				}
+				if (digitSprite == null) continue;
+				if (!applyScoreDigitFrame(digitSprite, frameName, true)) {
+					digitSprite.visible = false;
+					continue;
+				}
+				digitFrameChanged = true;
+			}
+			if (digitChar != "-" && isVpScoreDigitsAtlas() && previousDigitChar != digitChar && digitSprite.animation != null && digitSprite.animation.getByName(frameName) != null) {
+				digitSprite.animation.play(frameName, true, false, 0);
+			}
+
+			if (digitFrameChanged || previousSymbolTargetHeight != symbolTargetHeight) {
+				digitSprite.setGraphicSize(0, symbolTargetHeight);
+				digitSprite.updateHitbox();
+			}
+			digitSprite.visible = true;
+			var slotX = startX + (i * (slotWidth + digitGap));
+			digitSprite.x = Std.int(slotX + ((slotWidth - digitSprite.width) * 0.5));
+			digitSprite.y = Std.int(activeScoreHudArt.y + ((activeScoreHudArt.height - digitSprite.height) * 0.5) + offsetY);
+			lastScoreDigitChars[i] = digitChar;
+			lastScoreDigitSymbolHeights[i] = symbolTargetHeight;
+		}
+
+		lastScoreDigitsValue = scoreTextValue;
+		lastScoreDigitsSourceValue = sourceScoreValue;
+		scoreDigitsVisualDirty = false;
+		lastScoreDigitsHeight = targetHeight;
+		lastScoreDigitsUiScale = uiScale;
+		lastScoreDigitsScaleRatio = activeScoreHudScaleRatio;
+		lastScoreDigitsPanelX = panelX;
+		lastScoreDigitsPanelY = panelY;
+		lastScoreDigitsPanelW = panelW;
+		lastScoreDigitsPanelH = panelH;
+	}
+
+	function didScoreRankStateChange(ps):Bool {
+		if (ps == null) return !hasScoreRankSnapshot;
+
+		if (!hasScoreRankSnapshot) return true;
+		if (lastScoreRankTallySick != Highscore.tallies.sick) return true;
+		if (lastScoreRankTallyGood != Highscore.tallies.good) return true;
+		if (lastScoreRankTallyBad != Highscore.tallies.bad) return true;
+		if (lastScoreRankTallyShit != Highscore.tallies.shit) return true;
+		if (lastScoreRankTallyMissed != Highscore.tallies.missed) return true;
+		return false;
+	}
+
+	function cacheScoreRankState(ps) {
+		if (ps == null) {
+			hasScoreRankSnapshot = false;
+			return;
+		}
+
+		lastScoreRankTallySick = Highscore.tallies.sick;
+		lastScoreRankTallyGood = Highscore.tallies.good;
+		lastScoreRankTallyBad = Highscore.tallies.bad;
+		lastScoreRankTallyShit = Highscore.tallies.shit;
+		lastScoreRankTallyMissed = Highscore.tallies.missed;
+		hasScoreRankSnapshot = true;
+	}
+
+	function updateScoreRankBadge(ps, uiScale:Float) {
+		var activeScoreHudArt = getActiveScoreHudArt();
+		var rankUpdateStep = 1.0 / 30.0;
+		if (scoreRankBadge == null || activeScoreHudArt == null) return;
+		if (isChanceHudActive()) {
+			scoreRankBadge.visible = false;
+			stopScoreRankSparkle();
+			lastScoreRankBadgeAnim = null;
+			lastScoreRankBadgePanelX = Math.NaN;
+			lastScoreRankBadgePanelY = Math.NaN;
+			lastScoreRankBadgePanelW = Math.NaN;
+			lastScoreRankBadgePanelH = Math.NaN;
+			hasScoreRankSnapshot = false;
+			scoreRankUpdateAccumulator = 0;
+			scoreRankVisualDirty = false;
+			return;
+		}
+
+		var showBadge = HatsuneHudLayout.SCORE_RANK_BADGE_SHOW;
+		scoreRankBadge.visible = showBadge;
+		if (!showBadge || ps == null) {
+			lastScoreRankBadgeAnim = null;
+			lastScoreRankBadgePanelX = Math.NaN;
+			lastScoreRankBadgePanelY = Math.NaN;
+			lastScoreRankBadgePanelW = Math.NaN;
+			lastScoreRankBadgePanelH = Math.NaN;
+			hasScoreRankSnapshot = false;
+			scoreRankUpdateAccumulator = 0;
+			scoreRankVisualDirty = false;
+			return;
+		}
+
+		var scoreRankStateChanged = didScoreRankStateChange(ps);
+		if (scoreRankStateChanged) {
+			cacheScoreRankState(ps);
+			scoreRankVisualDirty = true;
+		}
+		scoreRankUpdateAccumulator += FlxG.elapsed;
+		var rankAnim = lastScoreRankBadgeAnim;
+		if ((scoreRankVisualDirty && (scoreRankUpdateAccumulator >= rankUpdateStep || rankAnim == null || rankAnim == "")) || rankAnim == null || rankAnim == "") {
+			var currentRank = getCurrentScoreRank(ps);
+			rankAnim = getScoreRankBadgeAnim(currentRank);
+			scoreRankUpdateAccumulator = 0;
+			scoreRankVisualDirty = false;
+		}
+		if (rankAnim == null || rankAnim == "") {
+			scoreRankBadge.visible = false;
+			stopScoreRankSparkle();
+			lastScoreRankBadgeAnim = null;
+			lastScoreRankBadgePanelX = Math.NaN;
+			lastScoreRankBadgePanelY = Math.NaN;
+			lastScoreRankBadgePanelW = Math.NaN;
+			lastScoreRankBadgePanelH = Math.NaN;
+			return;
+		}
+
+		if (lastScoreRankBadgeAnim != rankAnim) {
+			if (scoreRankBadge.animation.getByName(rankAnim) != null) {
+				scoreRankBadge.animation.play(rankAnim, true, false, 0);
+			} else {
+				applyScoreRankBadgeFrame(scoreRankBadge, rankAnim);
+			}
+			updateScoreRankSparkleState(rankAnim);
+			lastScoreRankBadgeAnim = rankAnim;
+			lastScoreRankBadgeHeight = -1;
+		}
+
+		var targetHeight = Std.int(HatsuneHudLayout.SCORE_RANK_BADGE_HEIGHT * uiScale);
+		if (targetHeight < 1) targetHeight = 1;
+		var panelChanged = activeScoreHudArt.x != lastScoreRankBadgePanelX || activeScoreHudArt.y != lastScoreRankBadgePanelY || activeScoreHudArt.width != lastScoreRankBadgePanelW
+			|| activeScoreHudArt.height != lastScoreRankBadgePanelH;
+		if (targetHeight != lastScoreRankBadgeHeight) {
+			scoreRankBadge.setGraphicSize(0, targetHeight);
+			scoreRankBadge.updateHitbox();
+			lastScoreRankBadgeHeight = targetHeight;
+			panelChanged = true;
+		}
+		if (!panelChanged && lastScoreRankBadgeAnim == rankAnim && scoreRankBadge.visible) return;
+
+		var rightInset = HatsuneHudLayout.SCORE_RANK_BADGE_RIGHT_INSET * uiScale;
+		var offsetX = (HatsuneHudLayout.SCORE_RANK_BADGE_OFFSET_X + getScoreRankBadgeOffsetX(rankAnim)) * uiScale;
+		var offsetY = (HatsuneHudLayout.SCORE_RANK_BADGE_OFFSET_Y + getScoreRankBadgeOffsetY(rankAnim)) * uiScale;
+		scoreRankBadge.x = Std.int((activeScoreHudArt.x + activeScoreHudArt.width) - scoreRankBadge.width - rightInset + offsetX);
+		scoreRankBadge.y = Std.int(activeScoreHudArt.y + ((activeScoreHudArt.height - scoreRankBadge.height) * 0.5) + offsetY);
+		scoreRankBadge.visible = true;
+		lastScoreRankBadgePanelX = activeScoreHudArt.x;
+		lastScoreRankBadgePanelY = activeScoreHudArt.y;
+		lastScoreRankBadgePanelW = activeScoreHudArt.width;
+		lastScoreRankBadgePanelH = activeScoreHudArt.height;
+		refreshScoreRankSparkleTransform();
+	}
+
+	function getScoreRankBadgeOffsetX(rankAnim:String):Float {
+		if (rankAnim == null) return 0;
+		switch (rankAnim) {
+			case "LOSS":
+				return HatsuneHudLayout.SCORE_RANK_BADGE_LOSS_OFFSET_X;
+			case "GOOD":
+				return HatsuneHudLayout.SCORE_RANK_BADGE_GOOD_OFFSET_X;
+			case "GREAT":
+				return HatsuneHudLayout.SCORE_RANK_BADGE_GREAT_OFFSET_X;
+			case "EXCELLENT":
+				return HatsuneHudLayout.SCORE_RANK_BADGE_EXCELLENT_OFFSET_X;
+			case "PERFECT":
+				return HatsuneHudLayout.SCORE_RANK_BADGE_PERFECT_OFFSET_X;
+			case "PERFECT_GOLD":
+				return HatsuneHudLayout.SCORE_RANK_BADGE_PERFECT_GOLD_OFFSET_X;
+			default:
+				return 0;
+		}
+	}
+
+	function getScoreRankBadgeOffsetY(rankAnim:String):Float {
+		if (rankAnim == null) return 0;
+		switch (rankAnim) {
+			case "LOSS":
+				return HatsuneHudLayout.SCORE_RANK_BADGE_LOSS_OFFSET_Y;
+			case "GOOD":
+				return HatsuneHudLayout.SCORE_RANK_BADGE_GOOD_OFFSET_Y;
+			case "GREAT":
+				return HatsuneHudLayout.SCORE_RANK_BADGE_GREAT_OFFSET_Y;
+			case "EXCELLENT":
+				return HatsuneHudLayout.SCORE_RANK_BADGE_EXCELLENT_OFFSET_Y;
+			case "PERFECT":
+				return HatsuneHudLayout.SCORE_RANK_BADGE_PERFECT_OFFSET_Y;
+			case "PERFECT_GOLD":
+				return HatsuneHudLayout.SCORE_RANK_BADGE_PERFECT_GOLD_OFFSET_Y;
+			default:
+				return 0;
+		}
+	}
+
+	function applyScoreRankBadgeFrame(sprite:FlxSprite, rankAnim:String) {
+		if (sprite == null || rankAnim == null || rankAnim == "") return;
+
+		var resolvedFrameName = scoreRankBadgeResolvedFrameNames.get(rankAnim);
+		if (resolvedFrameName == null || resolvedFrameName == "") return;
+
+		var selectedFrame = scoreRankBadgeFrameCache.get(resolvedFrameName);
+		if (selectedFrame == null) return;
+
+		sprite.frame = selectedFrame;
+		sprite.visible = true;
+		sprite.updateHitbox();
+	}
+
+	function getCurrentScoreRank(ps) {
+		if (ps == null) return null;
+
+		var judgedTotal = Highscore.tallies.sick + Highscore.tallies.good + Highscore.tallies.bad + Highscore.tallies.shit + Highscore.tallies.missed;
+		if (judgedTotal <= 0) return null;
+		var totalNotesHit = Highscore.tallies.sick + Highscore.tallies.good + Highscore.tallies.bad + Highscore.tallies.shit;
+
+		return Scoring.calculateRank({
+			score: ps.songScore,
+			tallies: {
+				sick: Highscore.tallies.sick,
+				good: Highscore.tallies.good,
+				bad: Highscore.tallies.bad,
+				shit: Highscore.tallies.shit,
+				missed: Highscore.tallies.missed,
+				combo: Highscore.tallies.combo,
+				maxCombo: Highscore.tallies.maxCombo,
+				totalNotesHit: totalNotesHit,
+				totalNotes: judgedTotal,
+			}
+		});
+	}
+
+	function getScoreRankBadgeAnim(rank):String {
+		if (rank == null) return null;
+
+		var rankAsset = null;
+		if (rank != null && rank.getFreeplayRankIconAsset != null) {
+			rankAsset = rank.getFreeplayRankIconAsset();
+		}
+		if (rankAsset == null || rankAsset == "") rankAsset = Std.string(rank);
+
+		if (rankAsset == "PERFECTSICK" || rankAsset == "PERFECT_GOLD") return "PERFECT_GOLD";
+		if (rankAsset == "PERFECT") return "PERFECT";
+		if (rankAsset == "EXCELLENT") return "EXCELLENT";
+		if (rankAsset == "GREAT") return "GREAT";
+		if (rankAsset == "GOOD") return "GOOD";
+		if (rankAsset == "LOSS" || rankAsset == "SHIT") return "LOSS";
+		return null;
+	}
+
+	function layoutSongIcon(downscroll:Bool, uiScale:Float) {
+		var chanceLayoutActive = isChanceHudLayoutActive();
+		var songIconDownscrollOffsetX = downscroll ? (HatsuneHudLayout.SONG_ICON_DOWNSCROLL_OFFSET_X * uiScale) : 0;
+		var songIconDownscrollOffsetY = downscroll ? (HatsuneHudLayout.SONG_ICON_DOWNSCROLL_OFFSET_Y * uiScale) : 0;
+		var chanceSongIconDownscrollOffsetX = downscroll ? (HatsuneHudLayout.CT_SONG_ICON_DOWNSCROLL_OFFSET_X * uiScale) : 0;
+		var chanceSongIconDownscrollOffsetY = downscroll ? (HatsuneHudLayout.CT_SONG_ICON_DOWNSCROLL_OFFSET_Y * uiScale) : 0;
+		if (songHudIcon != null) {
+			var songFrameWidth = getSpriteFrameWidth(songHudIcon);
+			var songScale = HatsuneHudLayout.SONG_ICON_SCALE;
+			if (songScale <= 0) songScale = 1.0;
+			var targetSize = Std.int(songFrameWidth * songScale);
+			lastSongIconSize = updateSpriteSquare(songHudIcon, targetSize, lastSongIconSize);
+			songHudIcon.x = Std.int((HatsuneHudLayout.SONG_ICON_X * uiScale) + (HatsuneHudLayout.SONG_ICON_OFFSET_X * uiScale) + songIconDownscrollOffsetX);
+			if (downscroll && scoreHudArt != null) {
+				songHudIcon.y = Std.int(scoreHudArt.y + ((scoreHudArt.height - songHudIcon.height) * 0.5) + (HatsuneHudLayout.SONG_ICON_OFFSET_Y * uiScale) + songIconDownscrollOffsetY);
+			} else {
+				songHudIcon.y = downscroll
+					? Std.int(FlxG.height - songHudIcon.height - (HatsuneHudLayout.SONG_ICON_MARGIN_Y * uiScale) + (HatsuneHudLayout.SONG_ICON_OFFSET_Y * uiScale) + normalTopOffsetY + songIconDownscrollOffsetY)
+					: Std.int((HatsuneHudLayout.SONG_ICON_MARGIN_Y * uiScale) + 4 + (HatsuneHudLayout.SONG_ICON_OFFSET_Y * uiScale) + normalTopOffsetY);
+			}
+		}
+
+		if (chanceSongHudIcon != null && chanceLayoutActive) {
+			var chanceSongFrameWidth = getSpriteFrameWidth(chanceSongHudIcon);
+			var chanceSongScale = HatsuneHudLayout.CT_SONG_ICON_SCALE;
+			if (chanceSongScale <= 0) chanceSongScale = 1.0;
+			var targetChanceSize = Std.int(chanceSongFrameWidth * chanceSongScale);
+			lastChanceSongIconSize = updateSpriteSquare(chanceSongHudIcon, targetChanceSize, lastChanceSongIconSize);
+			chanceSongHudIcon.x = Std.int((HatsuneHudLayout.CT_SONG_ICON_X * uiScale) + (HatsuneHudLayout.CT_SONG_ICON_OFFSET_X * uiScale) + chanceSongIconDownscrollOffsetX);
+			if (downscroll && chanceScoreHudArt != null) {
+				chanceSongHudIcon.y = Std.int(chanceScoreHudArt.y + ((chanceScoreHudArt.height - chanceSongHudIcon.height) * 0.5) + (HatsuneHudLayout.CT_SONG_ICON_OFFSET_Y * uiScale) + chanceSongIconDownscrollOffsetY);
+			} else {
+				chanceSongHudIcon.y = downscroll
+					? Std.int(FlxG.height - chanceSongHudIcon.height - (HatsuneHudLayout.CT_SONG_ICON_MARGIN_Y * uiScale) + (HatsuneHudLayout.CT_SONG_ICON_OFFSET_Y * uiScale) + chanceTopOffsetY + chanceSongIconDownscrollOffsetY)
+					: Std.int((HatsuneHudLayout.CT_SONG_ICON_MARGIN_Y * uiScale) + (HatsuneHudLayout.CT_SONG_ICON_OFFSET_Y * uiScale) + chanceTopOffsetY);
+			}
+		}
+	}
+
+	function updateSongHudLabel(ps, downscroll:Bool, uiScale:Float) {
+		if (songHudLabel == null || ps == null) return;
+
+		var chanceLayoutActive = isChanceHudLayoutActive();
+		var songLabelSourceText = chanceLayoutActive ? getSongHudLabelDisplayName(ps) : getSongHudLabel(ps);
+		if (songLabelSourceText == null || songLabelSourceText == "") songLabelSourceText = "UNKNOWN";
+
+		var labelSize = HatsuneHudLayout.SONG_LABEL_SIZE;
+		var labelScale = HatsuneHudLayout.SONG_LABEL_SCALE;
+		var labelBorderSize = HatsuneHudLayout.SONG_LABEL_BORDER_SIZE;
+		var labelMaxWidth = HatsuneHudLayout.SONG_LABEL_MAX_WIDTH;
+		var labelRightInset = HatsuneHudLayout.SONG_LABEL_RIGHT_INSET;
+		var difficultyGap = HatsuneHudLayout.SONG_LABEL_DIFFICULTY_GAP;
+		var labelScrollEnabled = HatsuneHudLayout.SONG_LABEL_SCROLL_ENABLED;
+		var preferStaticLongLabel = HatsuneHudLayout.SONG_LABEL_SHOW_ID;
+		var labelScrollSpeed = HatsuneHudLayout.SONG_LABEL_SCROLL_SPEED;
+		var labelScrollStartDelay = HatsuneHudLayout.SONG_LABEL_SCROLL_START_DELAY;
+		var labelScrollEndDelay = HatsuneHudLayout.SONG_LABEL_SCROLL_END_DELAY;
+		var labelDownscrollOffsetX = downscroll ? (HatsuneHudLayout.SONG_LABEL_DOWNSCROLL_OFFSET_X * uiScale) : 0;
+		var labelDownscrollOffsetY = downscroll ? (HatsuneHudLayout.SONG_LABEL_DOWNSCROLL_OFFSET_Y * uiScale) : 0;
+		if (chanceLayoutActive) {
+			labelScrollEnabled = false;
+			preferStaticLongLabel = false;
+		}
+		if (labelSize <= 0) labelSize = 18;
+		if (labelScale <= 0) labelScale = 1.0;
+		if (labelBorderSize < 0) labelBorderSize = 0;
+		if (labelMaxWidth <= 0) labelMaxWidth = 300;
+		if (labelRightInset < 0) labelRightInset = 0;
+		if (difficultyGap < 0) difficultyGap = 0;
+		if (labelScrollSpeed < 0) labelScrollSpeed = 0;
+		if (labelScrollStartDelay < 0) labelScrollStartDelay = 0;
+		if (labelScrollEndDelay < 0) labelScrollEndDelay = 0;
+
+		var songHudLabelMetricsDirty = false;
+		if (lastSongLabelSize != labelSize) {
+			songHudLabel.size = labelSize;
+			lastSongLabelSize = labelSize;
+			songHudLabelMetricsDirty = true;
+		}
+		if (lastSongLabelBorderSize != labelBorderSize) {
+			songHudLabel.borderSize = labelBorderSize;
+			lastSongLabelBorderSize = labelBorderSize;
+			songHudLabelMetricsDirty = true;
+		}
+		if (lastSongLabelScale != labelScale) {
+			songHudLabel.scale.set(labelScale, labelScale);
+			lastSongLabelScale = labelScale;
+			songHudLabelMetricsDirty = true;
+		}
+		if (songHudLabel.fieldWidth != 0) songHudLabel.fieldWidth = 0;
+		if (songHudLabelMeasure != null) {
+			if (songHudLabelMeasure.size != labelSize) songHudLabelMeasure.size = labelSize;
+			if (songHudLabelMeasure.borderSize != labelBorderSize) songHudLabelMeasure.borderSize = labelBorderSize;
+			if (songHudLabelMeasure.scale.x != labelScale || songHudLabelMeasure.scale.y != labelScale) songHudLabelMeasure.scale.set(labelScale, labelScale);
+			if (songHudLabelMeasure.fieldWidth != 0) songHudLabelMeasure.fieldWidth = 0;
+		}
+		if (songHudLabelMetricsDirty) {
+			songHudLabel.updateHitbox();
+			if (songHudLabelMeasure != null) songHudLabelMeasure.updateHitbox();
+			songHudLabelFitCache = new StringMap();
+			lastSongLabelTextWidth = Math.NaN;
+		}
+
+		var baseX = HatsuneHudLayout.SONG_LABEL_X + (HatsuneHudLayout.SONG_LABEL_OFFSET_X * uiScale) + labelDownscrollOffsetX;
+		var baseY = downscroll
+			? (FlxG.height - songHudLabel.height - (HatsuneHudLayout.SONG_LABEL_MARGIN_Y * uiScale) + (HatsuneHudLayout.SONG_LABEL_OFFSET_Y * uiScale) + labelDownscrollOffsetY)
+			: ((HatsuneHudLayout.SONG_LABEL_MARGIN_Y * uiScale) + (HatsuneHudLayout.SONG_LABEL_OFFSET_Y * uiScale));
+
+		var activeSongIcon = chanceLayoutActive ? chanceSongHudIcon : songHudIcon;
+		if (activeSongIcon != null) {
+			baseX = activeSongIcon.x + activeSongIcon.width + (HatsuneHudLayout.SONG_LABEL_OFFSET_X * uiScale);
+			baseY = activeSongIcon.y + ((activeSongIcon.height - songHudLabel.height) * 0.5) + (HatsuneHudLayout.SONG_LABEL_OFFSET_Y * uiScale) + labelDownscrollOffsetY;
+		} else if (downscroll) {
+			var activeScoreHudArt = getActiveScoreHudArt();
+			if (activeScoreHudArt != null) baseY = activeScoreHudArt.y + ((activeScoreHudArt.height - songHudLabel.height) * 0.5) + (HatsuneHudLayout.SONG_LABEL_OFFSET_Y * uiScale) + labelDownscrollOffsetY;
+		}
+
+		updateSongHudDifficulty(ps, uiScale, !chanceLayoutActive);
+
+		var visibleWidth = labelMaxWidth;
+		if (chanceLayoutActive) {
+			visibleWidth = measureSongHudLabelWidth(songLabelSourceText) * labelScale;
+		} else {
+			var activeScoreHudArt = getActiveScoreHudArt();
+			if (activeScoreHudArt != null) {
+				var panelRight = (activeScoreHudArt.x + activeScoreHudArt.width) - (labelRightInset * uiScale);
+				if (songHudDifficulty != null && songHudDifficulty.visible) {
+					panelRight -= songHudDifficulty.width + (difficultyGap * uiScale);
+				}
+				var availableWidth = panelRight - baseX;
+				if (availableWidth < visibleWidth) visibleWidth = availableWidth;
+			}
+			if (visibleWidth <= 0) visibleWidth = labelMaxWidth;
+		}
+
+		var sourceLabelWidth = measureSongHudLabelWidth(songLabelSourceText) * labelScale;
+		if (!chanceLayoutActive && sourceLabelWidth > visibleWidth) {
+			labelScrollEnabled = false;
+			preferStaticLongLabel = true;
+		}
+
+		var songLabelText = songLabelSourceText;
+		if (preferStaticLongLabel) {
+			labelScrollEnabled = false;
+			if (lastSongLabelSourceValue != songLabelSourceText || lastSongLabelSourceVisibleWidth != visibleWidth || lastSongLabelSourceScale != labelScale) {
+				songLabelText = fitSongHudLabelText(songLabelSourceText, visibleWidth, labelScale);
+				lastSongLabelSourceValue = songLabelSourceText;
+				lastSongLabelSourceVisibleWidth = visibleWidth;
+				lastSongLabelSourceScale = labelScale;
+			} else if (lastSongLabelValue != null) {
+				songLabelText = lastSongLabelValue;
+			}
+		} else {
+			lastSongLabelSourceValue = songLabelSourceText;
+			lastSongLabelSourceVisibleWidth = visibleWidth;
+			lastSongLabelSourceScale = labelScale;
+		}
+		if (chanceLayoutActive) {
+			songLabelText = songLabelSourceText;
+			lastSongLabelSourceValue = songLabelSourceText;
+			lastSongLabelSourceVisibleWidth = visibleWidth;
+			lastSongLabelSourceScale = labelScale;
+		}
+
+		if (lastSongLabelValue != songLabelText) {
+			songHudLabel.text = songLabelText;
+			lastSongLabelValue = songLabelText;
+			lastSongLabelTextWidth = Math.NaN;
+			resetSongHudLabelScroll(labelScrollStartDelay);
+			songHudLabelMetricsDirty = true;
+		}
+		if (songHudLabelMetricsDirty) {
+			songHudLabel.updateHitbox();
+			lastSongLabelTextWidth = Math.NaN;
+		}
+
+		var textWidth = getSongHudLabelTextWidth();
+		var textDisplayWidth = textWidth * labelScale;
+		lastSongLabelVisibleWidth = (textDisplayWidth < visibleWidth) ? textDisplayWidth : visibleWidth;
+
+		updateSongHudLabelScroll(visibleWidth, labelScale, labelScrollEnabled, labelScrollSpeed, labelScrollStartDelay, labelScrollEndDelay, textWidth);
+
+		var targetLabelX = Std.int(baseX);
+		var targetLabelY = Std.int(baseY);
+		if (lastSongLabelX != targetLabelX) {
+			songHudLabel.x = targetLabelX;
+			lastSongLabelX = targetLabelX;
+		}
+		if (lastSongLabelY != targetLabelY) {
+			songHudLabel.y = targetLabelY;
+			lastSongLabelY = targetLabelY;
+		}
+		layoutSongHudDifficulty(uiScale, baseY, difficultyGap);
+	}
+
+	function updateSongHudDifficulty(ps, uiScale:Float, allowVisible:Bool) {
+		if (songHudDifficulty == null || ps == null) return;
+		if (!allowVisible) {
+			songHudDifficulty.visible = false;
+			return;
+		}
+
+		if (!HatsuneHudLayout.SONG_LABEL_DIFFICULTY_SHOW) {
+			songHudDifficulty.visible = false;
+			return;
+		}
+
+		var difficultyId = normalizeSongHudDifficultyId(ps.currentDifficulty);
+		if (difficultyId == null || difficultyId == "") {
+			songHudDifficulty.visible = false;
+			return;
+		}
+
+		if (lastSongDifficultyId != difficultyId) {
+			songHudDifficulty.loadGraphic(Paths.image('storymenu/difficulties/' + difficultyId));
+			lastSongDifficultyId = difficultyId;
+			lastSongDifficultyHeight = -1;
+		}
+
+		var targetHeight = Std.int(HatsuneHudLayout.SONG_LABEL_DIFFICULTY_HEIGHT * uiScale);
+		if (targetHeight < 1) targetHeight = 1;
+		if (targetHeight != lastSongDifficultyHeight) {
+			songHudDifficulty.setGraphicSize(0, targetHeight);
+			songHudDifficulty.updateHitbox();
+			lastSongDifficultyHeight = targetHeight;
+		}
+
+		songHudDifficulty.visible = true;
+	}
+
+	function layoutSongHudDifficulty(uiScale:Float, labelY:Float, difficultyGap:Float) {
+		if (songHudDifficulty == null || !songHudDifficulty.visible) return;
+		var downscroll = HatsuneHudLayout.isDownscroll();
+
+		var badgeBaseX = HatsuneHudLayout.SONG_LABEL_DIFFICULTY_X;
+		var offsetX = HatsuneHudLayout.SONG_LABEL_DIFFICULTY_OFFSET_X;
+		var offsetY = HatsuneHudLayout.SONG_LABEL_DIFFICULTY_OFFSET_Y;
+		var badgeX = (badgeBaseX * uiScale);
+		badgeX += (offsetX * uiScale);
+		if (downscroll) badgeX += HatsuneHudLayout.SONG_LABEL_DIFFICULTY_DOWNSCROLL_OFFSET_X * uiScale;
+
+		var targetDifficultyX = Std.int(badgeX);
+		var targetDifficultyY = Std.int(labelY + ((songHudLabel.height - songHudDifficulty.height) * 0.5) + (offsetY * uiScale)
+			+ (downscroll ? (HatsuneHudLayout.SONG_LABEL_DIFFICULTY_DOWNSCROLL_OFFSET_Y * uiScale) : 0));
+		if (lastSongDifficultyX != targetDifficultyX) {
+			songHudDifficulty.x = targetDifficultyX;
+			lastSongDifficultyX = targetDifficultyX;
+		}
+		if (lastSongDifficultyY != targetDifficultyY) {
+			songHudDifficulty.y = targetDifficultyY;
+			lastSongDifficultyY = targetDifficultyY;
+		}
+	}
+
+	function normalizeSongHudDifficultyId(difficultyId:String):String {
+		if (difficultyId == null || difficultyId == "") return "normal";
+
+		var normalized = difficultyId.toLowerCase();
+		if (normalized.indexOf("easy") == 0) return "easy";
+		if (normalized.indexOf("hard") == 0) return "hard";
+		if (normalized == "erect" || normalized == "nightmare") return "hard";
+		return "normal";
+	}
+
+	function updateSongHudLabelScroll(labelMaxWidth:Float, labelScale:Float, labelScrollEnabled:Bool, labelScrollSpeed:Float, labelScrollStartDelay:Float,
+		labelScrollEndDelay:Float, textWidthLocal:Float) {
+		if (songHudLabel == null) return;
+		var labelScrollStep = 1.0 / 60.0;
+
+		var scaleX = (labelScale != 0) ? labelScale : 1.0;
+		var visibleWidthLocal = labelMaxWidth / scaleX;
+		if (visibleWidthLocal <= 0) visibleWidthLocal = textWidthLocal;
+
+		var overflow = textWidthLocal - visibleWidthLocal;
+		if (!labelScrollEnabled || labelScrollSpeed <= 0 || overflow <= 0) {
+			songHudLabelScrollAccumulator = 0;
+			resetSongHudLabelClip();
+			return;
+		}
+
+		songHudLabelScrollAccumulator += FlxG.elapsed;
+		if (songHudLabelScrollAccumulator < labelScrollStep) return;
+		var scrollDelta = songHudLabelScrollAccumulator;
+		songHudLabelScrollAccumulator = 0;
+
+		if (songHudLabelScrollDelay > 0) {
+			songHudLabelScrollDelay -= scrollDelta;
+			if (songHudLabelScrollDelay < 0) songHudLabelScrollDelay = 0;
+		} else {
+			songHudLabelScrollOffset += songHudLabelScrollDirection * labelScrollSpeed * scrollDelta;
+			if (songHudLabelScrollOffset >= overflow) {
+				songHudLabelScrollOffset = overflow;
+				songHudLabelScrollDirection = -1;
+				songHudLabelScrollDelay = labelScrollEndDelay;
+			} else if (songHudLabelScrollOffset <= 0) {
+				songHudLabelScrollOffset = 0;
+				songHudLabelScrollDirection = 1;
+				songHudLabelScrollDelay = labelScrollStartDelay;
+			}
+		}
+
+		if (songHudLabel.offset.x != songHudLabelScrollOffset) songHudLabel.offset.x = songHudLabelScrollOffset;
+		if (songHudLabelClipRect == null) songHudLabelClipRect = new FlxRect();
+		if (songHudLabelClipRect.x != songHudLabelScrollOffset) songHudLabelClipRect.x = songHudLabelScrollOffset;
+		if (songHudLabelClipRect.y != 0) songHudLabelClipRect.y = 0;
+		if (songHudLabelClipRect.width != visibleWidthLocal) songHudLabelClipRect.width = visibleWidthLocal;
+		var clipHeight = getSongHudLabelClipHeight();
+		if (songHudLabelClipRect.height != clipHeight) songHudLabelClipRect.height = clipHeight;
+		if (songHudLabel.clipRect != songHudLabelClipRect) songHudLabel.clipRect = songHudLabelClipRect;
+	}
+
+	function resetSongHudLabelScroll(startDelay:Float) {
+		songHudLabelScrollOffset = 0;
+		songHudLabelScrollDirection = 1;
+		songHudLabelScrollDelay = startDelay;
+		resetSongHudLabelClip();
+	}
+
+	function resetSongHudLabelClip() {
+		if (songHudLabel == null) return;
+		if (songHudLabel.offset.x != 0) songHudLabel.offset.x = 0;
+		if (songHudLabel.clipRect != null) songHudLabel.clipRect = null;
+	}
+
+	function fitSongHudLabelText(sourceText:String, maxVisibleWidth:Float, labelScale:Float):String {
+		if (songHudLabel == null || sourceText == null || sourceText == "") return sourceText;
+		if (labelScale <= 0) labelScale = 1.0;
+
+		var maxLocalWidth = maxVisibleWidth / labelScale;
+		if (maxLocalWidth <= 0) return sourceText;
+		var cacheKey = sourceText + "|" + Std.int(maxLocalWidth * 100) + "|" + Std.int(labelScale * 1000);
+		var cachedValue = songHudLabelFitCache.get(cacheKey);
+		if (cachedValue != null) return cachedValue;
+
+		var sourceWidth = measureSongHudLabelWidth(sourceText);
+		if (sourceWidth <= maxLocalWidth) {
+			songHudLabelFitCache.set(cacheKey, sourceText);
+			return sourceText;
+		}
+
+		var ellipsis = "...";
+		var ellipsisWidth = measureSongHudLabelWidth(ellipsis);
+		if (ellipsisWidth > maxLocalWidth) {
+			songHudLabelFitCache.set(cacheKey, "");
+			return "";
+		}
+
+		var low = 0;
+		var high = sourceText.length;
+		var best = ellipsis;
+		while (low <= high) {
+			var mid = Std.int((low + high) * 0.5);
+			var candidate = sourceText.substr(0, mid) + ellipsis;
+			var candidateWidth = measureSongHudLabelWidth(candidate);
+			if (candidateWidth <= maxLocalWidth) {
+				best = candidate;
+				low = mid + 1;
+			} else {
+				high = mid - 1;
+			}
+		}
+
+		songHudLabelFitCache.set(cacheKey, best);
+		return best;
+	}
+
+	function measureSongHudLabelWidth(text:String):Float {
+		if (songHudLabelMeasure == null) {
+			if (songHudLabel == null) return 0;
+			return (songHudLabel.textField != null) ? songHudLabel.textField.textWidth + 4 : songHudLabel.width;
+		}
+		if (songHudLabelMeasure.text != text) songHudLabelMeasure.text = text;
+		songHudLabelMeasure.updateHitbox();
+		if (songHudLabelMeasure.textField != null) return songHudLabelMeasure.textField.textWidth + 4;
+		return songHudLabelMeasure.width;
+	}
+
+	function getSongHudLabelTextWidth():Float {
+		if (songHudLabel == null) return 0;
+		if (Math.isNaN(lastSongLabelTextWidth)) {
+			if (songHudLabel.textField != null) lastSongLabelTextWidth = songHudLabel.textField.textWidth + 4;
+			else lastSongLabelTextWidth = songHudLabel.width;
+		}
+		return lastSongLabelTextWidth;
+	}
+
+	function getSongHudLabelClipHeight():Float {
+		if (songHudLabel == null) return 1;
+		if (songHudLabel.frameHeight > 0) return songHudLabel.frameHeight;
+		if (songHudLabel.height > 0) return songHudLabel.height;
+		return 1;
+	}
+
+	function getSongHudLabel(ps):String {
+		if (ps == null) return "";
+
+		if (HatsuneHudLayout.SONG_LABEL_SHOW_ID) {
+			return (ps.currentSong != null && ps.currentSong.id != null) ? ps.currentSong.id : "";
+		}
+
+		var chartSongName = ps.currentChart?.songName;
+		if (chartSongName != null && chartSongName != "") return chartSongName;
+
+		var songName = (ps.currentSong != null) ? ps.currentSong.songName : null;
+		if (songName != null && songName != "") return songName;
+
+		return (ps.currentSong != null && ps.currentSong.id != null) ? ps.currentSong.id : "";
+	}
+
+	function getSongHudLabelDisplayName(ps):String {
+		if (ps == null) return "";
+
+		var chartSongName = ps.currentChart?.songName;
+		if (chartSongName != null && chartSongName != "") return chartSongName;
+
+		var songName = (ps.currentSong != null) ? ps.currentSong.songName : null;
+		if (songName != null && songName != "") return songName;
+
+		return (ps.currentSong != null && ps.currentSong.id != null) ? ps.currentSong.id : "";
+	}
+
+	function updateDangerFade() {
+		if (dangerFadeCountdown <= 0) return;
+
+		dangerFadeCountdown -= FlxG.elapsed;
+		if (dangerFadeCountdown <= 0) {
+			if (backTween != null) backTween.cancel();
+			if (meterBack != null) backTween = FlxTween.color(meterBack, dangerFadeDuration, meterBack.color, meterEmptyBack);
+			dangerFadeCountdown = 0;
+		}
+	}
+
+	function refreshBarColors(force:Bool) {
+		var icon = (PlayState.instance != null) ? PlayState.instance.iconP1 : null;
+		var sampleKey = buildIconSampleKey(icon);
+		if (!force && sampleKey == lastIconSampleKey) return;
+
+		var color = findIconColour(icon);
+		baseBarColor = color;
+
+		var r = clamp8(((color >> 16) & 0xFF) + flashMod);
+		var g = clamp8(((color >> 8) & 0xFF) + flashMod);
+		var b = clamp8((color & 0xFF) + flashMod);
+		flashColor = FlxColor.fromRGB(r, g, b);
+
+		var baseR = ((color >> 16) & 0xFF);
+		var baseG = ((color >> 8) & 0xFF);
+		var baseB = (color & 0xFF);
+		var r2 = clamp8(baseR + Std.int(flashMod * dangerRedFactor));
+		var g2 = clamp8(baseG - Std.int(flashMod * dangerDimFactor));
+		var b2 = clamp8(baseB - Std.int(flashMod * dangerDimFactor));
+		var dbR = ((meterDangerBack >> 16) & 0xFF);
+		var dbG = ((meterDangerBack >> 8) & 0xFF);
+		var dbB = (meterDangerBack & 0xFF);
+		r2 = clamp8(Std.int(r2 * (1 - dangerBlend) + dbR * dangerBlend));
+		g2 = clamp8(Std.int(g2 * (1 - dangerBlend) + dbG * dangerBlend));
+		b2 = clamp8(Std.int(b2 * (1 - dangerBlend) + dbB * dangerBlend));
+		dangerFlashColor = FlxColor.fromRGB(r2, g2, b2);
+
+		if (meter != null) meter.color = baseBarColor;
+		lastIconSampleKey = sampleKey;
+	}
+
+	function buildIconSampleKey(icon) {
+		if (icon == null) return "";
+
+		var key = "" + icon.characterId + ":" + Std.int(icon.width) + "x" + Std.int(icon.height);
+		if (icon.graphic != null && icon.graphic.key != null) key += ":" + icon.graphic.key;
+		return key;
+	}
+
+	function clamp8(v) {
+		if (v < 0) return 0;
+		if (v > 255) return 255;
+		return v;
+	}
+
+	function findIconColour(icon) {
+		if (icon == null || icon.pixels == null) return FlxColor.WHITE;
+
+		var iconColour = 0xFFFFFFFF;
+		var lightest = 0;
+
+		var ypos = 0;
+		var xpos = 0;
+		var iw = Std.int(icon.width);
+		var ih = Std.int(icon.height);
+		if (iw <= 0 || ih <= 0) return FlxColor.WHITE;
+
+		for (i in 0...30) {
+			var sx = xpos;
+			var sy = ypos;
+			if (sx >= iw) sx = iw - 1;
+			if (sy >= ih) sy = ih - 1;
+			if (sx < 0) sx = 0;
+			if (sy < 0) sy = 0;
+
+			iconColour = icon.pixels.getPixel(sx, sy);
+			if (iconColour != 0 && iconColour != 0xFFFFFF && iconColour > lightest) lightest = iconColour;
+
+			if (ypos < 50) ypos += 5;
+			xpos += 5;
+		}
+
+		if (lightest > 0) {
+			return FlxColor.fromString(FlxColor.toHexString(lightest, false));
+		}
+
+		return FlxColor.WHITE;
+	}
+
+	function cleanupSprites(stateRef) {
+		stopScoreRankSparkle();
+		clearChanceHudTweens();
+		removeAndDestroy(stateRef, playerHudArt);
+		removeAndDestroy(stateRef, healthHudArt);
+		removeAndDestroy(stateRef, scoreHudArt);
+		removeAndDestroy(stateRef, chanceBottomHudArt);
+		removeAndDestroy(stateRef, chanceTopHudArt);
+		removeAndDestroy(stateRef, chanceScoreHudArt);
+		removeAndDestroy(stateRef, chanceStarMeter);
+		removeAndDestroy(stateRef, chanceStarMeterStroke);
+		for (sprite in chanceBottomHudLeftExt) removeAndDestroy(stateRef, sprite);
+		for (sprite in chanceBottomHudRightExt) removeAndDestroy(stateRef, sprite);
+		for (sprite in chanceTopHudLeftExt) removeAndDestroy(stateRef, sprite);
+		for (sprite in chanceTopHudRightExt) removeAndDestroy(stateRef, sprite);
+		removeAndDestroy(stateRef, scoreRankBadge);
+		removeAndDestroy(stateRef, scoreRankSparkle);
+		for (scoreDigit in scoreDigits) {
+			removeAndDestroy(stateRef, scoreDigit);
+		}
+		removeAndDestroy(stateRef, songHudIcon);
+		removeAndDestroy(stateRef, chanceSongHudIcon);
+		removeAndDestroy(stateRef, hpBox);
+		removeAndDestroy(stateRef, meterBack);
+		removeAndDestroy(stateRef, meter);
+		removeAndDestroy(stateRef, protectedText);
+		removeAndDestroy(stateRef, lifeLabel);
+		removeAndDestroy(stateRef, lifeHudIcon);
+		removeAndDestroy(stateRef, songHudLabel);
+		removeAndDestroy(stateRef, songHudDifficulty);
+		removeAndDestroy(stateRef, primarySubtitleDisplay);
+		removeAndDestroy(stateRef, secondarySubtitleDisplay);
+		removeAndDestroy(stateRef, chanceSubtitleDisplay);
+		removeAndDestroy(stateRef, chanceSecondarySubtitleDisplay);
+		removeAndDestroy(stateRef, borderTop);
+		removeAndDestroy(stateRef, borderBottom);
+		removeAndDestroy(stateRef, borderLeft);
+		removeAndDestroy(stateRef, borderRight);
+
+		playerHudArt = null;
+		healthHudArt = null;
+		scoreHudArt = null;
+		chanceBottomHudArt = null;
+		chanceTopHudArt = null;
+		chanceScoreHudArt = null;
+		chanceStarMeter = null;
+		chanceStarMeterStroke = null;
+		chanceBottomHudLeftExt = [];
+		chanceBottomHudRightExt = [];
+		chanceTopHudLeftExt = [];
+		chanceTopHudRightExt = [];
+		scoreRankBadge = null;
+		scoreRankSparkle = null;
+		scoreDigits = [];
+		scoreDigitsAtlasFrames = null;
+		scoreRankBadgeFrameCache = new StringMap();
+		scoreRankBadgeResolvedFrameNames = new StringMap();
+		songHudIcon = null;
+		chanceSongHudIcon = null;
+		chanceTimeMeterAtlasFrames = [];
+		chanceTimeMeterFrameCache = new StringMap();
+		chanceTimeMeterFrameAtlasCache = new StringMap();
+		lastChanceStarMeterStrokeWidth = -1;
+		hudAtlasFrames = null;
+		downscrollHudAtlasFrames = null;
+		downscrollHudAtlasFrameCache = new StringMap();
+		hpBox = null;
+		meterBack = null;
+		meter = null;
+		protectedText = null;
+		lifeLabel = null;
+		lifeHudIcon = null;
+		songHudLabel = null;
+		songHudLabelMeasure = null;
+		songHudLabelFitCache = new StringMap();
+		songHudDifficulty = null;
+		primarySubtitleDisplay = null;
+		secondarySubtitleDisplay = null;
+		chanceSubtitleDisplay = null;
+		chanceSecondarySubtitleDisplay = null;
+		borderTop = null;
+		borderBottom = null;
+		borderLeft = null;
+		borderRight = null;
+	}
+}

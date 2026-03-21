@@ -1,9 +1,9 @@
 {
   "timeFormat": "ms",
-  "artist": "shu-t feat. Sweet Ann",
+  "artist": "shu-t",
   "songName": "Pause Menu (miku)",
   "timeChanges": [{ "d": 4, "n": 4, "t": 0, "bt": [4, 4, 4, 4], "bpm": 132 }],
-  "generatedBy": "Manual (by EliteMasterEric)",
+  "generatedBy": "Manual (by Dogomaxo)",
   "looped": true,
   "version": "2.0.0"
 }

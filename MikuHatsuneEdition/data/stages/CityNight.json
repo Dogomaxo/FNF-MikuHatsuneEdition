@@ -1,33 +1,274 @@
 {
-  "version": "1.0.1",
-  "name": "City Night",
-  "cameraZoom": 0.5,
-  "props": [
+ "version": "1.0.2",
+ "name": "City Night",
+ "props": [
+  {
+   "angle": 180,
+   "assetPath": "stages/CityNight/Backgroundd",
+   "atlasSettings": null,
+   "name": "BACKGROUND SKY1",
+   "position": [770, -10],
+   "scale": 1,
+   "scroll": [0.7, 1.3],
+   "startingAnimation": null,
+   "zIndex": 10
+  },
+  {
+   "angle": 180,
+   "assetPath": "stages/CityNight/BackgroundInverted",
+   "atlasSettings": null,
+   "name": "BACKGROUND SKY2",
+   "position": [-3068, -2167],
+   "scale": 1,
+   "scroll": [0.7, 1.3],
+   "startingAnimation": null,
+   "zIndex": 10
+  },
+  {
+   "angle": 180,
+   "assetPath": "stages/CityNight/BackgroundInverted",
+   "atlasSettings": null,
+   "name": "BACKGROUND SKY3",
+   "position": [770, -2167],
+   "scale": 1,
+   "scroll": [0.7, 1.3],
+   "startingAnimation": null,
+   "zIndex": 10
+  },
+  {
+   "angle": 180,
+   "assetPath": "stages/CityNight/Backgroundd",
+   "atlasSettings": null,
+   "name": "BACKGROUND SKY4",
+   "position": [-3068, -9],
+   "scale": 1,
+   "scroll": [0.7, 1.3],
+   "startingAnimation": null,
+   "zIndex": 10
+  },
+  {
+   "angle": 180,
+   "assetPath": "stages/CityNight/StarBG",
+   "atlasSettings": null,
+   "name": "BACKGROUNDS STARS2",
+   "position": [991, -1586],
+   "scale": 1,
+   "scroll": [0.5, 0.8],
+   "startingAnimation": null,
+   "zIndex": 10
+  },
+  {
+   "angle": 140,
+   "assetPath": "stages/CityNight/LightSpotA",
+   "atlasSettings": null,
+   "name": "Front Spot Light1",
+   "position": [-533, -3176],
+   "scale": 1,
+   "startingAnimation": null,
+   "zIndex": 10
+  },
+  {
+   "angle": 225,
+   "assetPath": "stages/CityNight/LightSpotA",
+   "atlasSettings": null,
+   "name": "Front Spot Light2",
+   "position": [2414, -3175],
+   "scale": 1,
+   "startingAnimation": null,
+   "zIndex": 10
+  },
+  {
+   "angle": 180,
+   "assetPath": "stages/CityNight/StarBG",
+   "atlasSettings": null,
+   "name": "BACKGROUNDS STARS1",
+   "position": [-746, -2708],
+   "scale": 1,
+   "scroll": [0.5, 0.8],
+   "startingAnimation": null,
+   "zIndex": 10
+  },
+  {
+   "angle": 180,
+   "assetPath": "stages/CityNight/StarBG",
+   "atlasSettings": null,
+   "name": "BACKGROUNDS STARS3",
+   "position": [-3081, -1500],
+   "scale": 1,
+   "scroll": [0.5, 0.8],
+   "startingAnimation": null,
+   "zIndex": 10
+  },
+  {
+   "animations": [
     {
-      "zIndex": 10,
-      "position": [-1620, -800],
-      "scale": [1.2, 1.2],
-      "name": "StageBackground",
-      "assetPath": "stages/CityNight/Background",
-      "scroll": [0.9, 0.9]
-    }
-  ],
-  "characters": {
-    "bf": {
-      "zIndex": 300,
-      "position": [989.5, 885],
-      "cameraOffsets": [-100, -100]
+     "animType": null,
+     "assetPath": null,
+     "atlasSettings": null,
+     "name": "loop4",
+     "prefix": "Dance Platform0004",
+     "renderType": null
     },
-    "dad": {
-      "zIndex": 200,
-      "position": [335, 885],
-      "cameraOffsets": [150, -100]
+    {
+     "animType": null,
+     "assetPath": null,
+     "atlasSettings": null,
+     "name": "loop15",
+     "prefix": "Dance Platform0015",
+     "renderType": null
     },
-    "gf": {
-      "zIndex": 100,
-      "cameraOffsets": [0, 0],
-      "position": [751.5, 787]
+    {
+     "animType": null,
+     "assetPath": null,
+     "atlasSettings": null,
+     "name": "loop5",
+     "prefix": "Dance Platform0005",
+     "renderType": null
+    },
+    {
+     "animType": null,
+     "assetPath": null,
+     "atlasSettings": null,
+     "name": "loop6",
+     "prefix": "Dance Platform0006",
+     "renderType": null
+    },
+    {
+     "animType": null,
+     "assetPath": null,
+     "atlasSettings": null,
+     "name": "loop7",
+     "prefix": "Dance Platform0007",
+     "renderType": null
+    },
+    {
+     "animType": null,
+     "assetPath": null,
+     "atlasSettings": null,
+     "name": "loop10",
+     "prefix": "Dance Platform0010",
+     "renderType": null
+    },
+    {
+     "animType": null,
+     "assetPath": null,
+     "atlasSettings": null,
+     "name": "loop11",
+     "prefix": "Dance Platform0011",
+     "renderType": null
+    },
+    {
+     "animType": null,
+     "assetPath": null,
+     "atlasSettings": null,
+     "name": "loop8",
+     "prefix": "Dance Platform0008",
+     "renderType": null
+    },
+    {
+     "animType": null,
+     "assetPath": null,
+     "atlasSettings": null,
+     "name": "loop1",
+     "prefix": "Dance Platform0001",
+     "renderType": null
+    },
+    {
+     "animType": null,
+     "assetPath": null,
+     "atlasSettings": null,
+     "name": "loop9",
+     "prefix": "Dance Platform0009",
+     "renderType": null
+    },
+    {
+     "animType": null,
+     "assetPath": null,
+     "atlasSettings": null,
+     "name": "loop12",
+     "prefix": "Dance Platform0012",
+     "renderType": null
+    },
+    {
+     "animType": null,
+     "assetPath": null,
+     "atlasSettings": null,
+     "name": "loop2",
+     "prefix": "Dance Platform0002",
+     "renderType": null
+    },
+    {
+     "animType": null,
+     "assetPath": null,
+     "atlasSettings": null,
+     "name": "loop13",
+     "prefix": "Dance Platform0013",
+     "renderType": null
+    },
+    {
+     "animType": null,
+     "assetPath": null,
+     "atlasSettings": null,
+     "name": "loop3",
+     "prefix": "Dance Platform0003",
+     "renderType": null
+    },
+    {
+     "animType": null,
+     "assetPath": null,
+     "atlasSettings": null,
+     "name": "loop14",
+     "prefix": "Dance Platform0014",
+     "renderType": null
     }
+   ],
+   "assetPath": "stages/CityNight/Platform/DancePlatform",
+   "atlasSettings": null,
+   "name": "Platform",
+   "position": [-1825, -1042],
+   "scale": 4,
+   "startingAnimation": null,
+   "zIndex": 20
+  },
+  {
+   "angle": 200,
+   "assetPath": "stages/CityNight/LightSpotB",
+   "atlasSettings": null,
+   "name": "Back Spot Light2",
+   "position": [1957, -3362],
+   "scale": 1,
+   "startingAnimation": null,
+   "zIndex": 21
+  },
+  {
+   "angle": 110,
+   "assetPath": "stages/CityNight/LightSpotB",
+   "atlasSettings": null,
+   "name": "Back Spot Light1",
+   "position": [-2524, -2429],
+   "scale": 1,
+   "startingAnimation": null,
+   "zIndex": 21
   }
+ ],
+ "characters": {
+  "bf": {
+   "cameraOffsets": [-100, -100],
+   "position": [1450, 29],
+   "zIndex": 300
+  },
+  "dad": {
+   "cameraOffsets": [150, -100],
+   "position": [199, -4],
+   "zIndex": 200
+  },
+  "gf": {
+   "alpha": 0,
+   "cameraOffsets": [0, 0],
+   "position": [875, -173],
+   "scroll": [1.5, 1.5],
+   "zIndex": 100
+  }
+ },
+ "cameraZoom": 0.4
 }
-

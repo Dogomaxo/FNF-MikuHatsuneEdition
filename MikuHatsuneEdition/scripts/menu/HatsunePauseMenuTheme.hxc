@@ -1,0 +1,57 @@
+// Switch pause menu music to a custom Miku track when playing as Miku.
+// Expects: shared/music/breakfast-miku/breakfast-miku.ogg
+// SCRIPT BASED ON SPOOKY MIX MOD PAUSE MENU SCRIPT (https://gamebanana.com/mods/551727)
+
+import StringTools;
+import flixel.FlxG;
+import funkin.Paths;
+import funkin.audio.FunkinSound;
+import funkin.modding.module.Module;
+import funkin.play.PlayState;
+import funkin.util.ReflectUtil;
+
+class HatsunePauseMenuTheme extends Module {
+	var swappedOnce:Bool = false;
+	// Slightly lower than the default PauseSubState volume (0.75)
+	var mikuPauseVolume:Float = 0.6539;
+
+	public function new() {
+		super('miku-pause-menu-theme', 1000);
+	}
+
+	override public function onStateChangeEnd(event) {
+		swappedOnce = false;
+	}
+
+	override public function onSubStateCloseEnd(event) {
+		swappedOnce = false;
+	}
+
+	override public function onSubStateOpenEnd(event) {
+		// Ensure this only runs for the PauseSubState.
+		if (ReflectUtil.getClassNameOf(FlxG.state.subState) != 'funkin.play.PauseSubState') return;
+		if (swappedOnce) return;
+
+		var ps = PlayState.instance;
+		if (ps == null || ps.currentStage == null) return;
+		var bf = ps.currentStage.getBoyfriend();
+		if (bf == null) return;
+
+		var id = bf.characterId;
+		if (id == null) return;
+
+		// Match character IDs starting with "miku" (e.g., miku, miku-alt, etc.).
+		var idLower = id.toLowerCase();
+		if (!StringTools.startsWith(idLower, 'miku')) return;
+
+		var pauseMusicPath:String = Paths.music('breakfast-miku/breakfast-miku');
+		if (FlxG.state.subState.pauseMusic != null) FlxG.state.subState.pauseMusic.stop();
+		FlxG.state.subState.pauseMusic = FunkinSound.load(pauseMusicPath, true, true);
+			if (FlxG.state.subState.pauseMusic != null) {
+				FlxG.state.subState.pauseMusic.play(false);
+				FlxG.state.subState.pauseMusic.fadeIn(5, 0, mikuPauseVolume);
+			swappedOnce = true;
+		}
+	}
+}
+

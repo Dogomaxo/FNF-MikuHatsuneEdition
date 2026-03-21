@@ -1,0 +1,487 @@
+import funkin.Preferences;
+import flixel.FlxG;
+#if mobile
+import funkin.mobile.input.ControlsHandler;
+import funkin.mobile.ui.FunkinHitbox.FunkinHitboxControlSchemes;
+#end
+
+class HatsuneHudLayout {
+	// -------------------------------------------------------------------------
+	// Assets
+	// These are the exact frame names pulled from IN-GAME_HUD_ASSETS.xml.
+	// If you change the atlas XML names, update them here.
+	// -------------------------------------------------------------------------
+	public static inline var HUD_ATLAS_KEY:String = "Hud/IN-GAME_HUD_ASSETS";
+	public static inline var DOWNSCROLL_HUD_ATLAS_KEY:String = "Hud/DOWNSCROLL/IN-GAME_HUD_ASSETS_DOWNSCROLL";
+	public static inline var BOTTOM_HUD_FRAME:String = "PLAYER HUD";
+	public static inline var BOTTOM_HUD_DOWNSCROLL_FRAME:String = "PLAYER HUD D";
+	public static inline var HEALTH_HUD_FRAME:String = "PLAYER HUD HEALTH";
+	public static inline var HEALTH_HUD_DOWNSCROLL_FRAME:String = "PLAYER HUD HEALTH D";
+	public static inline var TOP_HUD_FRAME:String = "PLAYER HUD SCORE";
+	public static inline var TOP_HUD_DOWNSCROLL_FRAME:String = "PLAYER HUD SCORE D";
+	public static inline var SONG_ICON_FRAME:String = "ICON SONG";
+	public static inline var LIFE_ICON_FRAME:String = "ICON HEALTH ";
+
+	// -------------------------------------------------------------------------
+	// Draw Order
+	// Higher values render on top of lower values.
+	// Only touch these if sprites overlap in the wrong order.
+	// -------------------------------------------------------------------------
+	public static inline var PLAYER_HUD_Z:Int = 798;
+	public static inline var HEALTH_HUD_Z:Int = 1002;
+	public static inline var SCORE_HUD_Z:Int = 798;
+	public static inline var SONG_ICON_Z:Int = 1007;
+	public static inline var HP_BOX_Z:Int = 800;
+	public static inline var METER_BACK_Z:Int = 1003;
+	public static inline var METER_Z:Int = 1004;
+	public static inline var BORDER_Z:Int = 1005;
+	public static inline var PROTECTED_TEXT_Z:Int = 1006;
+	public static inline var PLAYER_ICON_Z:Int = 9999;
+
+	// -------------------------------------------------------------------------
+	// Responsive Base
+	// The helper scales most offsets against this reference resolution.
+	// Increase/decrease the min and max values if the HUD feels too small or too
+	// large on unusual aspect ratios.
+	// -------------------------------------------------------------------------
+	public static inline var BASE_SCREEN_W:Float = 960;
+	public static inline var BASE_SCREEN_H:Float = 540;
+	public static inline var MIN_UI_SCALE:Float = 0.85;
+	public static inline var MAX_UI_SCALE:Float = 1.5;
+
+	// -------------------------------------------------------------------------
+	// Core Health Bar Anchor
+	// These values control the real gameplay health meter, not the decorative
+	// sprite shell. The decorative sprites can now move independently.
+	// - BAR_SCALE_X scales the bar width.
+	// - BAR_SCALE_Y scales the bar height.
+	// - BAR_BORDER_THICKNESS controls the black outline thickness.
+	// -------------------------------------------------------------------------
+	public static inline var BAR_BASE_X:Float = 165;
+	public static inline var BAR_OFFSET_X:Float = 0;
+	public static inline var BAR_OFFSET_Y:Float = 0;
+	public static inline var BAR_SCALE_X:Float = 0.8;
+	public static inline var BAR_SCALE_Y:Float = 0.65;
+	public static inline var BAR_BORDER_THICKNESS:Int = 2;
+	public static inline var BAR_DOWN_Y:Float = 52;
+	public static inline var BAR_DOWNSCROLL_OFFSET_X:Float = 0;
+	public static inline var BAR_DOWNSCROLL_OFFSET_Y:Float = 450;
+	public static inline var BAR_UP_MARGIN:Float = 663;
+	public static inline var BAR_UP_LIFT:Float = 6;
+
+	// -------------------------------------------------------------------------
+	// Player Icon
+	// This is the regular gameplay iconP1.
+	// It can now be placed independently from the health bar.
+	// SCALE controls the base size of the icon before any beat bump is applied.
+	// - ANCHOR_RIGHT / ANCHOR_BOTTOM choose which side is used as reference.
+	// - X / MARGIN_Y are the base screen-space placement values.
+	// - OFFSET_X / OFFSET_Y are scaled fine-tuning nudges.
+	// -------------------------------------------------------------------------
+	public static inline var ICON_ANCHOR_RIGHT:Bool = false;
+	public static inline var ICON_ANCHOR_BOTTOM:Bool = true;
+	public static inline var ICON_X:Float = -36;
+	public static inline var ICON_MARGIN_Y:Float = 637;
+	public static inline var ICON_SCALE:Float = 0.62;
+	public static inline var ICON_OFFSET_X:Float = -25;
+	public static inline var ICON_OFFSET_Y:Float = 0;
+	public static inline var ICON_DOWNSCROLL_OFFSET_X:Float = 1;
+	public static inline var ICON_DOWNSCROLL_OFFSET_Y:Float = 15;
+	public static inline var ICON_FINAL_Y_SHIFT:Float = 0;
+
+	// -------------------------------------------------------------------------
+	// Bottom HUD Shell: PLAYER HUD
+	// This is the big decorative sprite at the bottom-left of the screen.
+	// - SCALE controls its manual sprite scale.
+	// - X / MARGIN_Y are the base screen-space placement values.
+	// - OFFSET_X / OFFSET_Y are extra scaled nudges for fine tuning.
+	// -------------------------------------------------------------------------
+	public static inline var BOTTOM_HUD_SCALE:Float = 0.665;
+	public static inline var BOTTOM_HUD_WIDTH_RATIO:Float = 0.60;
+	public static inline var BOTTOM_HUD_X:Float = -7;
+	public static inline var BOTTOM_HUD_MARGIN_Y:Float = -11;
+	public static inline var BOTTOM_HUD_OFFSET_X:Float = 0;
+	public static inline var BOTTOM_HUD_OFFSET_Y:Float = 0;
+	public static inline var BOTTOM_HUD_DOWNSCROLL_OFFSET_X:Float = 0;
+	public static inline var BOTTOM_HUD_DOWNSCROLL_OFFSET_Y:Float = 0;
+
+	// -------------------------------------------------------------------------
+	// Health HUD Overlay: PLAYER HUD HEALTH
+	// This sprite is fully independent from the bottom shell now.
+	// - SCALE controls its manual sprite scale.
+	// - X defines the horizontal margin from the chosen side.
+	// - MARGIN_Y defines the vertical margin from the chosen side.
+	// - ANCHOR_RIGHT / ANCHOR_BOTTOM switch the side used for placement.
+	// - OFFSET_X / OFFSET_Y are scaled fine-tuning nudges.
+	// -------------------------------------------------------------------------
+	public static inline var HEALTH_HUD_SCALE:Float = 0.668;
+	public static inline var HEALTH_HUD_WIDTH_RATIO:Float = 0.423;
+	public static inline var HEALTH_HUD_ANCHOR_RIGHT:Bool = false;
+	public static inline var HEALTH_HUD_ANCHOR_BOTTOM:Bool = false;
+	public static inline var HEALTH_HUD_X:Float = -17.0;
+	public static inline var HEALTH_HUD_MARGIN_Y:Float = 0;
+	public static inline var HEALTH_HUD_OFFSET_X:Float = 1;
+	public static inline var HEALTH_HUD_OFFSET_Y:Float = -3;
+	public static inline var HEALTH_HUD_DOWNSCROLL_OFFSET_X:Float = 0;
+	public static inline var HEALTH_HUD_DOWNSCROLL_OFFSET_Y:Float = 480;
+
+	// Legacy tuning values kept for compatibility with the current script state.
+	// These no longer drive the main placement logic, but are left here so older
+	// experiments or future code changes do not break unexpectedly.
+	public static inline var HEALTH_HUD_WIDTH_PAD:Float = 48;
+	public static inline var HEALTH_HUD_OFFSET_Y_RATIO:Float = 0.98;
+
+	// -------------------------------------------------------------------------
+	// Score HUD Shell: PLAYER HUD SCORE
+	// This is the decorative panel behind the score text.
+	// It is normally anchored to the top-right corner.
+	// - SCALE controls its manual sprite scale.
+	// - TOP_HUD_X defines the horizontal margin from the chosen side.
+	// - TOP_HUD_MARGIN_Y is the top margin.
+	// - TOP_HUD_ANCHOR_RIGHT switches left/right anchoring.
+	// - OFFSET_X / OFFSET_Y are scaled fine adjustments.
+	// -------------------------------------------------------------------------
+	public static inline var TOP_HUD_SCALE:Float = 0.665;
+	public static inline var TOP_HUD_WIDTH_RATIO:Float = 0.36;
+	public static inline var TOP_HUD_ANCHOR_RIGHT:Bool = true;
+	public static inline var TOP_HUD_X:Float = -10;
+	public static inline var TOP_HUD_MARGIN_Y:Float = 0;
+	public static inline var TOP_HUD_OFFSET_X:Float = -10;
+	public static inline var TOP_HUD_OFFSET_Y:Float = 0;
+	public static inline var TOP_HUD_DOWNSCROLL_OFFSET_X:Float = 0;
+	public static inline var TOP_HUD_DOWNSCROLL_OFFSET_Y:Float = 0;
+
+	// -------------------------------------------------------------------------
+	// Chance Time HUD swap
+	// These assets slide in while the normal Miku HUD slides out.
+	// -------------------------------------------------------------------------
+	public static inline var CT_BOTTOM_HUD_FRAME:String = "CT BOTTOM HUD";
+	public static inline var CT_BOTTOM_HUD_DOWNSCROLL_FRAME:String = "CT BOTTOM HUD D";
+	public static inline var CT_BOTTOM_HUD_EX_FRAME:String = "CT BOTTOM HUD EX";
+	public static inline var CT_TOP_HUD_FRAME:String = "CT TOP HUD";
+	public static inline var CT_TOP_HUD_DOWNSCROLL_FRAME:String = "CT TOP HUD D";
+	public static inline var CT_TOP_HUD_EX_FRAME:String = "CT TOP HUD EX";
+	public static inline var CT_SONG_ICON_FRAME:String = "CT ICON SONG";
+	public static inline var CT_BOTTOM_HUD_SCALE:Float = 0.665;
+	public static inline var CT_BOTTOM_HUD_X:Float = 0;
+	public static inline var CT_BOTTOM_HUD_MARGIN_Y:Float = -11;
+	public static inline var CT_BOTTOM_HUD_OFFSET_X:Float = -19;
+	public static inline var CT_BOTTOM_HUD_OFFSET_Y:Float = 0;
+	public static inline var CT_BOTTOM_HUD_DOWNSCROLL_OFFSET_X:Float = 0;
+	public static inline var CT_BOTTOM_HUD_DOWNSCROLL_OFFSET_Y:Float = 0;
+	public static inline var CT_BOTTOM_HUD_EX_OFFSET_Y:Float = 0;
+	public static inline var CT_BOTTOM_HUD_EX_OVERLAP:Float = 2;
+	public static inline var CT_TOP_HUD_SCALE:Float = 0.665;
+	public static inline var CT_TOP_HUD_X:Float = 0;
+	public static inline var CT_TOP_HUD_MARGIN_Y:Float = 0;
+	public static inline var CT_TOP_HUD_OFFSET_X:Float = 0;
+	public static inline var CT_TOP_HUD_OFFSET_Y:Float = 0;
+	public static inline var CT_TOP_HUD_DOWNSCROLL_OFFSET_X:Float = 0;
+	public static inline var CT_TOP_HUD_DOWNSCROLL_OFFSET_Y:Float = 0;
+	public static inline var CT_TOP_HUD_EX_OFFSET_Y:Float = 0;
+	public static inline var CT_TOP_HUD_EX_OVERLAP:Float = 2;
+	public static inline var CT_SCORE_HUD_SCALE:Float = 0.5;
+	public static inline var CT_SCORE_HUD_ANCHOR_RIGHT:Bool = true;
+	public static inline var CT_SCORE_HUD_X:Float = -110;
+	public static inline var CT_SCORE_HUD_MARGIN_Y:Float = -6;
+	public static inline var CT_SCORE_HUD_OFFSET_X:Float = 0;
+	public static inline var CT_SCORE_HUD_OFFSET_Y:Float = 0;
+	public static inline var CT_SCORE_HUD_DOWNSCROLL_OFFSET_X:Float = 0;
+	public static inline var CT_SCORE_HUD_DOWNSCROLL_OFFSET_Y:Float = 0;
+	public static inline var CT_SONG_ICON_SCALE:Float = 0.68;
+	public static inline var CT_SONG_ICON_X:Float = 14;
+	public static inline var CT_SONG_ICON_MARGIN_Y:Float = 7;
+	public static inline var CT_SONG_ICON_OFFSET_X:Float = 0;
+	public static inline var CT_SONG_ICON_OFFSET_Y:Float = 0;
+	public static inline var CT_SONG_ICON_DOWNSCROLL_OFFSET_X:Float = 0;
+	public static inline var CT_SONG_ICON_DOWNSCROLL_OFFSET_Y:Float = 0;
+	public static inline var CT_STAR_METER_Z:Int = 1008;
+	public static inline var CT_STAR_METER_SCALE:Float = 0.145;
+	public static inline var CT_STAR_METER_X:Float = 118;
+	public static inline var CT_STAR_METER_MARGIN_Y:Float = 34;
+	public static inline var CT_STAR_METER_OFFSET_X:Float = -65;
+	public static inline var CT_STAR_METER_OFFSET_Y:Float = 7.5;
+	public static inline var CT_HUD_TRANSITION_DURATION:Float = 0.84;
+	public static inline var CT_HUD_DEBUG_FORCE_VISIBLE:Bool = false;
+
+	// -------------------------------------------------------------------------
+	// Gameplay Subtitles
+	// The vanilla subtitle renderer is reused for the normal HUD and duplicated
+	// for the CT HUD so both blocks can follow the panel transitions.
+	// - NORMAL_HUD_GAP keeps the default subtitles above the bottom HUD shell.
+	// - CT_HUD_GAP does the same for the dedicated Chance Time subtitle copy.
+	// - *_OFFSET_X nudges the subtitle block horizontally after centering.
+	// - *_OFFSET_Y nudges the subtitle block vertically after it is anchored.
+	// - BORDER_SIZE adds an outline so the transparent background can be hidden.
+	// -------------------------------------------------------------------------
+	public static inline var SUBTITLE_Z:Int = 10001;
+	public static inline var SUBTITLE_NORMAL_HUD_GAP:Float = 18;
+	public static inline var SUBTITLE_NORMAL_OFFSET_X:Float = -5;
+	public static inline var SUBTITLE_NORMAL_OFFSET_Y:Float = 488;
+	public static inline var SUBTITLE_NORMAL_DOWNSCROLL_OFFSET_X:Float = 130;
+	public static inline var SUBTITLE_NORMAL_DOWNSCROLL_OFFSET_Y:Float = 60;
+	public static inline var SUBTITLE_NORMAL_TEXT_SIZE:Int = 20;
+	public static inline var SUBTITLE_SECONDARY_NORMAL_TEXT_SIZE:Int = 16;
+	public static inline var SUBTITLE_SECONDARY_NORMAL_OFFSET_X:Float = 0;
+	public static inline var SUBTITLE_SECONDARY_NORMAL_OFFSET_Y:Float = -16;
+	public static inline var SUBTITLE_SECONDARY_NORMAL_DOWNSCROLL_OFFSET_X:Float = 0;
+	public static inline var SUBTITLE_SECONDARY_NORMAL_DOWNSCROLL_OFFSET_Y:Float = 0;
+	public static inline var SUBTITLE_CT_HUD_GAP:Float = 10;
+	public static inline var SUBTITLE_CT_OFFSET_X:Float = 135;
+	public static inline var SUBTITLE_CT_OFFSET_Y:Float = 90;
+	public static inline var SUBTITLE_CT_DOWNSCROLL_OFFSET_X:Float = 0;
+	public static inline var SUBTITLE_CT_DOWNSCROLL_OFFSET_Y:Float = 461;
+	public static inline var SUBTITLE_CT_TEXT_SIZE:Int = 28;
+	public static inline var SUBTITLE_SECONDARY_CT_TEXT_SIZE:Int = 20;
+	public static inline var SUBTITLE_SECONDARY_CT_OFFSET_X:Float = 0;
+	public static inline var SUBTITLE_SECONDARY_CT_OFFSET_Y:Float = -20;
+	public static inline var SUBTITLE_SECONDARY_STACK_GAP:Float = 6;
+	public static inline var SUBTITLE_SECOND_LINE_SCALE:Float = 0.22;
+	public static inline var SUBTITLE_BOP_BEATS_PER_MEASURE:Int = 4;
+	public static inline var SUBTITLE_BOP_SCALE:Float = 1.08;
+	public static inline var SUBTITLE_BOP_DECAY:Float = 10.0;
+	public static inline var SUBTITLE_BORDER_SIZE:Float = 1.5;
+	public static inline var SUBTITLE_HIDE_BACKGROUND:Bool = true;
+
+	// Score text tuning inside PLAYER HUD SCORE.
+	public static inline var SCORE_SCALE_MULTIPLIER:Float = 1.5;
+	public static inline var SCORE_MARGIN_LEFT:Float = 40;
+	public static inline var SCORE_MARGIN_RIGHT:Float = 16;
+	public static inline var SCORE_MARGIN_TOP:Float = 12;
+	public static inline var SCORE_MARGIN_BOTTOM:Float = 12;
+	public static inline var SCORE_HUD_TEXT_PAD:Float = 54;
+	public static inline var SCORE_HUD_MIN_WIDTH:Float = 210;
+	public static inline var SCORE_HUD_RIGHT_INSET:Float = 20;
+	public static inline var SCORE_HUD_Y_OFFSET:Float = 5;
+
+	// Numeric score display inside PLAYER HUD SCORE.
+	// Uses the custom atlas at Hud/ScoreFonts/HudScoreNumber.
+	// - COUNT forces a fixed-width zero-padded display.
+	// - HEIGHT controls the sprite height of each digit.
+	// - GAP controls the spacing between digit slots.
+	// - RIGHT_INSET keeps the full group padded from the panel edge.
+	// - OFFSET_X / OFFSET_Y provide scaled fine tuning.
+	public static inline var SCORE_DIGITS_ATLAS_KEY:String = "Hud/ScoreFonts/HudScoreNumber";
+	public static inline var SCORE_DIGITS_VP_ATLAS_KEY:String = "VoltagePowerASSETS/SCORE_FONT/MIKU/HudScoreNumberMIKUVP";
+	public static inline var SCORE_DIGITS_Z:Int = 1008;
+	public static inline var SCORE_DIGITS_COUNT:Int = 7;
+	public static inline var SCORE_DIGITS_HEIGHT:Float = 30;
+	public static inline var SCORE_DIGITS_GAP:Float = 6;
+	public static inline var SCORE_DIGITS_RIGHT_INSET:Float = 24;
+	public static inline var SCORE_DIGITS_OFFSET_X:Float = -100;
+	public static inline var SCORE_DIGITS_OFFSET_Y:Float = 0;
+	public static inline var SCORE_DIGITS_VP_ANIM_FPS:Int = 24;
+	public static inline var SCORE_DIGITS_VP_HEIGHT_MULTIPLIER:Float = 1.25;
+	public static inline var SCORE_MINUS_HEIGHT_MULTIPLIER:Float = 0.3;
+	public static inline var SCORE_DIGITS_RESERVE_BADGE_SPACE:Bool = false;
+	public static inline var SCORE_RANK_BADGE_ATLAS_KEY:String = "freeplay/rankbadges";
+	public static inline var SCORE_RANK_BADGE_Z:Int = 1008;
+	public static inline var SCORE_RANK_BADGE_SHOW:Bool = true;
+	public static inline var SCORE_RANK_BADGE_HEIGHT:Float = 50;
+	public static inline var SCORE_RANK_BADGE_GAP:Float = 6;
+	public static inline var SCORE_RANK_BADGE_RIGHT_INSET:Float = 10;
+	public static inline var SCORE_RANK_BADGE_OFFSET_X:Float = -25;
+	public static inline var SCORE_RANK_BADGE_OFFSET_Y:Float = 7;
+	public static inline var SCORE_RANK_BADGE_LOSS_OFFSET_X:Float = 0;
+	public static inline var SCORE_RANK_BADGE_LOSS_OFFSET_Y:Float = -5;
+	public static inline var SCORE_RANK_BADGE_GOOD_OFFSET_X:Float = 0;
+	public static inline var SCORE_RANK_BADGE_GOOD_OFFSET_Y:Float = -2;
+	public static inline var SCORE_RANK_BADGE_GREAT_OFFSET_X:Float = 0;
+	public static inline var SCORE_RANK_BADGE_GREAT_OFFSET_Y:Float = -2;
+	public static inline var SCORE_RANK_BADGE_EXCELLENT_OFFSET_X:Float = 0;
+	public static inline var SCORE_RANK_BADGE_EXCELLENT_OFFSET_Y:Float = 0;
+	public static inline var SCORE_RANK_BADGE_PERFECT_OFFSET_X:Float = 0;
+	public static inline var SCORE_RANK_BADGE_PERFECT_OFFSET_Y:Float = 0;
+	public static inline var SCORE_RANK_BADGE_PERFECT_GOLD_OFFSET_X:Float = 0;
+	public static inline var SCORE_RANK_BADGE_PERFECT_GOLD_OFFSET_Y:Float = 0;
+	public static inline var SCORE_RANK_SPARKLE_Z:Int = 1009;
+	public static inline var SCORE_RANK_SPARKLE_SCALE:Float = 1.0;
+	public static inline var SCORE_RANK_SPARKLE_HEIGHT_RATIO:Float = 1.0;
+	public static inline var SCORE_RANK_SPARKLE_ALPHA:Float = 0.9;
+	public static inline var SCORE_RANK_SPARKLE_OFFSET_LEFT_RATIO:Float = -0.4;
+	public static inline var SCORE_RANK_SPARKLE_OFFSET_RIGHT_RATIO:Float = 0.06;
+	public static inline var SCORE_RANK_SPARKLE_OFFSET_TOP_RATIO:Float = -0.52;
+	public static inline var SCORE_RANK_SPARKLE_OFFSET_BOTTOM_RATIO:Float = 0.08;
+
+	// -------------------------------------------------------------------------
+	// Song Icon: ICON SONG
+	// This icon has its own screen-space placement.
+	// - SCALE controls its manual sprite scale.
+	// - X / MARGIN_Y define the base position.
+	// - OFFSET_X / OFFSET_Y provide scaled fine tuning.
+	// -------------------------------------------------------------------------
+	public static inline var SONG_ICON_SCALE:Float = 0.665;
+	public static inline var SONG_ICON_BASE_SIZE:Float = 28;
+	public static inline var SONG_ICON_X:Float = 77;
+	public static inline var SONG_ICON_MARGIN_Y:Float = 5;
+	public static inline var SONG_ICON_OFFSET_X:Float = 0;
+	public static inline var SONG_ICON_OFFSET_Y:Float = 0;
+	public static inline var SONG_ICON_DOWNSCROLL_OFFSET_X:Float = 0;
+	public static inline var SONG_ICON_DOWNSCROLL_OFFSET_Y:Float = 14;
+
+	// -------------------------------------------------------------------------
+	// Song Label: 5by7 HUD text
+	// Uses the same 5by7 font used by Freeplay capsule text.
+	// - SHOW_ID toggles between song display name and the raw song ID.
+	// - SIZE controls the base FlxText size before scaling.
+	// - SCALE multiplies the rendered text size.
+	// - X / MARGIN_Y define the base screen position.
+	// - OFFSET_X / OFFSET_Y provide scaled fine tuning.
+	// - MAX_WIDTH limits how wide the label can grow.
+	// - RIGHT_INSET keeps a right-side padding inside the score HUD panel.
+	// - DIFFICULTY_* control the current difficulty sprite shown beside the song label.
+	// - BORDER_SIZE controls the black outline thickness.
+	// - SCROLL_ENABLED turns marquee movement on for long names.
+	// - SCROLL_SPEED is the horizontal speed in pixels per second.
+	// - SCROLL_START_DELAY waits before the first movement.
+	// - SCROLL_END_DELAY waits before returning.
+	// -------------------------------------------------------------------------
+	public static inline var SONG_LABEL_Z:Int = 1008;
+	public static inline var SONG_LABEL_SHOW_ID:Bool = false;
+	public static inline var SONG_LABEL_SIZE:Int = 18;
+	public static inline var SONG_LABEL_SCALE:Float = 1.3;
+	public static inline var SONG_LABEL_X:Float = 132;
+	public static inline var SONG_LABEL_MARGIN_Y:Float = 9;
+	public static inline var SONG_LABEL_OFFSET_X:Float = 10;
+	public static inline var SONG_LABEL_OFFSET_Y:Float = 2;
+	public static inline var SONG_LABEL_DOWNSCROLL_OFFSET_X:Float = 0;
+	public static inline var SONG_LABEL_DOWNSCROLL_OFFSET_Y:Float = 0;
+	public static inline var SONG_LABEL_MAX_WIDTH:Float = 220;
+	public static inline var SONG_LABEL_RIGHT_INSET:Float = 18;
+	public static inline var SONG_LABEL_DIFFICULTY_Z:Int = 1008;
+	public static inline var SONG_LABEL_DIFFICULTY_SHOW:Bool = true;
+	public static inline var SONG_LABEL_DIFFICULTY_HEIGHT:Float = 18;
+	public static inline var SONG_LABEL_DIFFICULTY_GAP:Float = 8;
+	public static inline var SONG_LABEL_DIFFICULTY_X:Float = 260;
+	public static inline var SONG_LABEL_DIFFICULTY_RIGHT_INSET:Float = 18;
+	public static inline var SONG_LABEL_DIFFICULTY_OFFSET_X:Float = 15;
+	public static inline var SONG_LABEL_DIFFICULTY_OFFSET_Y:Float = -1;
+	public static inline var SONG_LABEL_DIFFICULTY_DOWNSCROLL_OFFSET_X:Float = 0;
+	public static inline var SONG_LABEL_DIFFICULTY_DOWNSCROLL_OFFSET_Y:Float = 0;
+	public static inline var SONG_LABEL_BORDER_SIZE:Float = 1;
+	public static inline var SONG_LABEL_SCROLL_ENABLED:Bool = true;
+	public static inline var SONG_LABEL_SCROLL_SPEED:Float = 24;
+	public static inline var SONG_LABEL_SCROLL_START_DELAY:Float = 4.75;
+	public static inline var SONG_LABEL_SCROLL_END_DELAY:Float = 2.35;
+
+	// -------------------------------------------------------------------------
+	// Gameplay Strumlines
+	// Fine tuning for the real player/opponent strumlines exposed by PlayState.
+	// These settings are applied relative to the engine's vanilla placement so
+	// they stay compatible with different aspect ratios and mobile presets.
+	// - SCALE multiplies the base receptor/tap-note scale.
+	// - NOTE_SPACING multiplies the horizontal lane spacing.
+	// - OFFSET_X / OFFSET_Y are scaled nudges applied after vanilla layout.
+	// Incoming notes already on screen are realigned to match these values.
+	// -------------------------------------------------------------------------
+	public static inline var PLAYER_STRUMLINE_SCALE:Float = 0;
+	public static inline var PLAYER_STRUMLINE_NOTE_SPACING:Float = 1.0;
+	public static inline var PLAYER_STRUMLINE_OFFSET_X:Float = 0;
+	public static inline var PLAYER_STRUMLINE_OFFSET_Y:Float = 0;
+	public static inline var OPPONENT_STRUMLINE_SCALE:Float = 1.0;
+	public static inline var OPPONENT_STRUMLINE_NOTE_SPACING:Float = 1.0;
+	public static inline var OPPONENT_STRUMLINE_OFFSET_X:Float = 0;
+	public static inline var OPPONENT_STRUMLINE_OFFSET_Y:Float = 0;
+
+	// -------------------------------------------------------------------------
+	// Voltage Gauge: voltage_powerMIKU.hxc
+	// Global controls for the Miku voltage gauge gameplay overlay.
+	// - X / Y move the entire gauge as a whole.
+	// - SCALE changes the overall size of the indicator.
+	// - Z_BASE is the base z-index; the script stacks its internal parts above it.
+	// - INITIAL_CHARGE chooses how full the gauge starts (0.0 to 1.0).
+	// -------------------------------------------------------------------------
+	public static inline var VOLTAGE_GAUGE_X:Float = -39;
+	public static inline var VOLTAGE_GAUGE_Y:Float = 121;
+	public static inline var VOLTAGE_GAUGE_DOWNSCROLL_OFFSET_X:Float = 0;
+	public static inline var VOLTAGE_GAUGE_DOWNSCROLL_OFFSET_Y:Float = -42;
+	public static inline var VOLTAGE_GAUGE_SCALE:Float = 1;
+	public static inline var VOLTAGE_GAUGE_Z_BASE:Int = 3000;
+	public static inline var VOLTAGE_GAUGE_INITIAL_CHARGE:Float = 1.0;
+
+	// -------------------------------------------------------------------------
+	// Health Bar Label: 5by7 LIFE text
+	// Drawn to the left of the real gameplay health bar.
+	// - SHOW toggles the label.
+	// - SIZE controls the base FlxText size before scaling.
+	// - SCALE multiplies the rendered text size.
+	// - GAP controls the spacing from the left edge of the bar.
+	// - OFFSET_X / OFFSET_Y provide scaled fine tuning.
+	// - BORDER_SIZE controls the black outline thickness.
+	// -------------------------------------------------------------------------
+	public static inline var LIFE_LABEL_Z:Int = 1006;
+	public static inline var LIFE_LABEL_SHOW:Bool = true;
+	public static inline var LIFE_LABEL_SIZE:Int = 18;
+	public static inline var LIFE_LABEL_SCALE:Float = 1.0;
+	public static inline var LIFE_LABEL_GAP:Float = 8;
+	public static inline var LIFE_LABEL_OFFSET_X:Float = 6;
+	public static inline var LIFE_LABEL_OFFSET_Y:Float = 2;
+	public static inline var LIFE_LABEL_DOWNSCROLL_OFFSET_X:Float = 0;
+	public static inline var LIFE_LABEL_DOWNSCROLL_OFFSET_Y:Float = 0;
+	public static inline var LIFE_LABEL_BORDER_SIZE:Float = 1;
+
+	// -------------------------------------------------------------------------
+	// Health Bar Icon: ICON HEALTH
+	// Drawn to the left of the LIFE label.
+	// - SHOW toggles the icon.
+	// - SCALE controls the atlas sprite size.
+	// - GAP controls the spacing from the LIFE label.
+	// - OFFSET_X / OFFSET_Y provide scaled fine tuning.
+	// -------------------------------------------------------------------------
+	public static inline var LIFE_ICON_Z:Int = 1009;
+	public static inline var LIFE_ICON_SHOW:Bool = true;
+	public static inline var LIFE_ICON_SCALE:Float = 0.65;
+	public static inline var LIFE_ICON_GAP:Float = 6;
+	public static inline var LIFE_ICON_OFFSET_X:Float = 6;
+	public static inline var LIFE_ICON_OFFSET_Y:Float = -1;
+	public static inline var LIFE_ICON_DOWNSCROLL_OFFSET_X:Float = 0;
+	public static inline var LIFE_ICON_DOWNSCROLL_OFFSET_Y:Float = 0;
+
+	// -------------------------------------------------------------------------
+	// Misc HUD Text
+	// Small helper offsets for text rendered over the bar.
+	// - PROTECTED_TEXT_SIZE controls the base font size.
+	// - PROTECTED_TEXT_SCALE multiplies the rendered text size.
+	// - PROTECTED_TEXT_X_NUDGE / Y_NUDGE move the text inside the bar area.
+	// - PROTECTED_TEXT_BORDER_SIZE controls the outline thickness.
+	// -------------------------------------------------------------------------
+	public static inline var PROTECTED_TEXT_SIZE:Int = 14;
+	public static inline var PROTECTED_TEXT_SCALE:Float = 0.8;
+	public static inline var PROTECTED_TEXT_X_NUDGE:Float = 155;
+	public static inline var PROTECTED_TEXT_Y_NUDGE:Float = 1.5;
+	public static inline var PROTECTED_TEXT_DOWNSCROLL_OFFSET_X:Float = 0;
+	public static inline var PROTECTED_TEXT_DOWNSCROLL_OFFSET_Y:Float = 0;
+	public static inline var PROTECTED_TEXT_BORDER_SIZE:Float = 2;
+
+	public static function isDownscroll():Bool {
+		return #if mobile (Preferences.controlsScheme == FunkinHitboxControlSchemes.Arrows && !ControlsHandler.hasExternalInputDevice)
+			|| #end Preferences.downscroll;
+	}
+
+	public static function getUiScale():Float {
+		// Scale against the base resolution, then clamp so extreme aspect ratios
+		// do not make the HUD absurdly tiny or huge.
+		var scaleX = FlxG.width / BASE_SCREEN_W;
+		var scaleY = FlxG.height / BASE_SCREEN_H;
+		var scale = Math.min(scaleX, scaleY);
+		if (scale < MIN_UI_SCALE) scale = MIN_UI_SCALE;
+		if (scale > MAX_UI_SCALE) scale = MAX_UI_SCALE;
+		return scale;
+	}
+
+	public static function getBarAnchor(barOffsetX:Float, barOffsetY:Float) {
+		// This returns the anchor for the real gameplay health bar only.
+		// Decorative sprites use their own independent positioning values above.
+		var uiScale = getUiScale();
+		var downscroll = isDownscroll();
+		var downscrollOffsetX = downscroll ? (BAR_DOWNSCROLL_OFFSET_X * uiScale) : 0;
+		var downscrollOffsetY = downscroll ? (BAR_DOWNSCROLL_OFFSET_Y * uiScale) : 0;
+		var baseY = downscroll ? Std.int(BAR_DOWN_Y * uiScale) : Std.int(FlxG.height - BAR_UP_MARGIN - (BAR_UP_LIFT * uiScale));
+		return {
+			x: BAR_BASE_X + barOffsetX + downscrollOffsetX,
+			y: baseY + barOffsetY + downscrollOffsetY,
+			uiScale: uiScale,
+			downscroll: downscroll
+		};
+	}
+}

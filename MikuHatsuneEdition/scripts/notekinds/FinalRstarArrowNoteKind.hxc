@@ -1,0 +1,7 @@
+import funkin.play.notes.notekind.ScriptedNoteKind;
+
+class FinalRstarArrowNoteKind extends ScriptedNoteKind {
+	public function new() {
+		super("Final Rstar Arrow", "Chance Time success finisher.", "chancefinalrstar");
+	}
+}

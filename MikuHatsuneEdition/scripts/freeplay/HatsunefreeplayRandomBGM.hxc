@@ -1,0 +1,126 @@
+//changes freeplayRandom default theme with another theme for Miku
+
+import funkin.modding.module.Module;
+import funkin.util.ReflectUtil;
+import funkin.audio.FunkinSound;
+import funkin.Paths;
+import flixel.FlxG;
+
+class MikuFreeplayRandomBGM extends Module
+{
+    var replaceCooldown:Float = 0.0;
+
+    // Cached constants to avoid rebuilding strings each frame.
+    var DEFAULT_RANDOM_KEY:String = 'freeplayRandom';
+    var MUSIC_KEY:String = 'freeplayRandom-vocaloid';
+    var DEFAULT_RANDOM_LABEL:String = null;
+    var MUSIC_LABEL:String = null;
+    var FREEPLAY_CLASSNAME:String = 'funkin.ui.freeplay.FreeplayState';
+    var MIKU_CHARACTER_ID:String = 'miku';
+    var DEBUG:Bool = false;
+
+    public function new()
+    {
+        // Use a unique identifier to avoid clashes with other mods
+        super('HatsuneFreeplayRandomBGM');
+        // Paths.music("key/key") -> final resolved label used by the engine.
+        DEFAULT_RANDOM_LABEL = Paths.music(DEFAULT_RANDOM_KEY + '/' + DEFAULT_RANDOM_KEY);
+        MUSIC_LABEL = Paths.music(MUSIC_KEY + '/' + MUSIC_KEY);
+    }
+
+    override function onStateChangeEnd(event)
+    {
+        super.onStateChangeEnd(event);
+        resetRuntimeState();
+    }
+
+    override function onSubStateCloseEnd(event)
+    {
+        super.onSubStateCloseEnd(event);
+        resetRuntimeState();
+    }
+
+    override function onUpdate(event:UpdateScriptEvent)
+    {
+        super.onUpdate(event);
+
+        if (replaceCooldown > 0)
+        {
+            replaceCooldown -= FlxG.elapsed;
+            if (replaceCooldown < 0) replaceCooldown = 0;
+        }
+
+        var fp = getFreeplayState();
+        if (fp == null)
+        {
+            resetRuntimeState();
+            return;
+        }
+
+        var hoveringRandom = isMikuRandomHovered(fp);
+        if (!hoveringRandom)
+        {
+            resetRuntimeState();
+            return;
+        }
+
+        var currentLabel = getCurrentMusicLabel();
+        if (currentLabel == MUSIC_LABEL)
+        {
+            return;
+        }
+
+        // Freeplay can queue the stock Random preview after rapid selection changes.
+        // Replace it whenever it comes back, but throttle the swap to avoid spam.
+        if (currentLabel == DEFAULT_RANDOM_LABEL && replaceCooldown <= 0)
+        {
+            playCustomRandomPreview();
+            replaceCooldown = 0.12;
+        }
+    }
+
+    function getFreeplayState()
+    {
+        var subState = (FlxG.state != null) ? FlxG.state.subState : null;
+        if (subState == null) return null;
+        if (ReflectUtil.getClassNameOf(subState) != FREEPLAY_CLASSNAME) return null;
+        return subState;
+    }
+
+    function isMikuRandomHovered(fp):Bool
+    {
+        if (fp == null) return false;
+        if (fp.currentCharacterId != MIKU_CHARACTER_ID) return false;
+        if (fp.controls == null || !fp.controls.active) return false;
+        return fp.curSelected == 0;
+    }
+
+    function getCurrentMusicLabel():String
+    {
+        if (FlxG.sound.music == null) return null;
+        return ReflectUtil.getField(FlxG.sound.music, '_label');
+    }
+
+    function playCustomRandomPreview():Void
+    {
+        var started = FunkinSound.playMusic(MUSIC_KEY, {
+            startingVolume: 0.0,
+            overrideExisting: true,
+            restartTrack: false,
+            mapTimeChanges: false,
+            loop: true,
+            onLoad: function() {
+                if (FlxG.sound.music != null) {
+                    FlxG.sound.music.fadeIn(1.5, 0, 0.6);
+                }
+            }
+        });
+
+        if (DEBUG) trace('[MikuFreeplayRandomBGM] playMusic returned: ' + started);
+    }
+
+    function resetRuntimeState():Void
+    {
+        replaceCooldown = 0.0;
+    }
+}

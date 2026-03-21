@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextureAtlas imagePath="VP_Assets.png">
+	<!-- Created using the Spritesheet and XML generator -->
+	<!-- https://uncertainprod.github.io/FNF-Spritesheet-XML-generator-Web -->
+	<SubTexture name="vp background0000" x="790" y="462" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp music note bg0000" x="0" y="2266" width="62" height="103" frameX="2" frameY="2" frameWidth="58" frameHeight="99"/>
+	<SubTexture name="vp stroke0000" x="165" y="0" width="161" height="161" frameX="2" frameY="2" frameWidth="157" frameHeight="157"/>
+	<SubTexture name="vp charge hit aura0000" x="0" y="0" width="165" height="166" frameX="1" frameY="1" frameWidth="168" frameHeight="168"/>
+	<SubTexture name="vp charge hit miss0000" x="2442" y="507" width="63" height="84" frameX="-23" frameY="-68" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit miss0001" x="1327" y="1988" width="83" height="76" frameX="1" frameY="-66" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit miss0002" x="1661" y="1988" width="84" height="66" frameX="2" frameY="-42" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit miss0003" x="1161" y="1988" width="83" height="76" frameX="1" frameY="-8" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit miss0004" x="2442" y="339" width="63" height="84" frameX="-23" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit miss0005" x="2442" y="255" width="64" height="84" frameX="-63" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit miss0006" x="1244" y="1988" width="83" height="76" frameX="-67" frameY="-8" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit miss0007" x="1577" y="1988" width="84" height="66" frameX="-68" frameY="-42" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit miss0008" x="1410" y="1988" width="83" height="76" frameX="-67" frameY="-66" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit miss0009" x="2442" y="423" width="63" height="84" frameX="-63" frameY="-68" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit0000" x="2442" y="171" width="66" height="84" frameX="-22" frameY="-68" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit0001" x="1077" y="1988" width="84" height="79" frameX="1" frameY="-64" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit0002" x="1493" y="1988" width="84" height="70" frameX="2" frameY="-40" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit0003" x="993" y="1988" width="84" height="79" frameX="1" frameY="-7" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit0004" x="62" y="2266" width="68" height="85" frameX="-21" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit0005" x="2442" y="86" width="67" height="85" frameX="-61" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit0006" x="908" y="1988" width="85" height="79" frameX="-66" frameY="-7" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit0007" x="1856" y="1770" width="85" height="70" frameX="-67" frameY="-40" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit0008" x="823" y="1988" width="85" height="79" frameX="-66" frameY="-64" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge hit0009" x="2442" y="0" width="67" height="86" frameX="-61" frameY="-66" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge0000" x="2442" y="804" width="49" height="79" frameX="-28" frameY="-73" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge0001" x="1836" y="2132" width="76" height="79" frameX="-1" frameY="-73" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge0002" x="2363" y="502" width="79" height="103" frameX="2" frameY="-49" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge0003" x="2363" y="0" width="79" height="140" frameX="2" frameY="-12" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge0004" x="2274" y="1281" width="79" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge0005" x="2002" y="1454" width="123" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge0006" x="1252" y="153" width="151" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge0007" x="0" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge0008" x="944" y="154" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge0009" x="1098" y="770" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp charge down0000" x="2505" y="339" width="4" height="4" frameX="0" frameY="0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0001" x="1490" y="1544" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0002" x="447" y="1693" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0003" x="894" y="1544" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0004" x="298" y="1544" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0005" x="447" y="1544" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0006" x="745" y="1693" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0007" x="1707" y="0" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0008" x="0" y="1693" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0009" x="596" y="1693" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0010" x="1707" y="298" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0011" x="1707" y="1192" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0012" x="1707" y="894" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0013" x="596" y="1544" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0014" x="1707" y="149" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0015" x="1043" y="1693" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0016" x="298" y="1693" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0017" x="894" y="1693" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0018" x="745" y="1544" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0019" x="1707" y="447" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0020" x="1707" y="745" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0021" x="1043" y="1544" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0022" x="1707" y="596" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0023" x="0" y="1544" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0024" x="1707" y="1043" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0025" x="1707" y="1490" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0026" x="1707" y="1341" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0027" x="1341" y="1544" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0028" x="1192" y="1544" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0029" x="149" y="1693" width="149" height="149" frameX="2" frameY="2" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge down0030" x="2505" y="339" width="4" height="4" frameX="0" frameY="0" frameWidth="145" frameHeight="145"/>
+	<SubTexture name="vp charge up0000" x="2505" y="339" width="4" height="4" frameX="0" frameY="0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0001" x="1078" y="1094" width="153" height="153" frameX="1" frameY="1" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0002" x="924" y="1094" width="154" height="153" frameX="2" frameY="1" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0003" x="462" y="1094" width="154" height="154" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0004" x="0" y="631" width="154" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0005" x="636" y="310" width="154" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0006" x="636" y="0" width="154" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0007" x="636" y="465" width="154" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0008" x="481" y="0" width="155" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0009" x="155" y="321" width="155" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0010" x="481" y="155" width="155" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0011" x="326" y="155" width="155" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0012" x="326" y="0" width="155" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0013" x="0" y="476" width="155" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0014" x="481" y="310" width="155" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0015" x="310" y="321" width="155" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0016" x="155" y="166" width="155" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0017" x="0" y="166" width="155" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0018" x="155" y="476" width="155" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0019" x="0" y="321" width="155" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0020" x="310" y="476" width="154" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0021" x="154" y="631" width="154" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0022" x="308" y="631" width="154" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0023" x="462" y="631" width="154" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0024" x="636" y="155" width="154" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0025" x="464" y="476" width="154" height="155" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0026" x="0" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0027" x="770" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0028" x="616" y="1094" width="154" height="153" frameX="2" frameY="1" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0029" x="770" y="1094" width="154" height="153" frameX="2" frameY="1" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0030" x="1252" y="0" width="153" height="153" frameX="1" frameY="1" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp charge up0031" x="2505" y="339" width="4" height="4" frameX="0" frameY="0" frameWidth="154" frameHeight="154"/>
+	<SubTexture name="vp full charge0000" x="462" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0001" x="462" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0002" x="462" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0003" x="1098" y="0" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0004" x="1098" y="924" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0005" x="1098" y="616" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0006" x="924" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0007" x="790" y="154" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0008" x="1098" y="308" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0009" x="308" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0010" x="944" y="462" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0011" x="0" y="1094" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0012" x="154" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0013" x="616" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0014" x="616" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0015" x="462" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0016" x="154" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0017" x="154" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0018" x="154" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0019" x="154" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0020" x="154" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0021" x="154" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0022" x="790" y="616" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0023" x="790" y="308" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0024" x="1098" y="154" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0025" x="944" y="308" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0026" x="944" y="770" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0027" x="616" y="631" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0028" x="308" y="1094" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0029" x="308" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0030" x="154" y="1094" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0031" x="944" y="616" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0032" x="1098" y="462" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0033" x="308" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0034" x="790" y="0" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0035" x="944" y="0" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0036" x="770" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0037" x="462" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0038" x="462" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0039" x="462" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0040" x="462" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0041" x="462" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0042" x="462" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0043" x="1098" y="0" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0044" x="1098" y="924" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0045" x="1098" y="616" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0046" x="924" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0047" x="790" y="154" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0048" x="1098" y="308" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0049" x="308" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0050" x="944" y="462" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0051" x="0" y="1094" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0052" x="154" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0053" x="616" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0054" x="616" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0055" x="462" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0056" x="154" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0057" x="154" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0058" x="154" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0059" x="154" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0060" x="154" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0061" x="154" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0062" x="790" y="616" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0063" x="790" y="308" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0064" x="1098" y="154" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0065" x="944" y="308" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0066" x="944" y="770" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0067" x="616" y="631" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0068" x="308" y="1094" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0069" x="308" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0070" x="154" y="1094" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0071" x="944" y="616" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0072" x="1098" y="462" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0073" x="308" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0074" x="790" y="0" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0075" x="944" y="0" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0076" x="770" y="940" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0077" x="462" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0078" x="462" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp full charge0079" x="462" y="786" width="154" height="154" frameX="2" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp music note charged POST0000" x="1491" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0001" x="1491" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0002" x="1491" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0003" x="1219" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0004" x="2363" y="825" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0005" x="2363" y="1689" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0006" x="1784" y="1693" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0007" x="1627" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0008" x="743" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0009" x="2363" y="1473" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0010" x="2363" y="1581" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0011" x="1559" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0012" x="675" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0013" x="1423" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0014" x="1355" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0015" x="2363" y="1041" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0016" x="2363" y="1905" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0017" x="2363" y="1905" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0018" x="2363" y="1905" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0019" x="2363" y="1905" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0020" x="2363" y="1905" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0021" x="2363" y="1905" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0022" x="2363" y="933" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0023" x="2363" y="2121" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0024" x="1287" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0025" x="947" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0026" x="2363" y="1365" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0027" x="607" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0028" x="1015" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0029" x="2363" y="1473" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0030" x="879" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0031" x="2363" y="1797" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0032" x="811" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0033" x="1695" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0034" x="2363" y="1149" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0035" x="2363" y="717" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0036" x="1083" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0037" x="1491" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0038" x="1491" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged POST0039" x="1491" y="2132" width="68" height="108" frameX="0" frameY="0" frameWidth="72" frameHeight="111"/>
+	<SubTexture name="vp music note charged0000" x="2505" y="339" width="4" height="4" frameX="0" frameY="0" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0001" x="2363" y="605" width="70" height="112" frameX="-11" frameY="-18" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0002" x="2363" y="386" width="73" height="116" frameX="-10" frameY="-16" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0003" x="2363" y="265" width="76" height="121" frameX="-8" frameY="-13" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0004" x="2363" y="140" width="78" height="125" frameX="-7" frameY="-11" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0005" x="252" y="2132" width="80" height="130" frameX="-6" frameY="-9" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0006" x="84" y="2132" width="84" height="134" frameX="-4" frameY="-7" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0007" x="2274" y="1573" width="85" height="137" frameX="-3" frameY="-5" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0008" x="2274" y="860" width="87" height="141" frameX="-2" frameY="-3" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0009" x="2274" y="0" width="89" height="144" frameX="-1" frameY="-2" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0010" x="0" y="2132" width="84" height="134" frameX="-4" frameY="-7" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0011" x="2274" y="1847" width="85" height="137" frameX="-3" frameY="-5" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0012" x="2274" y="1141" width="87" height="140" frameX="-2" frameY="-4" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0013" x="2274" y="432" width="89" height="144" frameX="-1" frameY="-2" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0014" x="168" y="2132" width="84" height="134" frameX="-4" frameY="-7" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0015" x="2274" y="1984" width="84" height="136" frameX="-4" frameY="-6" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0016" x="2274" y="1710" width="85" height="137" frameX="-3" frameY="-5" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0017" x="2274" y="1435" width="86" height="138" frameX="-2" frameY="-5" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0018" x="2274" y="1001" width="87" height="140" frameX="-2" frameY="-4" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0019" x="2274" y="718" width="87" height="142" frameX="-2" frameY="-3" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0020" x="2274" y="576" width="89" height="142" frameX="-1" frameY="-3" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0021" x="2274" y="288" width="89" height="144" frameX="-1" frameY="-2" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0022" x="2274" y="144" width="89" height="144" frameX="-1" frameY="-2" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0023" x="1151" y="2132" width="68" height="108" frameX="-12" frameY="-20" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0024" x="2363" y="1257" width="68" height="108" frameX="-12" frameY="-20" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0025" x="1639" y="1544" width="68" height="108" frameX="-12" frameY="-20" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0026" x="2363" y="2013" width="68" height="108" frameX="-12" frameY="-20" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0027" x="2363" y="2013" width="68" height="108" frameX="-12" frameY="-20" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp music note charged0028" x="2363" y="2013" width="68" height="108" frameX="-12" frameY="-20" frameWidth="94" frameHeight="151"/>
+	<SubTexture name="vp sparking A0000" x="2505" y="339" width="4" height="4" frameX="0" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0001" x="2142" y="1600" width="120" height="124" frameX="-7" frameY="-17" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0002" x="2142" y="693" width="125" height="130" frameX="-5" frameY="-13" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0003" x="2142" y="0" width="132" height="139" frameX="-2" frameY="-8" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0004" x="2002" y="1743" width="134" height="140" frameX="-1" frameY="-8" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0005" x="2002" y="886" width="136" height="142" frameX="0" frameY="-7" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0006" x="2002" y="445" width="139" height="148" frameX="1" frameY="-3" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0007" x="1856" y="1621" width="142" height="149" frameX="2" frameY="-2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0008" x="1856" y="297" width="144" height="150" frameX="2" frameY="-1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0009" x="1559" y="756" width="146" height="152" frameX="2" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0010" x="1559" y="303" width="147" height="152" frameX="2" frameY="1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0011" x="1559" y="151" width="147" height="152" frameX="2" frameY="1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0012" x="1559" y="908" width="146" height="152" frameX="2" frameY="1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0013" x="1559" y="1209" width="146" height="151" frameX="2" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0014" x="1559" y="605" width="147" height="151" frameX="2" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0015" x="1252" y="1056" width="148" height="152" frameX="2" frameY="1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0016" x="1405" y="148" width="149" height="152" frameX="2" frameY="1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0017" x="1559" y="0" width="148" height="151" frameX="2" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0018" x="1559" y="455" width="148" height="150" frameX="2" frameY="-1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0019" x="1559" y="1060" width="148" height="149" frameX="2" frameY="-2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0020" x="730" y="1842" width="144" height="143" frameX="1" frameY="-7" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking A0021" x="2505" y="339" width="4" height="4" frameX="0" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0000" x="2505" y="339" width="4" height="4" frameX="0" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0001" x="424" y="2132" width="90" height="113" frameX="-35" frameY="-17" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0002" x="429" y="1988" width="102" height="120" frameX="-28" frameY="-14" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0003" x="2142" y="1348" width="115" height="133" frameX="-19" frameY="-5" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0004" x="2142" y="958" width="120" height="135" frameX="-16" frameY="-5" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0005" x="2142" y="418" width="125" height="136" frameX="-13" frameY="-5" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0006" x="2002" y="1028" width="133" height="145" frameX="-8" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0007" x="2002" y="593" width="139" height="147" frameX="-4" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0008" x="1856" y="148" width="145" height="149" frameX="-1" frameY="1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0009" x="1405" y="1036" width="150" height="150" frameX="2" frameY="1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0010" x="1252" y="607" width="152" height="150" frameX="2" frameY="1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0011" x="1252" y="457" width="153" height="150" frameX="2" frameY="1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0012" x="154" y="1248" width="154" height="150" frameX="2" frameY="1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0013" x="924" y="1248" width="154" height="148" frameX="2" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0014" x="462" y="1248" width="154" height="148" frameX="2" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0015" x="1232" y="1248" width="154" height="148" frameX="2" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0016" x="1405" y="0" width="154" height="148" frameX="2" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0017" x="1405" y="595" width="154" height="147" frameX="2" frameY="-1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0018" x="615" y="1398" width="154" height="144" frameX="2" frameY="-3" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0019" x="1076" y="1398" width="154" height="142" frameX="2" frameY="-5" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0020" x="1169" y="1842" width="152" height="134" frameX="1" frameY="-10" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking B0021" x="2505" y="339" width="4" height="4" frameX="0" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0000" x="2505" y="339" width="4" height="4" frameX="0" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0001" x="634" y="1988" width="105" height="94" frameX="-23" frameY="-23" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0002" x="2002" y="1883" width="113" height="104" frameX="-18" frameY="-19" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0003" x="2142" y="1852" width="124" height="117" frameX="-12" frameY="-14" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0004" x="2142" y="1481" width="128" height="119" frameX="-10" frameY="-14" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0005" x="2142" y="1093" width="130" height="122" frameX="-9" frameY="-13" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0006" x="1461" y="1842" width="137" height="132" frameX="-5" frameY="-8" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0007" x="287" y="1988" width="142" height="137" frameX="-2" frameY="-6" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0008" x="439" y="1842" width="146" height="143" frameX="1" frameY="-3" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0009" x="1636" y="1693" width="148" height="147" frameX="2" frameY="-1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0010" x="1559" y="1360" width="148" height="148" frameX="2" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0011" x="1192" y="1693" width="148" height="148" frameX="2" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0012" x="1340" y="1693" width="148" height="148" frameX="2" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0013" x="1856" y="1180" width="146" height="145" frameX="1" frameY="-2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0014" x="147" y="1842" width="147" height="146" frameX="2" frameY="-1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0015" x="0" y="1842" width="147" height="146" frameX="2" frameY="-1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0016" x="1488" y="1693" width="148" height="147" frameX="2" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0017" x="1856" y="1035" width="146" height="145" frameX="1" frameY="-1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0018" x="585" y="1842" width="145" height="143" frameX="1" frameY="-2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0019" x="143" y="1988" width="144" height="140" frameX="1" frameY="-3" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0020" x="2002" y="1608" width="139" height="135" frameX="-1" frameY="-5" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking C0021" x="2505" y="339" width="4" height="4" frameX="0" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0000" x="2505" y="339" width="4" height="4" frameX="0" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0001" x="332" y="2132" width="92" height="113" frameX="-26" frameY="-17" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0002" x="1814" y="1842" width="103" height="120" frameX="-21" frameY="-14" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0003" x="2142" y="1215" width="116" height="133" frameX="-15" frameY="-9" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0004" x="2142" y="823" width="120" height="135" frameX="-13" frameY="-8" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0005" x="2142" y="281" width="125" height="137" frameX="-10" frameY="-7" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0006" x="2002" y="1310" width="133" height="144" frameX="-6" frameY="-4" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0007" x="2002" y="150" width="140" height="147" frameX="-2" frameY="-2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0008" x="1856" y="0" width="146" height="148" frameX="1" frameY="-1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0009" x="149" y="1544" width="149" height="149" frameX="2" frameY="-1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0010" x="1405" y="1186" width="151" height="149" frameX="2" frameY="-1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0011" x="1252" y="907" width="153" height="149" frameX="2" frameY="-1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0012" x="1405" y="300" width="153" height="148" frameX="2" frameY="-1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0013" x="154" y="1398" width="153" height="146" frameX="2" frameY="-2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0014" x="1405" y="448" width="154" height="147" frameX="2" frameY="-2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0015" x="0" y="1398" width="154" height="146" frameX="2" frameY="-2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0016" x="1405" y="889" width="154" height="147" frameX="2" frameY="-2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0017" x="461" y="1398" width="154" height="144" frameX="2" frameY="-3" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0018" x="769" y="1398" width="153" height="144" frameX="2" frameY="-3" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0019" x="1230" y="1398" width="153" height="142" frameX="2" frameY="-4" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0020" x="1383" y="1398" width="153" height="138" frameX="2" frameY="-6" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking D0021" x="2505" y="339" width="4" height="4" frameX="0" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0000" x="2505" y="339" width="4" height="4" frameX="0" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0001" x="1917" y="1842" width="83" height="95" frameX="-34" frameY="-28" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0002" x="514" y="2132" width="93" height="108" frameX="-30" frameY="-22" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0003" x="1708" y="1842" width="106" height="122" frameX="-25" frameY="-15" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0004" x="1598" y="1842" width="110" height="126" frameX="-23" frameY="-13" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0005" x="2142" y="1724" width="114" height="128" frameX="-22" frameY="-12" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0006" x="2142" y="554" width="121" height="139" frameX="-19" frameY="-7" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0007" x="2142" y="139" width="127" height="142" frameX="-17" frameY="-5" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0008" x="2002" y="740" width="133" height="146" frameX="-15" frameY="-2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0009" x="2002" y="297" width="139" height="148" frameX="-12" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0010" x="2002" y="0" width="140" height="150" frameX="-11" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0011" x="1856" y="1472" width="142" height="149" frameX="-9" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0012" x="1856" y="887" width="144" height="148" frameX="-8" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0013" x="1856" y="1325" width="144" height="147" frameX="-8" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0014" x="1856" y="740" width="145" height="147" frameX="-7" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0015" x="1856" y="447" width="146" height="147" frameX="-6" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0016" x="1856" y="594" width="146" height="146" frameX="-6" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0017" x="294" y="1842" width="145" height="145" frameX="-7" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0018" x="0" y="1988" width="143" height="144" frameX="-8" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0019" x="874" y="1842" width="143" height="143" frameX="-8" frameY="2" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0020" x="1321" y="1842" width="140" height="132" frameX="-11" frameY="-4" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking E0021" x="2505" y="339" width="4" height="4" frameX="0" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0000" x="2505" y="339" width="4" height="4" frameX="0" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0001" x="1763" y="2132" width="73" height="92" frameX="-36" frameY="-27" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0002" x="2442" y="591" width="65" height="76" frameX="-41" frameY="-33" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0003" x="2442" y="734" width="57" height="70" frameX="-46" frameY="-38" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0004" x="2442" y="883" width="50" height="55" frameX="-52" frameY="-44" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0005" x="2442" y="667" width="65" height="67" frameX="-44" frameY="-39" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0006" x="739" y="1988" width="84" height="87" frameX="-34" frameY="-31" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0007" x="531" y="1988" width="103" height="101" frameX="-23" frameY="-25" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0008" x="2142" y="1969" width="121" height="117" frameX="-13" frameY="-18" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0009" x="2002" y="1173" width="140" height="137" frameX="-3" frameY="-7" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0010" x="1252" y="757" width="152" height="150" frameX="2" frameY="1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0011" x="1252" y="307" width="153" height="150" frameX="2" frameY="1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0012" x="0" y="1248" width="154" height="150" frameX="2" frameY="1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0013" x="770" y="1248" width="154" height="148" frameX="2" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0014" x="1078" y="1248" width="154" height="148" frameX="2" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0015" x="308" y="1248" width="154" height="148" frameX="2" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0016" x="616" y="1248" width="154" height="148" frameX="2" frameY="0" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0017" x="1405" y="742" width="154" height="147" frameX="2" frameY="-1" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0018" x="307" y="1398" width="154" height="144" frameX="2" frameY="-3" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0019" x="922" y="1398" width="154" height="142" frameX="2" frameY="-5" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0020" x="1017" y="1842" width="152" height="134" frameX="1" frameY="-10" frameWidth="150" frameHeight="150"/>
+	<SubTexture name="vp sparking FULL CHARGE0021" x="2505" y="339" width="4" height="4" frameX="0" frameY="0" frameWidth="150" frameHeight="150"/>
+</TextureAtlas>

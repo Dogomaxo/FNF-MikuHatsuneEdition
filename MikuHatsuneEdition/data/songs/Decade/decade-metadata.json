@@ -1,0 +1,55 @@
+{
+ "version": "2.2.4",
+ "songName": "Decade",
+ "artist": "Dixie Flatline (feat. Hatsune Miku)",
+ "charter": "Dogomaxo",
+ "looped": false,
+ "offsets": {
+  "instrumental": 0,
+  "altInstrumentals": {  },
+  "vocals": {  },
+  "altVocals": {  }
+ },
+ "playData": {
+  "songVariations": [],
+  "difficulties": [
+   "easy",
+   "normal",
+   "hard"
+  ],
+  "characters": {
+   "player": "miku",
+   "girlfriend": "",
+   "opponent": "bf",
+   "instrumental": "",
+   "opponentVocals": [
+    "dad"
+   ],
+   "playerVocals": [
+    "bf"
+   ]
+  },
+  "stage": "TestingPlatform",
+  "noteStyle": "hatsunenormal",
+  "ratings": {
+   "easy": 0,
+   "normal": 0,
+   "hard": 4
+  },
+  "album": "expo2018cover",
+  "previewStart": 44500,
+  "previewEnd": 92000
+ },
+ "generatedBy": "Friday Night Funkin' - v0.8.1",
+ "timeFormat": "ms",
+ "timeChanges": [
+  {
+   "t": 0,
+   "b": 0,
+   "bpm": 127,
+   "n": 4,
+   "d": 4,
+   "bt": [4, 4, 4, 4]
+  }
+ ]
+}

@@ -1,0 +1,18 @@
+{
+  "version": "1.1.0",
+  "name": "Chance Time Final Star Empty",
+  "author": "Dogomaxo",
+  "fallback": "hatsunenormal",
+  "assets": {
+    "note": {
+      "assetPath": "shared:ChanceTimeASSETS/Note/FinalStarArrow",
+      "scale": 0.7,
+      "data": {
+        "left": { "prefix": "Rstar Arrow Empty" },
+        "down": { "prefix": "Rstar Arrow Empty" },
+        "up": { "prefix": "Rstar Arrow Empty" },
+        "right": { "prefix": "Rstar Arrow Empty" }
+      }
+    }
+  }
+}

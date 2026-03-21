@@ -4,20 +4,27 @@ Thank you for your interest in contributing to **FNF: Miku Hatsune Edition**! Th
 
 ## Table of Contents
 
-1. [Issues Guidelines](#1-issues-guidelines)
-   - 1.1 [Requeriments](#11-requirements)
-   - 1.2 [Issue Types](#12-issue-types)
-   - 1.3 [Before you Sumbit](#13-before-you-submit)
-2. [Pull Request Guidelines](#2-pull-request-guidelines)
-   - 2.1 [Choosing a base branch](#21-choosing-a-base-branch)
-   - 2.2 [Maintaining your pull request](#22-maintaining-your-pull-request)
-   - 2.3 [Merge conflicts and rebasing](#23-merge-conflicts-and-rebasing)
-   - 2.4 [Code PRs](#24-code-prs)
-   - 2.5 [Code comments](#25-code-comments)
-   - 2.6 [Documentation PRs](#26-documentation-prs)
-   - 2.7 [GitHub PRs](#27-github-prs)
-   - 2.8 [Charting PRs](#28-charting-prs)
-3. [Acknowledgments and Closing](#3-acknowledgments-and-closing)
+- [Contributing to FNF: Miku Hatsune Edition](#contributing-to-fnf-miku-hatsune-edition)
+  - [Table of Contents](#table-of-contents)
+  - [1. Issues Guidelines](#1-issues-guidelines)
+    - [1.1 Requirements](#11-requirements)
+  - [1.2 Issue Types](#12-issue-types)
+    - [Bug Report (view list)](#bug-report-view-list)
+    - [Crash Report (view list)](#crash-report-view-list)
+    - [Charting Issue (view list)](#charting-issue-view-list)
+    - [Enhancement (view list)](#enhancement-view-list)
+    - [Content Contribution (Not Implemented yet)](#content-contribution-not-implemented-yet)
+  - [1.3 Before You Submit](#13-before-you-submit)
+  - [2. Pull Request Guidelines](#2-pull-request-guidelines)
+    - [2.1 Choosing a base branch](#21-choosing-a-base-branch)
+    - [2.2 Maintaining your pull request](#22-maintaining-your-pull-request)
+    - [2.3 Merge conflicts and rebasing](#23-merge-conflicts-and-rebasing)
+    - [2.4 Code PRs](#24-code-prs)
+    - [2.5 Code comments](#25-code-comments)
+    - [2.6 Documentation PRs](#26-documentation-prs)
+    - [2.7 GitHub PRs](#27-github-prs)
+  - [2.8 Charting PRs](#28-charting-prs)
+  - [3. Acknowledgments and Closing](#3-acknowledgments-and-closing)
 
 ## 1. Issues Guidelines
 
@@ -27,8 +34,8 @@ Use issues to report bugs or request features. This section provides guidelines 
 
 Make sure you're playing:
 
-- the latest version of the game (currently **v0.7.3**)
-- the latest version of the mod (currently **v0.0.1-pre.alpha**)
+- the latest version of the game (currently **v0.8.3**)
+- the latest version of the mod (currently **v0.1.0-pre.alpha** or **Develop Build**)
 - without any mod other than Miku's
 
 ## 1.2 Issue Types
