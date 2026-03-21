@@ -1,0 +1,139 @@
+import funkin.play.event.SongEvent;
+import funkin.data.event.SongEventSchema;
+import MHE_SharedState;
+
+class ChanceTimeEvent extends SongEvent
+{
+	public function new()
+	{
+		super('ChanceTime');
+	}
+
+	public override function getTitle()
+	{
+		return "Chance Time";
+	}
+
+	public override function getIconPath():String
+	{
+		return 'ui/chart-editor/events/ChanceTime';
+	}
+
+	public override function getEventSchema():SongEventSchema
+	{
+		return [
+			{
+				name: 'action',
+				title: 'Action',
+				defaultValue: 'start',
+				type: 'enum',
+				keys: ['Start' => 'start', 'Stop' => 'stop', 'Reset Only' => 'reset']
+			},
+			{
+				name: 'resetMeter',
+				title: 'Reset Meter?',
+				defaultValue: true,
+				type: 'bool'
+			},
+			{
+				name: 'scoreMultiplier',
+				title: 'Hit Score Multiplier',
+				defaultValue: 1.15,
+				type: 'float',
+				min: 0.0,
+				step: 0.05
+			},
+			{
+				name: 'finalBonus',
+				title: 'Final Bonus Score',
+				defaultValue: 25000,
+				type: 'integer',
+				min: 0,
+				step: 1000
+			},
+			{
+				name: 'finalNoteKind',
+				title: 'Final Note Kind',
+				defaultValue: MHE_SharedState.CHANCE_TIME_FINAL_NOTE_KIND_FULL,
+				type: 'string'
+			},
+			{
+				name: 'successSfx',
+				title: 'Success SFX',
+				defaultValue: MHE_SharedState.CHANCE_TIME_SUCCESS_SFX_DEFAULT,
+				type: 'enum',
+				keys: [
+					'CTSUCCESS01' => 'CT/CTSUCCESS01',
+					'CTSUCCESS02' => 'CT/CTSUCCESS02',
+					'CTSUCCESS03' => 'CT/CTSUCCESS03',
+					'CTSUCCESS04' => 'CT/CTSUCCESS04'
+				]
+			},
+			{
+				name: 'successSfxVolume',
+				title: 'Success SFX Volume',
+				defaultValue: 1.0,
+				type: 'float',
+				min: 0.0,
+				max: 1.0,
+				step: 0.05
+			}
+		];
+	}
+
+	public override function handleEvent(data)
+	{
+		var action = data.getString('action');
+		if (action == null || action == '') action = 'start';
+		action = action.toLowerCase();
+
+		var resetMeter = data.getBool('resetMeter');
+		if (resetMeter == null) resetMeter = (action == 'start' || action == 'reset');
+
+		if (action == 'start')
+		{
+			var scoreMultiplier = data.getFloat('scoreMultiplier');
+			if (scoreMultiplier != null) MHE_SharedState.chanceTimeScoreMultiplier = scoreMultiplier;
+
+			var finalBonus = data.getInt('finalBonus');
+			if (finalBonus != null) MHE_SharedState.chanceTimeFinalBonus = finalBonus;
+
+			var finalNoteKind = data.getString('finalNoteKind');
+			if (finalNoteKind != null && finalNoteKind != '') MHE_SharedState.chanceTimeFinalNoteKind = finalNoteKind;
+
+			var successSfx = data.getString('successSfx');
+			if (successSfx == null || successSfx == '') successSfx = MHE_SharedState.CHANCE_TIME_SUCCESS_SFX_DEFAULT;
+			MHE_SharedState.chanceTimeSuccessSfxKey = successSfx;
+
+			var successSfxVolume = data.getFloat('successSfxVolume');
+			if (successSfxVolume == null) successSfxVolume = 1.0;
+			if (successSfxVolume < 0) successSfxVolume = 0;
+			if (successSfxVolume > 1) successSfxVolume = 1;
+			MHE_SharedState.chanceTimeSuccessSfxVolume = successSfxVolume;
+		}
+
+		if (resetMeter)
+		{
+			MHE_SharedState.resetChanceTimeMeter();
+		}
+
+		switch (action)
+		{
+			case 'reset':
+				MHE_SharedState.chanceTimeActive = false;
+			case 'stop':
+				MHE_SharedState.chanceTimeActive = false;
+				MHE_SharedState.chanceTimeResultPending = false;
+			case 'start':
+				MHE_SharedState.chanceTimeActive = true;
+				MHE_SharedState.chanceTimeResultPending = true;
+				MHE_SharedState.chanceTimeSucceeded = false;
+			default:
+				MHE_SharedState.chanceTimeActive = true;
+				MHE_SharedState.chanceTimeResultPending = true;
+				MHE_SharedState.chanceTimeSucceeded = false;
+		}
+
+		MHE_SharedState.clampChanceTimeMeter();
+	}
+}

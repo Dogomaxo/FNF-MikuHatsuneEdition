@@ -3,6 +3,7 @@
 Created with Funkin Packer v0.1.3 https://neeeoo.github.io/funkin-packer/
 -->
 <TextureAtlas imagePath="HudScoreNumber.png" width="388" height="461">
+	<SubTexture name="MINUS" x="194" y="307" width="89" height="37" frameX="-0" frameY="-0" frameWidth="89" frameHeight="37"/>
 	<SubTexture name="digital 0" x="194" y="154" width="97" height="153" frameX="-0" frameY="-0" frameWidth="97" frameHeight="153"/>
 	<SubTexture name="digital 1" x="0" y="310" width="36" height="151" frameX="-0" frameY="-0" frameWidth="36" frameHeight="151"/>
 	<SubTexture name="digital 2" x="0" y="0" width="97" height="155" frameX="-0" frameY="-0" frameWidth="97" frameHeight="155"/>

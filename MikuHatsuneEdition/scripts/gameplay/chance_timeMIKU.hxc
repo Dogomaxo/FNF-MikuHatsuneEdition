@@ -1,0 +1,479 @@
+import funkin.modding.module.ScriptedModule;
+import funkin.data.notestyle.NoteStyleRegistry;
+import funkin.play.PlayState;
+import funkin.play.notes.NoteSprite;
+import funkin.play.notes.notestyle.NoteStyle;
+import funkin.play.notes.Strumline;
+import funkin.Paths;
+import flixel.FlxG;
+import MHE_SharedState;
+
+class HatsuneChanceTime extends ScriptedModule {
+	var chanceTimeRequiredHitRatio:Float = 0.85;
+	var finalNoteStyleFull:NoteStyle = null;
+	var finalNoteStyleEmpty:NoteStyle = null;
+	var finalNoteVisualStateCache:Array<Dynamic> = [];
+	var pendingFinalNoteVisualSync:Bool = false;
+	var lastFinalNoteRequirementMet:Null<Bool> = null;
+	var chanceSegments:Array<Dynamic> = [];
+	var currentSegment:Dynamic = null;
+	var nextSegmentIndex:Int = 0;
+	var chanceTimePaused:Bool = false;
+	var prewarmedChanceTimeSfxKeys:Array<String> = [];
+
+	public function new() {
+		super("Hatsune Chance Time", 95);
+		this.active = false;
+	}
+
+	function ensureFinalNoteStyles():Void {
+		if (finalNoteStyleFull == null) finalNoteStyleFull = NoteStyleRegistry.instance.fetchEntry('chancefinalrstar');
+		if (finalNoteStyleEmpty == null) finalNoteStyleEmpty = NoteStyleRegistry.instance.fetchEntry('chancefinalrstarempty');
+	}
+
+	function resetChanceTimeRuntimeState():Void {
+		MHE_SharedState.resetChanceTimeState();
+		chanceTimePaused = false;
+		finalNoteVisualStateCache = [];
+		pendingFinalNoteVisualSync = false;
+		lastFinalNoteRequirementMet = null;
+		currentSegment = null;
+		nextSegmentIndex = 0;
+	}
+
+	override function onSongStart(event) {
+		super.onSongStart(event);
+		resetChanceTimeRuntimeState();
+		ensureFinalNoteStyles();
+		prewarmChanceTimeSuccessSfxKey(MHE_SharedState.CHANCE_TIME_SUCCESS_SFX_DEFAULT);
+		ensureChanceTimeSegmentsReady();
+	}
+
+	override function onSongLoaded(event) {
+		super.onSongLoaded(event);
+		resetChanceTimeRuntimeState();
+		finalNoteStyleFull = null;
+		finalNoteStyleEmpty = null;
+		ensureFinalNoteStyles();
+		prewarmedChanceTimeSfxKeys = [];
+		prewarmChanceTimeSuccessSfxKey(MHE_SharedState.CHANCE_TIME_SUCCESS_SFX_DEFAULT);
+		buildChanceTimeSegments(event?.notes, event?.events);
+		ensureChanceTimeSegmentsReady();
+	}
+
+	override function onSongRetry(event) {
+		super.onSongRetry(event);
+		resetChanceTimeRuntimeState();
+		finalNoteStyleFull = null;
+		finalNoteStyleEmpty = null;
+		ensureFinalNoteStyles();
+		prewarmedChanceTimeSfxKeys = [];
+		prewarmChanceTimeSuccessSfxKey(MHE_SharedState.CHANCE_TIME_SUCCESS_SFX_DEFAULT);
+		ensureChanceTimeSegmentsReady(true);
+	}
+
+	override function onPause(event) {
+		super.onPause(event);
+		chanceTimePaused = true;
+	}
+
+	override function onResume(event) {
+		super.onResume(event);
+		chanceTimePaused = false;
+	}
+
+	override function onUpdate(event) {
+		super.onUpdate(event);
+		if (chanceTimePaused) return;
+		if (!pendingFinalNoteVisualSync) return;
+		if (!isChanceTimePending() || PlayState.instance == null) {
+			pendingFinalNoteVisualSync = false;
+			return;
+		}
+		syncPendingFinalNoteVisual();
+	}
+
+	override function onNoteIncoming(event) {
+		super.onNoteIncoming(event);
+		var note = event?.note;
+		if (!isChanceTimePending() || !isPlayerNote(note) || !isChanceTimeFinalNote(note)) return;
+		applyResolvedFinalNoteVisual(note, hasSegmentMetRequirement());
+	}
+
+	override function onSongEvent(event) {
+		super.onSongEvent(event);
+		if (event == null || event.eventData == null) return;
+		if (event.eventData.eventKind != 'ChanceTime') return;
+
+		var action = event.eventData.getString('action');
+		if (action == null || action == '') action = 'start';
+		action = action.toLowerCase();
+
+		switch (action) {
+			case 'start':
+				applyChanceTimeEventSettings(event.eventData);
+				if (chanceSegments == null || chanceSegments.length <= 0) ensureChanceTimeSegmentsReady(true);
+				activateSegmentForStart(event.eventData.time);
+			case 'stop', 'reset':
+				if (currentSegment != null && currentSegment.stopTime == event.eventData.time) currentSegment = null;
+			default:
+		}
+	}
+
+	function ensureChanceTimeSegmentsReady(force:Bool = false):Void {
+		if (!force && chanceSegments != null && chanceSegments.length > 0) return;
+
+		var ps = PlayState.instance;
+		var chart = (ps != null) ? ps.currentChart : null;
+		if (chart == null || chart.notes == null) return;
+
+		var chartEvents = chart.getEvents();
+		if (chartEvents == null) return;
+
+		buildChanceTimeSegments(chart.notes, chartEvents);
+	}
+
+	override function onNoteHit(event) {
+		super.onNoteHit(event);
+
+		var note = event?.note;
+		if (isChanceTimePending()) event.healthChange = 0;
+		if (!isChanceTimePending() || !isPlayerNote(note)) return;
+
+		if (isChanceTimeFinalNote(note)) {
+			resolveFinalNoteHit(event);
+			return;
+		}
+
+		registerSegmentHit(note);
+		event.score = applyChanceTimeScoreMultiplier(event.score);
+	}
+
+	override function onNoteMiss(event) {
+		super.onNoteMiss(event);
+
+		var note = event?.note;
+		if (isChanceTimePending()) event.healthChange = 0;
+		if (!isChanceTimePending() || !isPlayerNote(note)) return;
+
+		if (isChanceTimeFinalNote(note)) {
+			applyResolvedFinalNoteVisual(note, false);
+			resolveChanceTime(false);
+			return;
+		}
+	}
+
+	override function onNoteGhostMiss(event) {
+		super.onNoteGhostMiss(event);
+		if (!isChanceTimePending()) return;
+		event.healthChange = 0;
+	}
+
+	override function onNoteHoldDrop(event) {
+		super.onNoteHoldDrop(event);
+		if (!isChanceTimePending()) return;
+		event.healthChange = 0;
+	}
+
+	function resolveFinalNoteHit(event):Void {
+		var success = hasSegmentMetRequirement();
+		if (success) MHE_SharedState.chanceTimeMeter = MHE_SharedState.chanceTimeMeterMax;
+		MHE_SharedState.clampChanceTimeMeter();
+		applyResolvedFinalNoteVisual(event.note, success);
+
+		if (success) {
+			event.score = applyChanceTimeScoreMultiplier(event.score) + MHE_SharedState.chanceTimeFinalBonus;
+			playChanceTimeSuccessSfx();
+		}
+
+		resolveChanceTime(success);
+	}
+
+	function applyChanceTimeEventSettings(data):Void {
+		if (data == null) return;
+
+		var successSfx = data.getString('successSfx');
+		if (successSfx == null || successSfx == '') successSfx = MHE_SharedState.CHANCE_TIME_SUCCESS_SFX_DEFAULT;
+		MHE_SharedState.chanceTimeSuccessSfxKey = successSfx;
+		prewarmChanceTimeSuccessSfxKey(successSfx);
+
+		var successSfxVolume = data.getFloat('successSfxVolume');
+		if (successSfxVolume == null) successSfxVolume = 1.0;
+		if (successSfxVolume < 0) successSfxVolume = 0;
+		if (successSfxVolume > 1) successSfxVolume = 1;
+		MHE_SharedState.chanceTimeSuccessSfxVolume = successSfxVolume;
+	}
+
+	function playChanceTimeSuccessSfx():Void {
+		var soundKey = MHE_SharedState.chanceTimeSuccessSfxKey;
+		if (soundKey == null || soundKey == '') soundKey = MHE_SharedState.CHANCE_TIME_SUCCESS_SFX_DEFAULT;
+
+		var volume = MHE_SharedState.chanceTimeSuccessSfxVolume;
+		if (volume == null) volume = 1.0;
+		if (volume < 0) volume = 0;
+		if (volume > 1) volume = 1;
+
+		var sound = null;
+		try {
+			sound = FlxG.sound.play(Paths.sound(soundKey), volume, false);
+		} catch (e:Dynamic) {}
+		if (sound == null) {
+			try {
+				sound = FlxG.sound.play(Paths.sound(soundKey, 'shared'), volume, false);
+			} catch (e2:Dynamic) {}
+		}
+	}
+
+	function prewarmChanceTimeSuccessSfxKey(key:String):Void {
+		if (key == null || key == '') return;
+		if (prewarmedChanceTimeSfxKeys != null) {
+			for (existingKey in prewarmedChanceTimeSfxKeys) {
+				if (existingKey == key) return;
+			}
+		}
+
+		try {
+			var sound:Dynamic = FlxG.sound.play(Paths.sound(key), 0, false);
+			if (sound != null && sound.stop != null) sound.stop();
+		} catch (e:Dynamic) {
+			try {
+				var sharedSound:Dynamic = FlxG.sound.play(Paths.sound(key, 'shared'), 0, false);
+				if (sharedSound != null && sharedSound.stop != null) sharedSound.stop();
+			} catch (e2:Dynamic) {}
+		}
+
+		if (prewarmedChanceTimeSfxKeys == null) prewarmedChanceTimeSfxKeys = [];
+		prewarmedChanceTimeSfxKeys.push(key);
+	}
+
+	function resolveChanceTime(success:Bool):Void {
+		MHE_SharedState.chanceTimeSucceeded = success;
+		MHE_SharedState.chanceTimeActive = false;
+		MHE_SharedState.chanceTimeResultPending = false;
+		finalNoteVisualStateCache = [];
+		pendingFinalNoteVisualSync = false;
+		lastFinalNoteRequirementMet = null;
+		currentSegment = null;
+	}
+
+	function getCachedFinalNoteVisualState(note:NoteSprite):String {
+		if (note == null || finalNoteVisualStateCache == null) return null;
+		for (entry in finalNoteVisualStateCache) {
+			if (entry != null && entry.note == note) return entry.state;
+		}
+		return null;
+	}
+
+	function cacheFinalNoteVisualState(note:NoteSprite, state:String):Void {
+		if (note == null) return;
+		if (finalNoteVisualStateCache == null) finalNoteVisualStateCache = [];
+		for (entry in finalNoteVisualStateCache) {
+			if (entry != null && entry.note == note) {
+				entry.state = state;
+				return;
+			}
+		}
+		finalNoteVisualStateCache.push({note: note, state: state});
+	}
+
+	function buildChanceTimeSegments(notes:Array<Dynamic>, events:Array<Dynamic>):Void {
+		chanceSegments = [];
+		currentSegment = null;
+		nextSegmentIndex = 0;
+		if (notes == null || events == null) return;
+
+		var pendingStart:Dynamic = null;
+		for (eventData in events) {
+			if (eventData == null || eventData.eventKind != 'ChanceTime') continue;
+
+			var action = eventData.getString('action');
+			if (action == null || action == '') action = 'start';
+			action = action.toLowerCase();
+
+			if (action == 'start') {
+				pendingStart = eventData;
+				continue;
+			}
+
+			if ((action == 'stop' || action == 'reset') && pendingStart != null && eventData.time > pendingStart.time) {
+				var segment = buildSegmentFromWindow(notes, pendingStart.time, eventData.time);
+				if (segment != null) chanceSegments.push(segment);
+				pendingStart = null;
+			}
+		}
+	}
+
+	function buildSegmentFromWindow(notes:Array<Dynamic>, startTime:Float, stopTime:Float):Dynamic {
+		var finalNoteData:Dynamic = null;
+		var totalMeterNotes:Int = 0;
+
+		for (noteData in notes) {
+			if (!isPlayerNoteData(noteData)) continue;
+			if (noteData.time < startTime || noteData.time >= stopTime) continue;
+			finalNoteData = noteData;
+		}
+
+		if (finalNoteData == null) return null;
+
+		for (noteData in notes) {
+			if (!isPlayerNoteData(noteData)) continue;
+			if (noteData.time < startTime || noteData.time >= stopTime) continue;
+			if (noteData == finalNoteData) continue;
+			totalMeterNotes++;
+		}
+
+		finalNoteData.kind = MHE_SharedState.getChanceTimeFailureNoteKind();
+		var requiredHits = Std.int(Math.ceil(totalMeterNotes * chanceTimeRequiredHitRatio));
+		if (requiredHits < 1) requiredHits = 1;
+		return {
+			startTime: startTime,
+			stopTime: stopTime,
+			finalNoteTime: finalNoteData.time,
+			totalMeterNotes: totalMeterNotes,
+			requiredHits: requiredHits,
+			hitCount: 0
+		};
+	}
+
+	function activateSegmentForStart(startTime:Float):Void {
+		var segment = findSegmentByStartTime(startTime);
+		currentSegment = segment;
+		if (currentSegment == null) return;
+		currentSegment.hitCount = 0;
+		refreshMeterFromSegment();
+		lastFinalNoteRequirementMet = hasSegmentMetRequirement();
+		requestFinalNoteVisualSync(true);
+	}
+
+	function findSegmentByStartTime(startTime:Float):Dynamic {
+		for (index in nextSegmentIndex...chanceSegments.length) {
+			var segment = chanceSegments[index];
+			if (segment == null) continue;
+			if (Math.abs(segment.startTime - startTime) > 0.01) continue;
+			nextSegmentIndex = index + 1;
+			return segment;
+		}
+		for (segment in chanceSegments) {
+			if (segment == null) continue;
+			if (Math.abs(segment.startTime - startTime) <= 0.01) return segment;
+		}
+		return null;
+	}
+
+	function registerSegmentHit(note:NoteSprite):Void {
+		if (currentSegment == null || note == null || note.noteData == null) return;
+		if (note.noteData.time >= currentSegment.stopTime) return;
+		if (isChanceTimeFinalNote(note)) return;
+		var previousRequirementMet = hasSegmentMetRequirement();
+		currentSegment.hitCount++;
+		refreshMeterFromSegment();
+		var currentRequirementMet = hasSegmentMetRequirement();
+		if (lastFinalNoteRequirementMet == null || previousRequirementMet != currentRequirementMet || lastFinalNoteRequirementMet != currentRequirementMet) {
+			lastFinalNoteRequirementMet = currentRequirementMet;
+			requestFinalNoteVisualSync(true);
+		}
+	}
+
+	function refreshMeterFromSegment():Void {
+		if (currentSegment == null) {
+			MHE_SharedState.clampChanceTimeMeter();
+			return;
+		}
+
+		if (currentSegment.totalMeterNotes <= 0) {
+			MHE_SharedState.chanceTimeMeter = MHE_SharedState.chanceTimeMeterMax;
+			MHE_SharedState.clampChanceTimeMeter();
+			return;
+		}
+
+		var requiredHits = currentSegment.requiredHits;
+		if (requiredHits == null || requiredHits <= 0) requiredHits = 1;
+		var fillRatio = currentSegment.hitCount / currentSegment.totalMeterNotes;
+		if (currentSegment.hitCount >= requiredHits) fillRatio = 1;
+		if (fillRatio < 0) fillRatio = 0;
+		if (fillRatio > 1) fillRatio = 1;
+		MHE_SharedState.chanceTimeMeter = MHE_SharedState.chanceTimeMeterMax * fillRatio;
+		MHE_SharedState.clampChanceTimeMeter();
+	}
+
+	function hasSegmentMetRequirement():Bool {
+		if (currentSegment == null) return MHE_SharedState.isChanceTimeFull();
+		var requiredHits = currentSegment.requiredHits;
+		if (requiredHits == null || requiredHits <= 0) return true;
+		return currentSegment.hitCount >= requiredHits;
+	}
+
+	function applyChanceTimeScoreMultiplier(score:Int):Int {
+		if (score <= 0) return score;
+		var multiplier = MHE_SharedState.chanceTimeScoreMultiplier;
+		if (multiplier == null || multiplier == 1.0) return score;
+		return Std.int(Math.round(score * multiplier));
+	}
+
+	function isChanceTimePending():Bool {
+		return MHE_SharedState.chanceTimeActive && MHE_SharedState.chanceTimeResultPending;
+	}
+
+	function isChanceTimeFinalNote(note:NoteSprite):Bool {
+		if (note == null || !MHE_SharedState.matchesChanceTimeFinalNoteKind(note.kind)) return false;
+		if (currentSegment == null) return false;
+		return Math.abs(note.strumTime - currentSegment.finalNoteTime) <= 0.01;
+	}
+
+	function isPlayerNote(note:NoteSprite):Bool {
+		if (note == null || note.noteData == null) return false;
+		return Std.int(Math.floor(note.noteData.data / Strumline.KEY_COUNT)) == 0;
+	}
+
+	function isPlayerNoteData(noteData):Bool {
+		if (noteData == null) return false;
+		return Std.int(Math.floor(noteData.data / Strumline.KEY_COUNT)) == 0;
+	}
+
+	function requestFinalNoteVisualSync(immediate:Bool = false):Void {
+		pendingFinalNoteVisualSync = true;
+		if (immediate) syncPendingFinalNoteVisual();
+	}
+
+	function syncPendingFinalNoteVisual():Void {
+		var ps = PlayState.instance;
+		if (ps == null || ps.playerStrumline == null || ps.playerStrumline.notes == null || currentSegment == null) {
+			pendingFinalNoteVisualSync = false;
+			return;
+		}
+
+		var meterFull = hasSegmentMetRequirement();
+		var appliedAny:Bool = false;
+		for (note in ps.playerStrumline.notes.members) {
+			if (note == null || note.noteData == null || note.hasBeenHit || note.hasMissed) continue;
+			if (!isChanceTimeFinalNote(note)) continue;
+			appliedAny = true;
+			applyResolvedFinalNoteVisual(note, meterFull);
+		}
+		pendingFinalNoteVisualSync = false;
+		lastFinalNoteRequirementMet = meterFull;
+	}
+
+	function applyResolvedFinalNoteVisual(note:NoteSprite, meterFull:Bool):Void {
+		if (note == null || note.noteData == null) return;
+
+		var targetKind = MHE_SharedState.resolveChanceTimeFinalNoteKind(meterFull);
+		if (targetKind == null || targetKind == '') return;
+		var targetVisualState = meterFull ? "full" : "empty";
+		var appliedVisualState = getCachedFinalNoteVisualState(note);
+		if (note.kind == targetKind && appliedVisualState == targetVisualState) return;
+		if (note.kind != targetKind) note.kind = targetKind;
+		applyFinalNoteAtlasVisual(note, meterFull);
+		cacheFinalNoteVisualState(note, targetVisualState);
+	}
+
+	function applyFinalNoteAtlasVisual(note:NoteSprite, meterFull:Bool):Void {
+		if (note == null) return;
+		ensureFinalNoteStyles();
+		var targetStyle = meterFull ? finalNoteStyleFull : finalNoteStyleEmpty;
+		if (targetStyle == null) return;
+		var direction = note.noteData.getDirection(Strumline.KEY_COUNT);
+		targetStyle.buildNoteSprite(note);
+		note.direction = direction;
+	}
+}

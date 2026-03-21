@@ -1,0 +1,18 @@
+{
+  "version": "1.1.0",
+  "name": "Chance Time Final Star",
+  "author": "Dogomaxo",
+  "fallback": "hatsunenormal",
+  "assets": {
+    "note": {
+      "assetPath": "shared:ChanceTimeASSETS/Note/FinalStarArrow",
+      "scale": 0.7,
+      "data": {
+        "left": { "prefix": "Rstar Arrow" },
+        "down": { "prefix": "Rstar Arrow" },
+        "up": { "prefix": "Rstar Arrow" },
+        "right": { "prefix": "Rstar Arrow" }
+      }
+    }
+  }
+}

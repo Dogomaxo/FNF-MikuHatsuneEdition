@@ -1,0 +1,294 @@
+import flixel.FlxG;
+import flixel.text.FlxText;
+import funkin.Constants;
+import funkin.FunkinMemory;
+import funkin.Paths;
+import funkin.data.song.SongRegistry;
+import funkin.modding.module.Module;
+import funkin.ui.freeplay.FreeplayState;
+import funkin.ui.freeplay.SongMenuItem;
+import funkin.util.ReflectUtil;
+import openfl.utils.Assets;
+import MHE_SharedState;
+
+class HatsuneAltTrack extends Module {
+	var freeplayState:FreeplayState = null;
+	var oldAudioId:String = 'old';
+	var currentMenuOwnerId:String = null;
+	var lastPrecachedSelectionKey:String = null;
+
+	public function new() {
+		super('HatsuneAltTrack');
+	}
+
+	override function onStateChangeBegin(event) {
+		super.onStateChangeBegin(event);
+		freeplayState = null;
+		currentMenuOwnerId = null;
+		lastPrecachedSelectionKey = null;
+	}
+
+	override function onSubStateCloseEnd(event) {
+		super.onSubStateCloseEnd(event);
+		currentMenuOwnerId = null;
+	}
+
+	override function onUpdate(event) {
+		super.onUpdate(event);
+
+		var currentFreeplay = getFreeplayState();
+		if (currentFreeplay == null) {
+			freeplayState = null;
+			currentMenuOwnerId = null;
+			lastPrecachedSelectionKey = null;
+			return;
+		}
+
+		if (freeplayState != currentFreeplay) {
+			freeplayState = currentFreeplay;
+			currentMenuOwnerId = null;
+			lastPrecachedSelectionKey = null;
+		}
+
+		precacheSelectedOldAudio(currentFreeplay);
+		hookSongCapsules(currentFreeplay);
+		refreshOpenAudioMenu(currentFreeplay);
+	}
+
+	function precacheSelectedOldAudio(fp:FreeplayState):Void {
+		if (fp == null) return;
+
+		var cap:SongMenuItem = ReflectUtil.getProperty(fp, 'currentCapsule');
+		if (cap == null) {
+			var grpCapsules = ReflectUtil.getField(fp, 'grpCapsules');
+			var curSelected = ReflectUtil.getField(fp, 'curSelected');
+			if (grpCapsules != null && grpCapsules.members != null && curSelected != null) {
+				var selectedIndex:Int = Std.int(curSelected);
+				if (selectedIndex >= 0 && selectedIndex < grpCapsules.members.length) {
+					cap = grpCapsules.members[selectedIndex];
+				}
+			}
+		}
+		if (cap == null || !shouldPromptForOldAudio(fp, cap)) return;
+
+		var songId:String = cap.freeplayData.data.id;
+		var variationId:String = ReflectUtil.getProperty(fp, 'currentVariation');
+		if (variationId == null || variationId == '') variationId = Constants.DEFAULT_VARIATION;
+
+		var difficultyId:String = ReflectUtil.getProperty(fp, 'currentDifficulty');
+		if (difficultyId == null || difficultyId == '') difficultyId = Constants.DEFAULT_DIFFICULTY;
+
+		var cacheKey = songId + '|' + variationId + '|' + difficultyId;
+		if (cacheKey == lastPrecachedSelectionKey) return;
+
+		lastPrecachedSelectionKey = cacheKey;
+		precacheOldAudio(songId);
+	}
+
+	function getFreeplayState():FreeplayState {
+		var currentSub = null;
+		if (FlxG.state != null) {
+			currentSub = FlxG.state.subState;
+		}
+		if (currentSub == null) return null;
+		if (!Std.isOfType(currentSub, FreeplayState)) return null;
+		return currentSub;
+	}
+
+	function hookSongCapsules(fp:FreeplayState):Void {
+		var grpCapsules = ReflectUtil.getField(fp, 'grpCapsules');
+		if (grpCapsules == null || grpCapsules.members == null) return;
+
+		for (cap in grpCapsules.members) {
+			if (cap == null || cap.freeplayData == null) continue;
+			if (!shouldPromptForOldAudio(fp, cap)) continue;
+
+			var targetCap = cap;
+			targetCap.onConfirm = function() {
+				openAudioMenu(fp, targetCap);
+			};
+		}
+	}
+
+	function shouldPromptForOldAudio(fp:FreeplayState, cap:SongMenuItem):Bool {
+		if (fp == null || cap == null || cap.freeplayData == null || cap.freeplayData.data == null) return false;
+
+		var songId:String = cap.freeplayData.data.id;
+		if (songId == null || songId == '') return false;
+
+		var variationId:String = ReflectUtil.getProperty(fp, 'currentVariation');
+		if (variationId == null || variationId == '') variationId = Constants.DEFAULT_VARIATION;
+
+		var difficultyId:String = ReflectUtil.getProperty(fp, 'currentDifficulty');
+		if (difficultyId == null || difficultyId == '') difficultyId = Constants.DEFAULT_DIFFICULTY;
+
+		var targetSong = SongRegistry.instance.fetchEntry(songId, {variation: variationId});
+		if (targetSong == null) return false;
+
+		var altInstrumentalIds:Array<String> = targetSong.listAltInstrumentalIds(difficultyId, variationId) ?? [];
+		if (altInstrumentalIds.length > 0) return false;
+
+		return hasOldFolderAudio(songId);
+	}
+
+	function openAudioMenu(fp:FreeplayState, cap:SongMenuItem):Void {
+		if (fp == null || cap == null || cap.freeplayData == null || cap.freeplayData.data == null) return;
+
+		var songId:String = cap.freeplayData.data.id;
+		if (songId == currentMenuOwnerId) return;
+
+		var existingMenu = ReflectUtil.getField(fp, 'instSelectMenu');
+		if (existingMenu != null) return;
+
+		var openMenuFn = ReflectUtil.getField(fp, 'openInstrumentalList');
+		if (openMenuFn == null) return;
+
+		currentMenuOwnerId = songId;
+		openMenuFn(cap, ['ACTUAL', 'OLD']);
+
+		var menu = ReflectUtil.getField(fp, 'instSelectMenu');
+		if (menu == null) {
+			currentMenuOwnerId = null;
+			return;
+		}
+
+		menu.onConfirm = function(choice:String) {
+			currentMenuOwnerId = null;
+			confirmVanillaSongSelect(fp, cap, choice == 'OLD');
+		};
+
+		renameAudioMenuLabel(menu);
+	}
+
+	function refreshOpenAudioMenu(fp:FreeplayState):Void {
+		var menu = ReflectUtil.getField(fp, 'instSelectMenu');
+		if (menu == null) {
+			currentMenuOwnerId = null;
+			return;
+		}
+
+		renameAudioMenuLabel(menu);
+	}
+
+	function renameAudioMenuLabel(menu):Void {
+		if (menu == null || menu.members == null) return;
+
+		for (member in menu.members) {
+			if (member == null) continue;
+			if (!Std.isOfType(member, FlxText)) continue;
+
+			var text:FlxText = member;
+			if (text.text == 'INSTRUMENTAL') {
+				text.text = 'SELECT AUDIO';
+			}
+		}
+	}
+
+	function confirmVanillaSongSelect(fp:FreeplayState, cap:SongMenuItem, useOldAudio:Bool):Void {
+		var songId:String = cap?.freeplayData?.data?.id;
+		MHE_SharedState.setOldAudioSelection(songId, useOldAudio);
+		trace('[HatsuneAltTrack] confirmVanillaSongSelect song=' + songId + ' useOldAudio=' + useOldAudio);
+
+		var cleanupFn = ReflectUtil.getField(fp, 'cleanupInstSelectMenu');
+		if (cleanupFn != null) {
+			cleanupFn();
+		}
+
+		var confirmFn = ReflectUtil.getField(fp, 'capsuleOnConfirmDefault');
+		if (confirmFn != null) {
+			confirmFn(cap, useOldAudio ? oldAudioId : null);
+		}
+	}
+
+	function precacheOldAudio(songId:String):Void {
+		if (songId == null || songId == '' || freeplayState == null) return;
+		var instPath = getOldFolderInstPath(songId);
+		if (Assets.exists(instPath)) FunkinMemory.cacheSound(instPath);
+
+		var variationId:String = ReflectUtil.getProperty(freeplayState, 'currentVariation');
+		if (variationId == null || variationId == '') variationId = Constants.DEFAULT_VARIATION;
+
+		var difficultyId:String = ReflectUtil.getProperty(freeplayState, 'currentDifficulty');
+		if (difficultyId == null || difficultyId == '') difficultyId = Constants.DEFAULT_DIFFICULTY;
+
+		var targetSong = SongRegistry.instance.fetchEntry(songId, {variation: variationId});
+		if (targetSong == null) return;
+		var targetChart = targetSong.getDifficulty(difficultyId, variationId);
+		if (targetChart == null) return;
+
+		for (voicePath in targetChart.buildPlayerVoiceList()) {
+			cacheOldVoiceVariant(voicePath);
+		}
+		for (voicePath in targetChart.buildOpponentVoiceList()) {
+			cacheOldVoiceVariant(voicePath);
+		}
+	}
+
+	function cacheOldVoiceVariant(defaultVoicePath:String):Void {
+		if (defaultVoicePath == null || defaultVoicePath == '') return;
+		var oldVoicePath = resolveOldFolderVoicePath(defaultVoicePath);
+		if (Assets.exists(oldVoicePath)) FunkinMemory.cacheSound(oldVoicePath);
+	}
+
+	function hasOldFolderAudio(songId:String):Bool {
+		if (songId == null || songId == '') return false;
+		return Assets.exists(getOldFolderInstPath(songId));
+	}
+
+	function getOldFolderInstPath(songId:String):String {
+		return buildOldFolderAssetPath(songId, 'Inst');
+	}
+
+	function resolveOldFolderVoicePath(defaultVoicePath:String):String {
+		if (defaultVoicePath == null || defaultVoicePath == '') return defaultVoicePath;
+		var fileName = extractFileNameWithoutExtension(defaultVoicePath);
+		var songId = extractSongIdFromAudioPath(defaultVoicePath);
+		if (fileName == null || fileName == '' || songId == null || songId == '') return defaultVoicePath;
+		return buildOldFolderAssetPath(songId, fileName);
+	}
+
+	function buildOldFolderAssetPath(songId:String, fileName:String):String {
+		if (songId == null || songId == '' || fileName == null || fileName == '') return '';
+		var normalizedSongId = songId.toLowerCase();
+		var upperPath = 'songs:assets/songs/' + normalizedSongId + '/OLD/' + fileName + '.ogg';
+		if (Assets.exists(upperPath)) return upperPath;
+		var lowerPath = 'songs:assets/songs/' + normalizedSongId + '/old/' + fileName + '.ogg';
+		if (Assets.exists(lowerPath)) return lowerPath;
+		return upperPath;
+	}
+
+	function extractSongIdFromAudioPath(audioPath:String):String {
+		if (audioPath == null || audioPath == '') return null;
+		var marker = 'assets/songs/';
+		var markerIndex = audioPath.indexOf(marker);
+		if (markerIndex < 0) return null;
+		var relativePath = audioPath.substr(markerIndex + marker.length);
+		var slashIndex = relativePath.indexOf('/');
+		if (slashIndex < 0) return null;
+		return relativePath.substr(0, slashIndex);
+	}
+
+	function extractFileNameWithoutExtension(audioPath:String):String {
+		if (audioPath == null || audioPath == '') return null;
+		var slashIndex = audioPath.lastIndexOf('/');
+		var fileName = slashIndex >= 0 ? audioPath.substr(slashIndex + 1) : audioPath;
+		var dotIndex = fileName.lastIndexOf('.');
+		return dotIndex > 0 ? fileName.substr(0, dotIndex) : fileName;
+	}
+
+	function resolveOldVoicePath(defaultVoicePath:String):String {
+		if (defaultVoicePath == null || defaultVoicePath == '') return defaultVoicePath;
+		var slashIndex = defaultVoicePath.lastIndexOf('/');
+		var directory = slashIndex >= 0 ? defaultVoicePath.substr(0, slashIndex + 1) : '';
+		var fileName = slashIndex >= 0 ? defaultVoicePath.substr(slashIndex + 1) : defaultVoicePath;
+		if (fileName == null || fileName == '') return defaultVoicePath;
+
+		var dotIndex = fileName.lastIndexOf('.');
+		var baseName = dotIndex > 0 ? fileName.substr(0, dotIndex) : fileName;
+		var extension = dotIndex > 0 ? fileName.substr(dotIndex + 1) : '';
+		if (baseName == null || baseName == '') return defaultVoicePath;
+		if (baseName.length >= 4 && baseName.substr(baseName.length - 4) == '-old') return defaultVoicePath;
+		if (extension == null || extension == '') return directory + baseName + '-old';
+		return directory + baseName + '-old.' + extension;
+	}
+}

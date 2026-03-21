@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextureAtlas imagePath="ChanceTime.png">
+	<SubTexture name="ChanceTime0" x="0" y="0" width="127" height="121"/>
+</TextureAtlas>

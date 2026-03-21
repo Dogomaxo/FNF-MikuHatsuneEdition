@@ -16,7 +16,13 @@ class ModuleRouter extends Module {
   // Stage / song filters removed for compatibility (hscript reflection shit issues). Re‑add later via safe API.
   var charRules = [
     // Enable the unified gameplay HUD for these characters.
-  { ids: ["miku", "bf-hme", "rin", "len"], enable: ["Hatsune Display HUD"], disable: [] },
+  { ids: ["miku", "bf-hme", "rin", "len"], enable: ["Hatsune Display HUD", "Hatsune Strumline Layout", "Hatsune Chance Time"], disable: [] },
+    // Also enable the gameplay HUD explicitly for the mod song pack on first load.
+  {
+    songs: ["Satisfaction", "Far-away", "Far-away-Project-Diva-ver", "All-is-Music", "DIVA", "Decade", "Ai-kotoba-V", "Blue-Star", "Debug-Level", "Ray-livetune-Cover", "Romeo-and-Cinderella", "The-Disappearance-of-Hatsune Miku"],
+    enable: ["Hatsune Display HUD", "Hatsune Strumline Layout", "Hatsune Chance Time"],
+    disable: []
+  },
     // Keep the voltage panel scoped to the mod's own song set.
   {
     ids: ["miku", "bf-hme", "rin", "len"],
@@ -53,6 +59,10 @@ class ModuleRouter extends Module {
 
   function getPlayerCharacterId() {
     if (PlayState.instance == null) return null;
+    if (PlayState.instance.currentSong != null) {
+      var songDifficulty = PlayState.instance.currentSong.getDifficulty(PlayState.instance.currentDifficulty, PlayState.instance.currentVariation);
+      if (songDifficulty != null && songDifficulty.characters != null && songDifficulty.characters.player != null) return songDifficulty.characters.player;
+    }
     if (PlayState.instance.currentStage != null) {
       var bf = PlayState.instance.currentStage.getBoyfriend();
       if (bf != null) return bf.characterId;
@@ -77,11 +87,12 @@ class ModuleRouter extends Module {
     resetTrackingState();
   }
 
+  override function onStateChangeEnd(event) {
+    super.onStateChangeEnd(event);
+    refreshModuleActivation(true);
+  }
+
   override function onUpdate(e) {
-  var charId = getPlayerCharacterId();
-  var songId = getCurrentSongId();
-  var stageId = getCurrentStageId();
-  var stateRef = PlayState.instance;
   // Passive flip restore attempts (few frames) after leaving custom HUD.
     if (flipRestoreFrames > 0 && PlayState.instance != null && PlayState.instance.iconP1 != null) {
       var ic = PlayState.instance.iconP1;
@@ -90,14 +101,29 @@ class ModuleRouter extends Module {
       if (flipRestoreFrames <= 0) immediateFlipApplied = false; // reset
     }
 
+    refreshModuleActivation(false);
+  }
+
+  function refreshModuleActivation(force:Bool) {
+    var charId = getPlayerCharacterId();
+    var songId = getCurrentSongId();
+    var stageId = getCurrentStageId();
+    var stateRef = PlayState.instance;
+
     // Re-evaluate whenever the gameplay identity changes, not only the character.
     var dirty = (charId != lastCharId) || (songId != lastSongId) || (stageId != lastStageId) || (stateRef != lastStateRef);
-    if (!dirty) return; // nothing to do
+    if (!force && !dirty) return; // nothing to do
 
-    // Transition customHUD -> non-custom: schedule restoration.
-    var newIsCustom = isCustomHudChar(charId);
+    // If the new state isn't ready yet, disable everything until the new gameplay identity exists.
+    var targetEnable = [];
+    var targetDisable = [];
+    for (r in charRules) if (ruleMatches(r, charId)) {
+      if (r.enable != null) for (m in r.enable) if (!targetEnable.contains(m)) targetEnable.push(m);
+      if (r.disable != null) for (m2 in r.disable) if (!targetDisable.contains(m2)) targetDisable.push(m2);
+    }
+    var newIsCustom = targetEnable.contains("Hatsune Display HUD");
+
     if (lastCharId != null && lastCharWasCustom && !newIsCustom) {
-      // Immediate attempt: if icon exists, fix now to avoid flicker.
       if (PlayState.instance != null && PlayState.instance.iconP1 != null) {
         var icNow = PlayState.instance.iconP1;
         if (icNow.flipX == false) {
@@ -105,18 +131,7 @@ class ModuleRouter extends Module {
           immediateFlipApplied = true;
         }
       }
-      // Short window in case icon is rebuilt a few frames later.
-      flipRestoreFrames = 5; // ~0.08s
-    }
-
-    // If the new state isn't ready yet, disable everything until the new gameplay identity exists.
-    var targetEnable = [];
-    var targetDisable = [];
-    if (charId != null) {
-  for (r in charRules) if (ruleMatches(r, charId)) {
-        if (r.enable != null) for (m in r.enable) if (!targetEnable.contains(m)) targetEnable.push(m);
-        if (r.disable != null) for (m2 in r.disable) if (!targetDisable.contains(m2)) targetDisable.push(m2);
-      }
+      flipRestoreFrames = 5;
     }
 
   // Differential activation: touch only what changed.
@@ -130,7 +145,10 @@ class ModuleRouter extends Module {
     for (mNow in targetEnable) {
       if (!lastEnabledModules.contains(mNow)) {
         var ma = ModuleHandler.getModule(mNow);
-        if (ma != null && !ma.active) ma.active = true;
+        if (ma != null && !ma.active) {
+          ma.active = true;
+          primeManagedModule(ma);
+        }
       }
     }
   // Ensure explicit disables
@@ -230,6 +248,14 @@ class ModuleRouter extends Module {
       if (restoreFn != null) restoreFn();
     }
     module.active = false;
+  }
+
+  function primeManagedModule(module) {
+    if (module == null) return;
+    if (ReflectUtil.hasField(module, "primeDisplayState")) {
+      var primeFn = ReflectUtil.getField(module, "primeDisplayState");
+      if (primeFn != null) primeFn();
+    }
   }
 }
 

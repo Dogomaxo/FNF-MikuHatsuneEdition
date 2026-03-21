@@ -4,6 +4,7 @@ class CityNightStage extends Stage
 {
 	var platform = null;
 	var platformPropName:String = 'Platform';
+	var lastPlatformFrameIndex:Int = -1;
 	var platformFrameNames:Array<String> = [
 		'loop1',
 		'loop2',
@@ -30,6 +31,7 @@ class CityNightStage extends Stage
 	override function buildStage():Void
 	{
 		platform = null;
+		lastPlatformFrameIndex = -1;
 		super.buildStage();
 		cachePlatform();
 		playPlatformFrame(0);
@@ -38,6 +40,7 @@ class CityNightStage extends Stage
 	override function onDestroy(event:ScriptEvent):Void
 	{
 		platform = null;
+		lastPlatformFrameIndex = -1;
 		super.onDestroy(event);
 	}
 
@@ -50,7 +53,6 @@ class CityNightStage extends Stage
 			return;
 		}
 
-		cachePlatform();
 		playPlatformFrame(event.beat % platformFrameNames.length);
 	}
 
@@ -72,7 +74,15 @@ class CityNightStage extends Stage
 
 	function playPlatformFrame(frameIndex:Int):Void
 	{
-		cachePlatform();
+		if (frameIndex == lastPlatformFrameIndex && platform != null)
+		{
+			return;
+		}
+
+		if (platform == null || platform.animation == null)
+		{
+			cachePlatform();
+		}
 
 		if (platform == null)
 		{
@@ -82,9 +92,23 @@ class CityNightStage extends Stage
 		if (platform.animation == null)
 		{
 			platform = null;
+			lastPlatformFrameIndex = -1;
 			return;
 		}
 
-		platform.playAnimation(platformFrameNames[frameIndex], true);
+		var targetFrame = platformFrameNames[frameIndex];
+		if (targetFrame == null)
+		{
+			return;
+		}
+
+		if (platform.animation.curAnim != null && platform.animation.curAnim.name == targetFrame)
+		{
+			lastPlatformFrameIndex = frameIndex;
+			return;
+		}
+
+		platform.playAnimation(targetFrame, true);
+		lastPlatformFrameIndex = frameIndex;
 	}
 }
